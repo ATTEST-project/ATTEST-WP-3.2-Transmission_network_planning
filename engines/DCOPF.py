@@ -1,10 +1,8 @@
 # -*- coding: utf-8 -*-
 """
-Created on Tue Dec  7 14:24:19 2021
 
 @author: p96677wk
 
-DC OPF 
 """
 
 from __future__ import (division, print_function)
