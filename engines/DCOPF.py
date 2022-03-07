@@ -20,12 +20,189 @@ import os
 import math
 import numpy as np
 
-# import data class for network information
-from a_network_dataclass import network_variable, network_parameter, nodes_info_network
+# # import data class for network information
+# from a_network_dataclass import network_variable, network_parameter, nodes_info_network
+from dataclasses import dataclass
+@dataclass
+class network_variable:
+    name                :   str     = None      # Name of the variable
+    position_tree       :   dict    = None      # Position in the energy tree - representative days
+    hour                :   int     = None      # Hour of the solution in case of multiple hours
+    ID                  :   str     = None      # ID of element
+    type                :   str     = None      # Type of element, e.g. bus, branch
+    sub_type            :   str     = None      # Sub type of element, e.g. thermal, hydro
+    value               :   float   = None      # Value of the solution for this specific variable
+
+@dataclass
+class network_parameter:
+    name                :   str     = None      # Name of the parameter
+    position_tree       :   dict    = None      # Position in the energy tree - representative days
+                                                # in case of parameters changing in time
+    hour                :   int     = None      # Hour of the parameter in case of parameters 
+                                                # changing in time
+    ID                  :   str     = None      # ID of element
+    type                :   str     = None      # Type of element, e.g. bus, branch
+    sub_type            :   str     = None      # Sub type of element, e.g. thermal, hydro
+    bus                 :   int     = None      # Number of the bus (node) that the element is 
+                                                # related
+    ends                :   list    = None      # list of ends for branches in format [from, to]
+    value               :   float   = None      # Value of specific parameter
+ 
+@dataclass
+class nodes_info_network:
+    type                :   str     = None      # Type of element, e.g. bus, branch, generator
+    sub_type            :   str     = None      # Sub type of element, e.g. thermal, hydro
+    ID                  :   str     = None      # ID of element
+    node                :   int     = None      # Number of node in graph
+    parameters          :   list    = None      # Parameters associated to the node in the graph
+    variables           :   list    = None      # Variables associated to the node in the graph
+    bus                 :   int     = None      # Number of the bus related to the graph's node
+    ends                :   list    = None      # list of ends for branches in format [from, to]
 
 # read paras and vars from mpc (.json)
-from a_readVarPara import readVarPara
+# from a_readVarPara import readVarPara
+def readVarPara(mpc,network_parameter,network_variable):
 
+    '''Input parameters for generator, bus and branch'''
+    
+    '''
+        Recorded parameters are:
+                 auxGen = ['PMAX', 'PMIN', 'QMAX', 'QMIN', 'VG']
+                 auxBus = ['BASE_KV', 'PD', 'QD', 'VMAX', 'VMIN']
+                 auxBranch = ['BR_B', 'BR_R', 'BR_X', 'RATE_A', 'BR_STATUS']
+
+        Recorded variables are:
+                 auxGen=['Pout','Qout']
+                 auxBus=['Pin','Qin''Pout','Qout']
+                 auxBranch=['P','Q','ANG']    
+    '''
+    
+    # Input generator parameters   
+    nw_parameters=[]
+    auxGen = ['PMAX', 'PMIN', 'QMAX', 'QMIN', 'VG']
+    
+    for NoGen in range(mpc['NoGen']):
+        for gen_para_name in auxGen:
+            gen_para_temp = network_parameter( 
+                        name             = gen_para_name,      
+                        position_tree    = None,      
+                        hour             = None,      
+                        ID               = 'Gen'+str(NoGen),    
+                        type             = 'generator',      
+                        sub_type         = None,      
+                        bus              = mpc['gen']['GEN_BUS'][NoGen],      
+                        ends             = None,      
+                        value            = mpc['gen'][gen_para_name][NoGen]
+                                          )
+            # Add generator parameters  
+            nw_parameters.append(gen_para_temp)
+
+    del auxGen,gen_para_temp, gen_para_name
+    
+    # Input bus parameters   
+    auxBus = ['BASE_KV', 'PD', 'QD', 'VMAX', 'VMIN']
+    
+    for NoBus in range(mpc['NoBus']):
+        for bus_para_name in auxBus:
+            bus_para_temp = network_parameter( 
+                        name             = bus_para_name,      
+                        position_tree    = None,      
+                        hour             = None,      
+                        ID               = 'Bus'+str(NoBus),  
+                        type             = 'bus',      
+                        sub_type         = None,      
+                        bus              = mpc['bus']['BUS_I'][NoBus],      
+                        ends             = None,      
+                        value            = mpc['bus'][bus_para_name][NoBus]
+                                          )        
+            # Add generator parameters  
+            nw_parameters.append(bus_para_temp)
+    del auxBus, bus_para_temp, bus_para_name
+    
+    
+    # Input branch parameters   
+    auxBranch = ['BR_B', 'BR_R', 'BR_X', 'RATE_A', 'BR_STATUS']
+    
+    for NoBranch in range(mpc['NoBranch']):
+        for branch_para_name in auxBranch:
+            branch_para_temp = network_parameter( 
+                        name             = branch_para_name,      
+                        position_tree    = None,      
+                        hour             = None,      
+                        ID               = 'Branch'+str(NoBranch),
+                        type             = 'branch',      
+                        sub_type         = None,                            
+                        ends             = [mpc['branch']['F_BUS'][NoBranch], mpc['branch']['T_BUS'][NoBranch]],     
+                        value            = mpc['branch'][branch_para_name][NoBranch]
+                                          )    
+            # Add branch parameters  
+            nw_parameters.append(branch_para_temp)
+    del auxBranch, branch_para_temp, branch_para_name
+    
+    # ####################################################################
+    # ####################################################################
+    
+    '''Input vars for generator, bus and branch'''
+    # Input gen vars   
+    nw_variables=[]
+    auxGen=['Pout','Qout']
+    for NoGen in range(mpc['NoGen']):
+        for gen_var_name in auxGen:
+            gen_var_temp = network_variable( 
+                        name             = gen_var_name,      
+                        position_tree    = None,      
+                        hour             = None,      
+                        ID               = 'Gen'+str(NoGen),    
+                        type             = 'generator',      
+                        sub_type         = None,        
+                        value            = None
+                                          )
+            # Add generator vars  
+           
+            nw_variables.append(gen_var_temp)
+    del auxGen, gen_var_temp, gen_var_name
+    
+    
+    # Input bus vars   
+    auxBus=['Pin','Qin','Pout','Qout']
+    for NoBus in range(mpc['NoBus']):
+        for bus_var_name in auxBus:
+            bus_var_temp = network_variable( 
+                        name             = bus_var_name,      
+                        position_tree    = None,      
+                        hour             = None,      
+                        ID               = 'Bus'+str(NoBus),    
+                        type             = 'bus',      
+                        sub_type         = None,        
+                        value            = None
+                                          )
+            # Add bus vars 
+            nw_variables.append(bus_var_temp)
+    del auxBus, bus_var_temp, bus_var_name
+    
+    
+    # Input branch vars   
+    auxBranch=['P','Q','ANG']
+    for NoBranch in range(mpc['NoBranch']):
+        for branch_var_name in auxBranch:
+            branch_var_temp = network_variable( 
+                        name             = branch_var_name,      
+                        position_tree    = None,      
+                        hour             = None,      
+                        ID               = 'Branch'+str(NoBranch),    
+                        type             = 'branch',      
+                        sub_type         = None,        
+                        value            = None
+                                          )
+            # Add bus vars 
+            nw_variables.append(branch_var_temp)
+    del auxBranch, branch_var_temp, branch_var_name
+    
+    
+    # NoID is total number of elements  NoID = NoGen + NoBranch + NoBus
+    NoID = mpc['NoGen'] + mpc['NoBranch'] + mpc['NoBus']
+    
+    return nw_parameters, nw_variables
 # ####################################################################
     
 def DCOPF_function(mpc,NoTime):
