@@ -1,8 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Created on Mon Feb 22 14:26:33 2021
-
-@author: p96677wk
+Convert m into json
 """
 
 import numpy as np
