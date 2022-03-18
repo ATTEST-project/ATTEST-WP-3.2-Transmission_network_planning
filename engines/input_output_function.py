@@ -1,6 +1,20 @@
 # -*- coding: utf-8 -*-
 """
-Work in progress
+@author: Wangwei Kong
+
+Input and output functions
+
+    Required inputs:
+        contingency list
+        country name
+        test_case name
+        time series data
+        
+        
+    Outputs:
+        mpc in json
+        load data
+        flex data
 """
 
 from pyexcel_ods import get_data
@@ -18,11 +32,9 @@ def json_directory():
 
 
 
-def read_input_data(test_case, country = "HR" ):
+def read_input_data(cont_list, country = "HR", test_case = "HR_2020_Location_1" ):
     
-    
-    file_name  = str(test_case) # 'case5'  # 'Transmission_Network_UK_2020'
-    #NoTime = 1
+    file_name  = test_case 
     
     # todo: update json input to exclude dummy generators?
     '''load m file'''
@@ -43,52 +55,65 @@ def read_input_data(test_case, country = "HR" ):
     '''Load multipliers for different scnearios'''
     multiplier = get_mult(country) # default to HR
     
-    
     ''' Load .ods file'''
     base_time_series_data = get_data("Transmission_Network_PT_2020_24hGenerationLoadData.ods")
     print('load ods file')  
     
    
-    
-    
+    NoCon = len( cont_list)
     
 
-    return (mpc,  base_time_series_data,  multiplier)
-
+    return (mpc,  base_time_series_data,  multiplier, NoCon)
 
 
 
-def output_data(output_data, Output_Data_Investment ):
+
+def output_data(output_data, country = "HR", test_case = "HR_2020_Location_1" ):
     
-    # read ods template
-    ods_template = get_data("Output_Data_T3.2_CBA.ods")
-    
-    # add branch inveestment
-    # year 2020
-    ods_template["Option_1"][16][4] = 2020
-    ods_template["Option_1"][16][14] = 2030
-    ods_template["Option_1"][16][24] = 2040
-    ods_template["Option_1"][16][34] = 2050
-    
-    
-    # read xlsx template
-    import pandas as pd
-    xlsx_template = pd.read_excel (r'Output_Data_T3.2_CBA.xlsx',sheet_name="Option 1",header=None)
-    # add branch inveestment
-    # year 2020
-    xlsx_template[4][17] = 2020
-    xlsx_template[14][17] = 2030
-    xlsx_template[24][17] = 2040
-    xlsx_template[44][17] = 2050
-    
-    
-    ''' Outpu ods file''' 
-    save_data("WP3_CBA_output.ods", ods_template)
-    
-    
-    ''' Outpu json file''' 
+    output_data_template = {
+                                "Country": country, 
+                                "Case name": test_case,
+                                "Scenario 1": 
+                                    {
+                                        "Total investment cost (EUR)": 0, 
+                                        "Net Present Cost (EUR)":0,
+                                        "2020": {"Operation cost (EUR/year)": 0, 
+                                                 "Branch investment (MVA)": [], 
+                                                 "Flexibility investment (MW)": []}, 
+                                        "2030": {"Operation cost (EUR/year)": 0, 
+                                                 "Branch investment (MVA)": [], 
+                                                 "Flexibility investment (MW)": []}, 
+                                        "2040": {"Operation cost (EUR/year)": 0, 
+                                                 "Branch investment (MVA)": [], 
+                                                 "Flexibility investment (MW)": []}, 
+                                        "2050": {"Operation cost (EUR/year)": 0, 
+                                                 "Branch investment (MVA)": [], 
+                                                 "Flexibility investment (MW)": []}, 
+                                    },
+                                "Scenario 2": 
+                                    {
+                                        "Total investment cost (EUR)": 0, 
+                                        "Net Present Cost (EUR)":0,
+                                        "2020": {"Operation cost (EUR/year)": 0, 
+                                                 "Branch investment (MVA)": [], 
+                                                 "Flexibility investment (MW)": []}, 
+                                        "2030": {"Operation cost (EUR/year)": 0, 
+                                                 "Branch investment (MVA)": [], 
+                                                 "Flexibility investment (MW)": []}, 
+                                        "2040": {"Operation cost (EUR/year)": 0, 
+                                                 "Branch investment (MVA)": [], 
+                                                 "Flexibility investment (MW)": []}, 
+                                        "2050": {"Operation cost (EUR/year)": 0, 
+                                                 "Branch investment (MVA)": [], 
+                                                 "Flexibility investment (MW)": []}, 
+                                    },
+                            }
+        
+    # data into template
+        
+    ''' Output json file''' 
     with open('Output_Data_Investment.json', 'w') as fp:
-        json.dump(Output_Data_Investment, fp)
+        json.dump(output_data, fp)
     
     return print("Output files created")
 
@@ -151,17 +176,64 @@ def get_time_series_data(mpc,  base_time_series_data):
             base_Pflex_dn[ib] = 0
             
     
-    # get gen status data
-    gen_sta = {}
-    peak_gen_sta = []
-    for ig in range(mpc["NoGen"]):
-        gen_sta[ig] = base_time_series_data["Gen_Status"][ig+1].copy()
-        del gen_sta[ig][0]
-        peak_gen_sta.append( gen_sta[ig][peak_hour])
+    # # get gen status data
+    # gen_sta = {}
+    # peak_gen_sta = []
+    # for ig in range(mpc["NoGen"]):
+    #     gen_sta[ig] = base_time_series_data["Gen_Status"][ig+1].copy()
+    #     del gen_sta[ig][0]
+    #     peak_gen_sta.append( gen_sta[ig][peak_hour])
             
             
     print('read ods data')         
-    return (base_Pd , base_Qd ,peak_Pd ,peak_Qd ,base_Pflex_up, base_Pflex_dn , peak_Pflex_up , peak_Pflex_dn, gen_sta, peak_gen_sta)
+    return (base_Pd , base_Qd ,peak_Pd ,peak_Qd ,base_Pflex_up, base_Pflex_dn , peak_Pflex_up , peak_Pflex_dn)
 
 
-# base_Pd , base_Qd ,peak_Pd ,peak_Qd ,base_Pflex_up, base_Pflex_dn , peak_Pflex_up , peak_Pflex_dn, gen_sta, peak_gen_sta = get_time_series_data(mpc,  base_time_series_data)
+
+
+
+# peak load P for screening model
+def get_peak_data(mpc,  base_time_series_data, peak_hour = 19):
+    # peak_hour default to 19
+    base_Pd = {} #24h data   
+    peak_Pd = []
+   
+    a = 1
+    for ib in range(mpc["NoBus"]):
+        peak_Pd.append(0)
+       
+        if base_time_series_data["Load_P_(MW)"][a][0] == ib+1:
+            # Load P and Q
+            base_Pd[ib] = base_time_series_data["Load_P_(MW)"][a].copy()
+            base_Pd[ib].remove(ib+1)
+            
+         
+            # Peak load P
+            peak_Pd[ib] = base_Pd[ib][peak_hour]
+            
+            a+=1
+        else:
+            base_Pd[ib] = 0
+        
+        
+    return peak_Pd
+
+
+
+''' Main '''
+cont_list = []
+country = "HR" # Select country for case study: "PT", "UK" or "HR"
+test_case =  "HR_2020_Location_1"
+peak_hour = 19
+
+# read input data outputs mpc and load infor
+mpc, base_time_series_data,  multiplier, NoCon = read_input_data( cont_list, country,test_case)
+
+# get peak load for screening model
+peak_Pd = get_peak_data(mpc, base_time_series_data, peak_hour)
+
+# get all load, flex infor for investment model
+base_Pd , base_Qd ,peak_Pd ,peak_Qd ,base_Pflex_up, base_Pflex_dn , peak_Pflex_up , peak_Pflex_dn = get_time_series_data(mpc,  base_time_series_data)
+
+# save outputs
+output_data(output_data, country, test_case )
