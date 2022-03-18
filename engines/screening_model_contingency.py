@@ -327,12 +327,12 @@ def model_screening(mpc,cont_list , prev_invest, peak_Pd, mult,NoTime = 1):
        # Gen output constraint rules
         def genMax_rule(m, xg,xk,  xt):
             
-            return m.Pgen[xg,xk,  xt] <= mult * m.para["Gen"+str(xg)+"_PMAX"]*mpc["gen"]["GEN"][xg] # gen status
+            return m.Pgen[xg,xk,  xt] <= mult * m.para["Gen"+str(xg)+"_PMAX"]#*mpc["gen"]["GEN"][xg] # gen status
             
         
         def genMin_rule(m,xg,xk,  xt):
            
-            return m.Pgen[xg, xk, xt] >= mult *m.para["Gen"+str(xg)+"_PMIN"]*mpc["gen"]["GEN"][xg] # gen status
+            return m.Pgen[xg, xk, xt] >= mult *m.para["Gen"+str(xg)+"_PMIN"]#*mpc["gen"]["GEN"][xg] # gen status
         
         
         
@@ -363,18 +363,18 @@ def model_screening(mpc,cont_list , prev_invest, peak_Pd, mult,NoTime = 1):
         # TODO: check line status relation with investment
         def braCapacity_rule(m,xbr,xk,xt):
             if m.para["Branch"+str(xbr)+"_RATE_A"] != 0:
-                return m.Pbra[xbr, xk, xt] <=  cont_list[xk][xbr] * mpc["branch"]["BR_STATUS"][xbr] * \
+                return m.Pbra[xbr, xk, xt] <=  cont_list[xk][xbr]  \
                                                 ( (m.ICbra[xbr, xt] + prev_invest[xbr] + m.para["Branch"+str(xbr)+"_RATE_A"] )  ) 
             else:
-                return  m.Pbra[xbr, xk, xt]  <= cont_list[xk][xbr] * float('inf') * mpc["branch"]["BR_STATUS"][xbr]
+                return  m.Pbra[xbr, xk, xt]  <= cont_list[xk][xbr] * float('inf') #* mpc["branch"]["BR_STATUS"][xbr]
        
         # both flow directions       
         def braCapacityN_rule(m,xbr,xk, xt):
             if m.para["Branch"+str(xbr)+"_RATE_A"] != 0:
-                return  - m.Pbra[xbr,xk,  xt] <= cont_list[xk][xbr] * mpc["branch"]["BR_STATUS"][xbr] * \
+                return  - m.Pbra[xbr,xk,  xt] <= cont_list[xk][xbr] \
                                                 ( (m.ICbra[xbr, xt] + prev_invest[xbr] + m.para["Branch"+str(xbr)+"_RATE_A"] )  )
             else:
-                return  - m.Pbra[xbr,xk,  xt]  <= cont_list[xk][xbr] * float('inf') * mpc["branch"]["BR_STATUS"][xbr]
+                return  - m.Pbra[xbr,xk,  xt]  <= cont_list[xk][xbr] * float('inf') #* mpc["branch"]["BR_STATUS"][xbr]
         
         
         # Nodal power balance
