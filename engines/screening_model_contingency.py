@@ -1,28 +1,25 @@
 # -*- coding: utf-8 -*-
-
 '''
 Screening model consider different years and scenarios with contingency 
 
 @author: Wangwei Kong
 
-Main function:
-    Required inputs: 
-        Test case: country name, case name, .m file related to the case name
-        Load info: multipliers for different year/ scenarios, yearly peak load
-        Cost: branch investment cost (default to 100 $/MW), laod curtailment penalty (default to 1e4 $/MW)
-        No of time points: 1 for screnning model
-        Contingency: contingency status (True/False), contingency lists
-    
-    
+    Main function:
+        Required inputs: 
+            Test case: country name, case name, .m file related to the case name
+            Load info: multipliers for different year/ scenarios, yearly peak load
+            Cost: branch investment cost (default to 100 $/MW), laod curtailment penalty (default to 1e4 $/MW)
+            Contingency: contingency status (True/False), contingency lists
         
-    Outputs:
-        Invtervension list: branch investments values for all years and scenarios
-        
-        Yearly investments (printed not stored): branch investment for each year
-        
-    Note:
-        The screening model is run for each year/ scenario to find the branch investments.
-        Each year (y) will take previous investments from year y-1, then form new investments for year y.
+            
+        Outputs:
+            Invtervension list: branch investments values for all years and scenarios
+            
+            Yearly investments (printed not stored): branch investment for each year
+            
+        Note:
+            The screening model is run for each year/ scenario to find the branch investments.
+            Each year (y) will take previous investments from year y-1, then form new investments for year y.
                             
     
 '''
@@ -41,6 +38,7 @@ import os
 import math
 import numpy as np
 from scenarios_multipliers import get_mult
+from input_output_function import  get_peak_data, read_input_data
 
 
 @dataclass
@@ -629,7 +627,11 @@ def model_screening(mpc,cont_list , prev_invest, peak_Pd, mult,NoTime = 1):
     return interv, maxICbra
 
 
-def main_screening(mpc,multiplier,cicost, penalty_cost, peak_Pd, cont_list ,NoTime=1):
+def main_screening(mpc,multiplier,cicost, penalty_cost, peak_Pd, cont_list):
+    ''' Time point '''
+    # Number of time points
+    NoTime = 1
+
     # initialise branch investments
     prev_invest = [0]*mpc["NoBranch"]
     interv_list = []
@@ -665,21 +667,39 @@ def main_screening(mpc,multiplier,cicost, penalty_cost, peak_Pd, cont_list ,NoTi
 
 
 ####  inputs
-''' Test case '''
-# Select country for case study: "PT", "UK" or "HR"
-country = "HR" 
-net_name = 'case5' # "HR_2020_Location_1"#'Transmission_Network_UK2' #"Transmission_Network_PT_2030_Active_Economy" # 
 
-# load json file from file directory
-mpc = json.load(open(os.path.join(os.path.dirname(__file__), 
-                                  'tests', 'json', net_name+'.json')))
-  
+''' contingency info '''
+cont_list= [[1, 1, 1, 1, 1, 1],
+            [0, 1, 1, 1, 1, 1], 
+            [1, 1, 1, 1, 1, 0]] 
+
+# cont_list= [[1, 1, 1, 1, 1, 1],
+#             [0, 1, 1, 1, 1, 1], 
+#             [1, 0, 1, 1, 1, 1],
+#             [1, 1, 0, 1, 1, 1],
+#             [1, 1, 1, 0, 1, 1],
+#             [1, 1, 1, 1, 0, 1],
+#             [1, 1, 1, 1, 1, 0]]
+
+''' Test case '''
+country = "HR"  # Select country for case study: "PT", "UK" or "HR"
+test_case= 'case5' # "HR_2020_Location_1"#'Transmission_Network_UK2' #"Transmission_Network_PT_2030_Active_Economy" # 
+
+# read input data outputs mpc and load infor
+mpc, base_time_series_data, multiplier, NoCon = read_input_data( cont_list, country,test_case)
+
+# # load json file from file directory
+# mpc = json.load(open(os.path.join(os.path.dirname(__file__), 
+#                                   'tests', 'json', test_case+'.json')))
+
+# # get multipliers for different years and scenarios
+# multiplier = get_mult(country) 
 
 ''' Load information '''
-# get multipliers for different years and scenarios
-multiplier = get_mult(country) 
 # update peak demand values
-peak_Pd = []
+# get peak load for screening model
+peak_hour = 19
+peak_Pd = get_peak_data(mpc, base_time_series_data, peak_hour)
 
 ''' Cost information'''
 # branch investment cost
@@ -687,34 +707,15 @@ cicost = 100 # £/Mw/km
 # curtailment cost
 penalty_cost = 1e4
 
-''' Time point '''
-# Number of time points
-NoTime = 1
 
-''' contingency info '''
-# if cont exist
+# remove contingency for testing
 cont = False
-## contingency list: 
-if cont:
-    cont_list= [[1, 1, 1, 1, 1, 1],
-                [0, 1, 1, 1, 1, 1], 
-                [1, 1, 1, 1, 1, 0]]
-    
-    # cont_list= [[1, 1, 1, 1, 1, 1],
-    #             [0, 1, 1, 1, 1, 1], 
-    #             [1, 0, 1, 1, 1, 1],
-    #             [1, 1, 0, 1, 1, 1],
-    #             [1, 1, 1, 0, 1, 1],
-    #             [1, 1, 1, 1, 0, 1],
-    #             [1, 1, 1, 1, 1, 0]]
-    # cont_list= [[1, 0, 1, 1, 1, 1]]
-    
-else:
-    cont_list= [[1]*mpc["NoBranch"]]
-        
+if not cont:
+    cont_list= [[1]*mpc["NoBranch"]] 
+     
 
 ''' Outputs '''
-interv_list = main_screening(mpc, multiplier ,cicost, penalty_cost ,peak_Pd, cont_list , NoTime)
+interv_list = main_screening(mpc, multiplier ,cicost, penalty_cost ,peak_Pd, cont_list)
 
 
 # print(interv_list)
