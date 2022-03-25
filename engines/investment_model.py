@@ -3,7 +3,7 @@
 
 @author: Wangwei Kong
 """
-
+# This is a VScode-Git test by Andrey
 
 from __future__ import (division, print_function)
 from pyomo.core import ConcreteModel, Constraint, minimize, NonNegativeReals, \
