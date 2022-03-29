@@ -34,7 +34,7 @@ def json_directory():
 
 
 
-def read_input_data(cont_list, country = "HR", test_case = "HR_2020_Location_1" , ci_catalogue = "Default", ci_cost = "Default"):
+def read_input_data(cont_list, country = "HR", test_case = "HR_2020_Location_1" ):
     
     file_name  = test_case 
     
@@ -64,13 +64,13 @@ def read_input_data(cont_list, country = "HR", test_case = "HR_2020_Location_1" 
    
     NoCon = len( cont_list)
     
-    if ci_catalogue == "Default":
-        ci_catalogue = [50,100,200,500,800,1000,2000,5000]
+    # if ci_catalogue == "Default":
+    #     ci_catalogue = [50,100,200,500,800,1000,2000,5000]
     
-    if ci_cost == "Default":
-        ci_cost = [100 * i for i in ci_catalogue]
+    # if ci_cost == "Default":
+    #     ci_cost = [100 * i for i in ci_catalogue]
 
-    return (mpc,  base_time_series_data,  multiplier, NoCon, ci_catalogue,ci_cost)
+    return (mpc,  base_time_series_data,  multiplier, NoCon)
 
 
 
@@ -227,20 +227,20 @@ def get_peak_data(mpc,  base_time_series_data, peak_hour = 19):
 
 
 
-''' Main '''
-cont_list = []
-country = "HR" # Select country for case study: "PT", "UK" or "HR"
-test_case =  "HR_2020_Location_1"
-peak_hour = 19
+# ''' Main '''
+# cont_list = []
+# country = "HR" # Select country for case study: "PT", "UK" or "HR"
+# test_case =  "HR_2020_Location_1"
+# peak_hour = 19
 
-# read input data outputs mpc and load infor
-mpc, base_time_series_data,  multiplier, NoCon = read_input_data( cont_list, country,test_case)
+# # read input data outputs mpc and load infor
+# mpc, base_time_series_data,  multiplier, NoCon = read_input_data( cont_list, country,test_case)
 
-# get peak load for screening model
-peak_Pd = get_peak_data(mpc, base_time_series_data, peak_hour)
+# # get peak load for screening model
+# peak_Pd = get_peak_data(mpc, base_time_series_data, peak_hour)
 
-# get all load, flex infor for investment model
-base_Pd , base_Qd ,peak_Pd ,peak_Qd ,base_Pflex_up, base_Pflex_dn , peak_Pflex_up , peak_Pflex_dn = get_time_series_data(mpc,  base_time_series_data)
+# # get all load, flex infor for investment model
+# base_Pd , base_Qd ,peak_Pd ,peak_Qd ,base_Pflex_up, base_Pflex_dn , peak_Pflex_up , peak_Pflex_dn = get_time_series_data(mpc,  base_time_series_data)
 
-# save outputs
-output_data(output_data, country, test_case )
+# # save outputs
+# output_data(output_data, country, test_case )
