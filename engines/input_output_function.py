@@ -9,6 +9,8 @@ Input and output functions
         country name
         test_case name
         time series data
+        investment catalogue
+        investment unit costs
         
         
     Outputs:
@@ -32,7 +34,7 @@ def json_directory():
 
 
 
-def read_input_data(cont_list, country = "HR", test_case = "HR_2020_Location_1" ):
+def read_input_data(cont_list, country = "HR", test_case = "HR_2020_Location_1" , ci_catalogue = "Default", ci_cost = "Default"):
     
     file_name  = test_case 
     
@@ -62,8 +64,13 @@ def read_input_data(cont_list, country = "HR", test_case = "HR_2020_Location_1" 
    
     NoCon = len( cont_list)
     
+    if ci_catalogue == "Default":
+        ci_catalogue = [50,100,200,500,800,1000,2000,5000]
+    
+    if ci_cost == "Default":
+        ci_cost = [100 * i for i in ci_catalogue]
 
-    return (mpc,  base_time_series_data,  multiplier, NoCon)
+    return (mpc,  base_time_series_data,  multiplier, NoCon, ci_catalogue,ci_cost)
 
 
 

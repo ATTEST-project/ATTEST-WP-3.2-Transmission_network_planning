@@ -8,7 +8,9 @@ Screening model consider different years and scenarios with contingency
         Required inputs: 
             Test case: country name, case name, .m file related to the case name
             Load info: multipliers for different year/ scenarios, yearly peak load
-            Cost: branch investment cost (default to 100 $/MW), laod curtailment penalty (default to 1e4 $/MW)
+            Investment catalogue: a list of investments, default to ci_catalogue = [50,100,200,500,800,1000,2000,5000]
+            Investment unit costs : branch investment cost (default to 100 $/MW),
+            Laod curtailment penalty (default to 1e4 $/MW)
             Contingency: contingency status (True/False), contingency lists
         
             
@@ -627,7 +629,7 @@ def model_screening(mpc,cont_list , prev_invest, peak_Pd, mult,NoTime = 1):
     return interv, maxICbra
 
 
-def main_screening(mpc,multiplier,cicost, penalty_cost, peak_Pd, cont_list):
+def main_screening(mpc,multiplier,cicost,ci_catalogue, penalty_cost, peak_Pd, cont_list):
     ''' Time point '''
     # Number of time points
     NoTime = 1
@@ -658,6 +660,15 @@ def main_screening(mpc,multiplier,cicost, penalty_cost, peak_Pd, cont_list):
     # remove duplicated values and sort in order
     interv_list = list(set(interv_list))
     interv_list.sort()  
+    
+    
+    for xi in range(len(interv_list)):
+        interv_list[xi] = min([i for i in ci_catalogue if i >= interv_list[xi]])
+        
+        
+    interv_list = list(set(interv_list))
+    interv_list.sort()
+    
     print("Final intervention list: ",interv_list)
 
     return interv_list
@@ -703,6 +714,8 @@ peak_Pd = get_peak_data(mpc, base_time_series_data, peak_hour)
 
 ''' Cost information'''
 # branch investment cost
+ci_catalogue = [50,100,200,500,800,1000,2000,5000]
+# cicost = [100 * i for i in ci_catalogue]
 cicost = 100 # £/Mw/km
 # curtailment cost
 penalty_cost = 1e4
@@ -715,7 +728,7 @@ if not cont:
      
 
 ''' Outputs '''
-interv_list = main_screening(mpc, multiplier ,cicost, penalty_cost ,peak_Pd, cont_list)
+interv_list = main_screening(mpc, multiplier ,cicost,ci_catalogue, penalty_cost ,peak_Pd, cont_list)
 
 
 # print(interv_list)
