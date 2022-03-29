@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-'''
+"""
 Screening model consider different years and scenarios with contingency 
 
 @author: Wangwei Kong
@@ -23,8 +23,8 @@ Screening model consider different years and scenarios with contingency
             The screening model is run for each year/ scenario to find the branch investments.
             Each year (y) will take previous investments from year y-1, then form new investments for year y.
                             
-    
-'''
+
+"""
 
 
 from __future__ import (division, print_function)
@@ -40,7 +40,6 @@ import os
 import math
 import numpy as np
 from scenarios_multipliers import get_mult
-from input_output_function import  get_peak_data, read_input_data
 
 
 @dataclass
@@ -329,12 +328,12 @@ def model_screening(mpc,cont_list , prev_invest, peak_Pd, mult,NoTime = 1):
        # Gen output constraint rules
         def genMax_rule(m, xg,xk,  xt):
             
-            return m.Pgen[xg,xk,  xt] <= mult * m.para["Gen"+str(xg)+"_PMAX"]#*mpc["gen"]["GEN"][xg] # gen status
+            return m.Pgen[xg,xk,  xt] <= mult * m.para["Gen"+str(xg)+"_PMAX"]*mpc["gen"]["GEN"][xg] # gen status
             
         
         def genMin_rule(m,xg,xk,  xt):
            
-            return m.Pgen[xg, xk, xt] >= mult *m.para["Gen"+str(xg)+"_PMIN"]#*mpc["gen"]["GEN"][xg] # gen status
+            return m.Pgen[xg, xk, xt] >= mult *m.para["Gen"+str(xg)+"_PMIN"]*mpc["gen"]["GEN"][xg] # gen status
         
         
         
@@ -365,18 +364,18 @@ def model_screening(mpc,cont_list , prev_invest, peak_Pd, mult,NoTime = 1):
         # TODO: check line status relation with investment
         def braCapacity_rule(m,xbr,xk,xt):
             if m.para["Branch"+str(xbr)+"_RATE_A"] != 0:
-                return m.Pbra[xbr, xk, xt] <=  cont_list[xk][xbr]  \
+                return m.Pbra[xbr, xk, xt] <=  cont_list[xk][xbr] * mpc["branch"]["BR_STATUS"][xbr] * \
                                                 ( (m.ICbra[xbr, xt] + prev_invest[xbr] + m.para["Branch"+str(xbr)+"_RATE_A"] )  ) 
             else:
-                return  m.Pbra[xbr, xk, xt]  <= cont_list[xk][xbr] * float('inf') #* mpc["branch"]["BR_STATUS"][xbr]
+                return  m.Pbra[xbr, xk, xt]  <= cont_list[xk][xbr] * float('inf') * mpc["branch"]["BR_STATUS"][xbr]
        
         # both flow directions       
         def braCapacityN_rule(m,xbr,xk, xt):
             if m.para["Branch"+str(xbr)+"_RATE_A"] != 0:
-                return  - m.Pbra[xbr,xk,  xt] <= cont_list[xk][xbr] \
+                return  - m.Pbra[xbr,xk,  xt] <= cont_list[xk][xbr] * mpc["branch"]["BR_STATUS"][xbr] * \
                                                 ( (m.ICbra[xbr, xt] + prev_invest[xbr] + m.para["Branch"+str(xbr)+"_RATE_A"] )  )
             else:
-                return  - m.Pbra[xbr,xk,  xt]  <= cont_list[xk][xbr] * float('inf') #* mpc["branch"]["BR_STATUS"][xbr]
+                return  - m.Pbra[xbr,xk,  xt]  <= cont_list[xk][xbr] * float('inf') * mpc["branch"]["BR_STATUS"][xbr]
         
         
         # Nodal power balance
@@ -629,11 +628,11 @@ def model_screening(mpc,cont_list , prev_invest, peak_Pd, mult,NoTime = 1):
     return interv, maxICbra
 
 
-def main_screening(mpc,multiplier,cicost,ci_catalogue, penalty_cost, peak_Pd, cont_list):
+def main_screening(mpc,multiplier,cicost, penalty_cost, peak_Pd, cont_list):
     ''' Time point '''
     # Number of time points
     NoTime = 1
-
+    
     # initialise branch investments
     prev_invest = [0]*mpc["NoBranch"]
     interv_list = []
@@ -661,7 +660,7 @@ def main_screening(mpc,multiplier,cicost,ci_catalogue, penalty_cost, peak_Pd, co
     interv_list = list(set(interv_list))
     interv_list.sort()  
     
-    
+     
     for xi in range(len(interv_list)):
         interv_list[xi] = min([i for i in ci_catalogue if i >= interv_list[xi]])
         
@@ -678,11 +677,39 @@ def main_screening(mpc,multiplier,cicost,ci_catalogue, penalty_cost, peak_Pd, co
 
 
 ####  inputs
+''' Test case '''
+# Select country for case study: "PT", "UK" or "HR"
+country = "HR" 
+net_name = 'case5' # "HR_2020_Location_1"#'Transmission_Network_UK2' #"Transmission_Network_PT_2030_Active_Economy" # 
+
+# load json file from file directory
+mpc = json.load(open(os.path.join(os.path.dirname(__file__), 
+                                  'tests', 'json', net_name+'.json')))
+  
+
+''' Load information '''
+# get multipliers for different years and scenarios
+multiplier = get_mult(country) 
+# update peak demand values
+peak_Pd = []
+
+''' Cost information'''
+# branch investment cost
+cicost = 100 # £/Mw/km
+ci_catalogue = [50,100,200,500,800,1000,2000,5000]
+
+# curtailment cost
+penalty_cost = 1e4
+
+
 
 ''' contingency info '''
+
+
+
 cont_list= [[1, 1, 1, 1, 1, 1],
             [0, 1, 1, 1, 1, 1], 
-            [1, 1, 1, 1, 1, 0]] 
+            [1, 1, 1, 1, 1, 0]]
 
 # cont_list= [[1, 1, 1, 1, 1, 1],
 #             [0, 1, 1, 1, 1, 1], 
@@ -691,44 +718,14 @@ cont_list= [[1, 1, 1, 1, 1, 1],
 #             [1, 1, 1, 0, 1, 1],
 #             [1, 1, 1, 1, 0, 1],
 #             [1, 1, 1, 1, 1, 0]]
+# cont_list= [[1, 0, 1, 1, 1, 1]]
+    
 
-''' Test case '''
-country = "HR"  # Select country for case study: "PT", "UK" or "HR"
-test_case= 'case5' # "HR_2020_Location_1"#'Transmission_Network_UK2' #"Transmission_Network_PT_2030_Active_Economy" # 
-
-# read input data outputs mpc and load infor
-mpc, base_time_series_data, multiplier, NoCon = read_input_data( cont_list, country,test_case)
-
-# # load json file from file directory
-# mpc = json.load(open(os.path.join(os.path.dirname(__file__), 
-#                                   'tests', 'json', test_case+'.json')))
-
-# # get multipliers for different years and scenarios
-# multiplier = get_mult(country) 
-
-''' Load information '''
-# update peak demand values
-# get peak load for screening model
-peak_hour = 19
-peak_Pd = get_peak_data(mpc, base_time_series_data, peak_hour)
-
-''' Cost information'''
-# branch investment cost
-ci_catalogue = [50,100,200,500,800,1000,2000,5000]
-# cicost = [100 * i for i in ci_catalogue]
-cicost = 100 # £/Mw/km
-# curtailment cost
-penalty_cost = 1e4
-
-
-# remove contingency for testing
-cont = False
-if not cont:
-    cont_list= [[1]*mpc["NoBranch"]] 
-     
 
 ''' Outputs '''
-interv_list = main_screening(mpc, multiplier ,cicost,ci_catalogue, penalty_cost ,peak_Pd, cont_list)
+interv_list = main_screening(mpc, multiplier ,cicost, penalty_cost ,peak_Pd, cont_list )
 
 
-# print(interv_list)
+# # print(interv_list)
+
+
