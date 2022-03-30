@@ -22,6 +22,7 @@ Screening model consider different years and scenarios with contingency
                             
     
 '''
+
 from __future__ import (division, print_function)
 from pyomo.core import ConcreteModel, Constraint, minimize, NonNegativeReals, \
  Objective, Var,  Binary, Set, Reals
@@ -303,8 +304,8 @@ def model_screening(mpc,cont_list , prev_invest, peak_Pd, mult,NoTime = 1):
     def addVar(m):
       
         # Gen
-        m.Pgen = Var(m.Set['Gen'], m.Set['Cont'], m.Set['Tim'], domain=NonNegativeReals, initialize=10)
-        m.Cgen = Var(m.Set['Gen'],m.Set['Cont'], m.Set['Tim'], domain=NonNegativeReals, initialize=10)
+        m.Pgen = Var(m.Set['Gen'],m.Set['Tim'], domain=NonNegativeReals, initialize=10)
+        m.Cgen = Var(m.Set['Gen'], m.Set['Tim'], domain=NonNegativeReals, initialize=10)
     
         # Branch
         m.Pbra = Var(m.Set['Bra'], m.Set['Cont'], m.Set['Tim'], domain=Reals, initialize=0) # Branch power flow
@@ -322,14 +323,14 @@ def model_screening(mpc,cont_list , prev_invest, peak_Pd, mult,NoTime = 1):
     class rules:
     
        # Gen output constraint rules
-        def genMax_rule(m, xg,xk,  xt):
+        def genMax_rule(m, xg, xt):
             
-            return m.Pgen[xg,xk,  xt] <= mult * m.para["Gen"+str(xg)+"_PMAX"]#*mpc["gen"]["GEN"][xg] # gen status
+            return m.Pgen[xg,  xt] <= mult * m.para["Gen"+str(xg)+"_PMAX"]#*mpc["gen"]["GEN"][xg] # gen status
             
         
-        def genMin_rule(m,xg,xk,  xt):
+        def genMin_rule(m,xg, xt):
            
-            return m.Pgen[xg, xk, xt] >= mult *m.para["Gen"+str(xg)+"_PMIN"]#*mpc["gen"]["GEN"][xg] # gen status
+            return m.Pgen[xg, xt] >= mult *m.para["Gen"+str(xg)+"_PMIN"]#*mpc["gen"]["GEN"][xg] # gen status
         
         
         
@@ -378,7 +379,7 @@ def model_screening(mpc,cont_list , prev_invest, peak_Pd, mult,NoTime = 1):
         def nodeBalance_rule(m, xb,xk,xt):
             
     
-            return sum( m.Pgen[genCbus[xb][i],xk,xt]  for i in range(len(genCbus[xb])) )  \
+            return sum( m.Pgen[genCbus[xb][i],xt]  for i in range(len(genCbus[xb])) )  \
                     + sum( m.Pbra[braTbus[xb][i]-noDiff,xk,xt]  for i in range(len(braTbus[xb])) )  \
                     == sum( m.Pbra[braFbus[xb][i]-noDiff,xk,xt]  for i in range(len(braFbus[xb])) ) \
                       + mult *Pd[xb] - m.Plc[xb,xk,xt]
@@ -387,14 +388,14 @@ def model_screening(mpc,cont_list , prev_invest, peak_Pd, mult,NoTime = 1):
         
         # # Cost Constraints
         # Piece wise gen cost: Number of piece = 3
-        def pwcost_rule(m,xg,xk,xt):
-            if Val(m.Pgen[xg,xk,xt]) <= xval[1][xg]:
-                return m.Cgen[xg,xk,xt] == m.Pgen[xg,xk,xt] * lcost[0][xg]
+        def pwcost_rule(m,xg,xt):
+            if Val(m.Pgen[xg,xt]) <= xval[1][xg]:
+                return m.Cgen[xg,xt] == m.Pgen[xg,xt] * lcost[0][xg]
             else:
-                if Val(m.Pgen[xg,xk,xt]) <= xval[2][xg]:
-                    return m.Cgen[xg,xk,xt] == m.Pgen[xg,xk,xt] * lcost[1][xg]
+                if Val(m.Pgen[xg,xt]) <= xval[2][xg]:
+                    return m.Cgen[xg,xt] == m.Pgen[xg,xt] * lcost[1][xg]
                 else:
-                    return m.Cgen[xg,xk,xt] == m.Pgen[xg,xk,xt] * lcost[2][xg]
+                    return m.Cgen[xg,xt] == m.Pgen[xg,xt] * lcost[2][xg]
             
                 
     
@@ -404,11 +405,11 @@ def model_screening(mpc,cont_list , prev_invest, peak_Pd, mult,NoTime = 1):
     def addConstraints(m):
         
        # Add Gen constraint rules
-        m.genMax = Constraint( m.Set['Gen'],m.Set['Cont'], m.Set['Tim'], rule=rules.genMax_rule )
-        m.genMin = Constraint( m.Set['Gen'], m.Set['Cont'],m.Set['Tim'], rule=rules.genMin_rule )
+        m.genMax = Constraint( m.Set['Gen'],m.Set['Tim'], rule=rules.genMax_rule )
+        m.genMin = Constraint( m.Set['Gen'], m.Set['Tim'], rule=rules.genMin_rule )
        
         # piecve wise gen cost
-        m.pwcost = Constraint(m.Set['Gen'], m.Set['Cont'], m.Set['Tim'], rule=rules.pwcost_rule)
+        m.pwcost = Constraint(m.Set['Gen'], m.Set['Tim'], rule=rules.pwcost_rule)
         
         # Add branch flow DC OPF
         m.DCPF = Constraint( m.Set['Bra'], m.Set['Cont'], m.Set['Tim'], rule=rules.DCPF_rule ) 
@@ -531,7 +532,7 @@ def model_screening(mpc,cont_list , prev_invest, peak_Pd, mult,NoTime = 1):
         return (        # investment cost
                         sum(m.ICbra[xbr,xt]*cicost for xbr in m.Set['Bra'] for xt in m.Set['Tim'] ) +
                         # generation cost
-                        sum( m.Cgen[xg,0,xt] for xg in m.Set['Gen'] for xt in m.Set['Tim'] ) +
+                        sum( m.Cgen[xg,xt] for xg in m.Set['Gen'] for xt in m.Set['Tim'] ) +
                         # load curtailment cost
                         sum( m.Plc[xb,xk,xt]*penalty_cost  for xb in m.Set['Bus'] for xk in m.Set['Cont'] for xt in m.Set['Tim'])
                 
@@ -585,6 +586,7 @@ def model_screening(mpc,cont_list , prev_invest, peak_Pd, mult,NoTime = 1):
     # solve pyomo model
     solver = SolverFactory('glpk')
     results = solver.solve(model)
+
     # solver.solve(model)
     # print(results)
     
