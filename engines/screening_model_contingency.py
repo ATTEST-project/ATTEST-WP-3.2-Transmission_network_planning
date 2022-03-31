@@ -433,7 +433,8 @@ def model_screening(mpc,cont_list , prev_invest, peak_Pd, mult,NoTime = 1):
     
         
     # piece wise gen cost
-    def genCost_rule(xLen=0):
+    def genCost_rule(mpc):
+        if mpc['gencost']['MODEL'] != []:
             # Define piece wise cost curve approximation 
             LGcost = []
             xval = np.zeros((4,mpc['NoGen']), dtype=float)
@@ -457,37 +458,51 @@ def model_screening(mpc,cont_list , prev_invest, peak_Pd, mult,NoTime = 1):
                 
                 else:                                                 # Polinomial model
                     # Select number of pieces for the approximation
-                    if xLen == 0:  # Default case
-                        Delta = mpc['gen']['PMAX'][NoGen]
-                        if Delta == 0:
-                            LGcost.append(0)
-                        else:
-                            Delta /= 3
-                       
-                            NoPieces = int(np.floor(mpc['gen']['PMAX'][NoGen]/Delta))
-    
-                            aux = mpc['gen']['PMIN'][NoGen]
-                            for xp in range(NoPieces+1):
-                                xval[xp][NoGen] = aux
-                                xc = mpc['gencost']['NCOST'][NoGen]-1 
-                                yval[xp][NoGen] = mpc['gencost']['COST'][NoGen][xc]
-                                for x in range(1, mpc['gencost']['NCOST'][NoGen]):
-                                    xc -= 1
-                                    yval[xp][NoGen] += mpc['gencost']['COST'][NoGen][xc]*xval[xp][NoGen]**x
-                                aux += Delta
+                    # if xLen == 0:  # Default case
+                    Delta = mpc['gen']['PMAX'][NoGen]
+                    if Delta == 0:
+                        LGcost.append(0)
+                    else:
+                        Delta /= 3
+                   
+                        NoPieces = int(np.floor(mpc['gen']['PMAX'][NoGen]/Delta))
+
+                        aux = mpc['gen']['PMIN'][NoGen]
+                        for xp in range(NoPieces+1):
+                            xval[xp][NoGen] = aux
+                            xc = mpc['gencost']['NCOST'][NoGen]-1 
+                            yval[xp][NoGen] = mpc['gencost']['COST'][NoGen][xc]
+                            for x in range(1, mpc['gencost']['NCOST'][NoGen]):
+                                xc -= 1
+                                yval[xp][NoGen] += mpc['gencost']['COST'][NoGen][xc]*xval[xp][NoGen]**x
+                            aux += Delta
+        
+                        # Convert to LP constraints 
+                        for xv in range(NoPieces):
+                            lcost[xv][NoGen] = (yval[xv+1][NoGen]-yval[xv][NoGen]) / (xval[xv+1][NoGen] - xval[xv][NoGen])
             
-                            # Convert to LP constraints 
-                            for xv in range(NoPieces):
-                                lcost[xv][NoGen] = (yval[xv+1][NoGen]-yval[xv][NoGen]) / (xval[xv+1][NoGen] - xval[xv][NoGen])
+                        
+                        # lcost = [ k1  y0-k1*x0
+                        #           k1  y0-k1*x0
+                        #           k1  y0-k1*x0  ]
+                        
+                        LGcost.append(lcost[1][0])  
+                        
+
+                            
+        else:
+            xval = np.random.uniform(low=10, high=50, size=(4,mpc['NoGen']))
+            xval[1] = xval[1]*5 
+            xval[2] = xval[2]*10
+            xval[3] = xval[3]*15
+            yval = np.ones((4,mpc['NoGen']), dtype=float)
+            lcost = np.random.uniform(low=1, high=10, size=(3,mpc['NoGen']))
+            lcost[1] = lcost[1]*3
+            lcost[2] = lcost[2]*5
+            
                 
-                            
-                            # lcost = [ k1  y0-k1*x0
-                            #           k1  y0-k1*x0
-                            #           k1  y0-k1*x0  ]
-                            
-                            LGcost.append(lcost[1][0])  
                     
-            return  (lcost, xval,yval)
+        return  (lcost, xval,yval)
     
     # find all connections
     def nodeConnections_rule():
@@ -589,6 +604,8 @@ def model_screening(mpc,cont_list , prev_invest, peak_Pd, mult,NoTime = 1):
 
     # solver.solve(model)
     # print(results)
+    print ('solver termination condition: ', results.solver.termination_condition)
+
     
     
     
@@ -669,9 +686,9 @@ def main_screening(mpc,multiplier,cicost, penalty_cost, peak_Pd, cont_list):
 ####  inputs
 
 ''' contingency info '''
-cont_list= [[1, 1, 1, 1, 1, 1],
-            [0, 1, 1, 1, 1, 1], 
-            [1, 1, 1, 1, 1, 0]] 
+# cont_list= [[1, 1, 1, 1, 1, 1],
+#             [0, 1, 1, 1, 1, 1], 
+#             [1, 1, 1, 1, 1, 0]] 
 
 # cont_list= [[1, 1, 1, 1, 1, 1],
 #             [0, 1, 1, 1, 1, 1], 
@@ -682,14 +699,16 @@ cont_list= [[1, 1, 1, 1, 1, 1],
 #             [1, 1, 1, 1, 1, 0]]
 
 # # remove contingency for testing
-# cont_list= [[1]*6] 
+cont_list= [[1]*592] 
 
 ''' Test case '''
-country = "HR"  # Select country for case study: "PT", "UK" or "HR"
-test_case= 'case5' # "HR_2020_Location_1"#'Transmission_Network_UK2' #"Transmission_Network_PT_2030_Active_Economy" # 
-
+country = "PT"  # Select country for case study: "PT", "UK" or "HR"
+test_case='Transmission_Network_UK2' # "Transmission_Network_PT_2030_Active_Economy" # 'Transmission_Network_PT_2020'  #"HR_2020_Location_1"#'case5' #' 
+ci_catalogue = "Default"
+ci_cost = "Default"
 # read input data outputs mpc and load infor
-mpc, base_time_series_data, multiplier, NoCon = read_input_data( cont_list, country,test_case)
+# mpc, base_time_series_data, multiplier, NoCon = read_input_data( cont_list, country,test_case)
+mpc, base_time_series_data,  multiplier, NoCon,ci_catalogue,ci_cost= read_input_data( cont_list, country,test_case,ci_catalogue,ci_cost)
 
 # # load json file from file directory
 # mpc = json.load(open(os.path.join(os.path.dirname(__file__), 
@@ -702,7 +721,7 @@ mpc, base_time_series_data, multiplier, NoCon = read_input_data( cont_list, coun
 # update peak demand values
 # get peak load for screening model
 peak_hour = 19
-peak_Pd = []#get_peak_data(mpc, base_time_series_data, peak_hour)
+peak_Pd = get_peak_data(mpc, base_time_series_data, peak_hour)
 
 ''' Cost information'''
 # branch investment cost
@@ -717,7 +736,7 @@ interv_list = main_screening(mpc, multiplier ,cicost, penalty_cost ,peak_Pd, con
 
 
 # given investment catalogue
-ci_catalogue = [10,50,100,200,500,800,1000,2000,5000]
+# ci_catalogue = [10,50,100,200,500,800,1000,2000,5000]
 # reduce catalogue
 
 

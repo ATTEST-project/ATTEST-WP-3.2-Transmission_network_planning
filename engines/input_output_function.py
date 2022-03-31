@@ -23,6 +23,7 @@ from pyexcel_ods import get_data
 from pyexcel_ods import save_data
 import json
 import os
+import pandas as pd
 from conversion_model_mat2json import any2json
 from scenarios_multipliers import get_mult
 
@@ -34,7 +35,7 @@ def json_directory():
 
 
 
-def read_input_data(cont_list, country = "HR", test_case = "HR_2020_Location_1" ):
+def read_input_data(cont_list, country = "HR", test_case = "HR_2020_Location_1",ci_catalogue = "Default", ci_cost ='Default' ):
     
     file_name  = test_case 
     
@@ -57,25 +58,27 @@ def read_input_data(cont_list, country = "HR", test_case = "HR_2020_Location_1" 
     '''Load multipliers for different scnearios'''
     multiplier = get_mult(country) # default to HR
     
-    ''' Load .ods file'''
-    base_time_series_data = get_data("Transmission_Network_PT_2020_24hGenerationLoadData.ods")
-    print('load ods file')  
-    
+    ''' Load xlsx file'''
+    # base_time_series_data = get_data("Transmission_Network_PT_2020_24hGenerationLoadData.ods")
+    base_time_series_data  = pd.read_excel('Transmission_Network_PT_2020_24hGenerationLoadData.xlsx', sheet_name=None)
+    print('load xlsx file')
    
+    
     NoCon = len( cont_list)
     
-    # if ci_catalogue == "Default":
-    #     ci_catalogue = [50,100,200,500,800,1000,2000,5000]
+    if ci_catalogue == "Default":
+        ci_catalogue = [10,50,100,200,500,800,1000,2000,5000]
     
-    # if ci_cost == "Default":
-    #     ci_cost = [100 * i for i in ci_catalogue]
+    if ci_cost == "Default":
+        ci_cost = [100 * i for i in ci_catalogue]
 
-    return (mpc,  base_time_series_data,  multiplier, NoCon)
+    return (mpc,  base_time_series_data,  multiplier, NoCon,ci_catalogue,ci_cost)
 
 
 
 
 def output_data(output_data, country = "HR", test_case = "HR_2020_Location_1" ):
+    output_data = 0
     
     output_data_template = {
                                 "Country": country, 
@@ -133,66 +136,77 @@ def get_time_series_data(mpc,  base_time_series_data):
     # prepare base and peak data for optimisation
     peak_hour = 19
     
-    base_Pd = {} #24h data
-    base_Qd = {}
+
+    load_bus = base_time_series_data["Load P (MW)"]["Bus \ Hour"].values.tolist()
+    all_Pd = base_time_series_data["Load P (MW)"].values.tolist()
+    all_Qd = base_time_series_data["Load Q (Mvar)"].values.tolist()
+    
+    base_Pd = [] #24h data
+    base_Qd = []
     
     peak_Pd = []
     peak_Qd = []
     
-    base_Pflex_up = {}
-    base_Pflex_dn = {}
+    all_Pflex_up = base_time_series_data["Upward flexibility"].values.tolist()
+    all_Pflex_dn = base_time_series_data["Downward flexibility"].values.tolist()
+
+    base_Pflex_up = []
+    base_Pflex_dn = []
     
     peak_Pflex_up = []
     peak_Pflex_dn = []
     
-    a = 1
     for ib in range(mpc["NoBus"]):
-        peak_Pd.append(0)
-        peak_Qd.append(0)
-        peak_Pflex_up.append(0)
-        peak_Pflex_dn.append(0)
         
-        if base_time_series_data["Load_P_(MW)"][a][0] == ib+1:
+        bus_i = mpc['bus']['BUS_I'][ib]
+        # find if the bus has load
+        load_bus_i = [i for i,x in enumerate(load_bus) if x == bus_i] 
+        # record the load        
+        if load_bus_i != []:
             # Load P and Q
-            base_Pd[ib] = base_time_series_data["Load_P_(MW)"][a].copy()
-            base_Pd[ib].remove(ib+1)
+            temp = all_Pd[load_bus_i[0]].copy()
+            temp.pop(0)
+            base_Pd.append(temp)
             
-            base_Qd[ib] = base_time_series_data["Load_Q_(Mvar)"][a].copy()
-            base_Qd[ib].remove(ib+1)
+            temp = all_Qd[load_bus_i[0]].copy()
+            temp.pop(0)
+            base_Qd.append(temp)
             
             # Peak load P and Q
-            peak_Pd[ib] = base_Pd[ib][peak_hour]
-            peak_Qd[ib] = base_Pd[ib][peak_hour]
+            peak_Pd.append(base_Pd[ib][peak_hour])
+            peak_Qd.append(base_Pd[ib][peak_hour])
             
+            # flex has the same connection of load
             # PFlex up and down ward
-            base_Pflex_up[ib] = base_time_series_data["Upward_flexibility"][a].copy()
-            base_Pflex_up[ib].remove(ib+1)
+            temp = all_Pflex_up[load_bus_i[0]].copy()
+            temp.pop(0)
+            base_Pflex_up.append(temp)
             
-            base_Pflex_dn[ib] = base_time_series_data["Downward_flexibility"][a].copy()
-            base_Pflex_dn[ib].remove(ib+1)
+            temp = all_Pflex_dn[load_bus_i[0]].copy()
+            temp.pop(0)
+            base_Pflex_dn.append(temp)
             
             # Peak Pflex up and down
-            peak_Pflex_up[ib] = base_Pflex_up[ib][peak_hour]
-            peak_Pflex_dn[ib] = base_Pflex_dn[ib][peak_hour]
-            
-            a+=1
+            peak_Pflex_up.append(base_Pflex_up[ib][peak_hour])
+            peak_Pflex_dn.append(base_Pflex_dn[ib][peak_hour])
+                      
+        # record 0 load
         else:
-            base_Pd[ib] = 0
-            base_Qd[ib] = 0
-            base_Pflex_up[ib] = 0
-            base_Pflex_dn[ib] = 0
-            
-    
-    # # get gen status data
-    # gen_sta = {}
-    # peak_gen_sta = []
-    # for ig in range(mpc["NoGen"]):
-    #     gen_sta[ig] = base_time_series_data["Gen_Status"][ig+1].copy()
-    #     del gen_sta[ig][0]
-    #     peak_gen_sta.append( gen_sta[ig][peak_hour])
+            temp = [0]*24
+            base_Pd.append(temp)
+            base_Qd.append(temp)
+            base_Pflex_up.append(temp)
+            base_Pflex_dn.append(temp)
             
             
-    print('read ods data')         
+            peak_Pd.append(0)
+            peak_Qd.append(0)
+            
+            peak_Pflex_up.append(0)
+            peak_Pflex_dn.append(0)
+            
+           
+    print('read laod and flex data')         
     return (base_Pd , base_Qd ,peak_Pd ,peak_Qd ,base_Pflex_up, base_Pflex_dn , peak_Pflex_up , peak_Pflex_dn)
 
 
@@ -201,26 +215,41 @@ def get_time_series_data(mpc,  base_time_series_data):
 
 # peak load P for screening model
 def get_peak_data(mpc,  base_time_series_data, peak_hour = 19):
-    # peak_hour default to 19
-    base_Pd = {} #24h data   
-    peak_Pd = []
-   
-    a = 1
-    for ib in range(mpc["NoBus"]):
-        peak_Pd.append(0)
        
-        if base_time_series_data["Load_P_(MW)"][a][0] == ib+1:
+
+    load_bus = base_time_series_data["Load P (MW)"]["Bus \ Hour"].values.tolist()
+    all_Pd = base_time_series_data["Load P (MW)"].values.tolist()
+    
+    base_Pd = [] #24h data
+    
+    peak_Pd = []
+    
+   
+    
+    for ib in range(mpc["NoBus"]):
+        
+        bus_i = mpc['bus']['BUS_I'][ib]
+        # find if the bus has load
+        load_bus_i = [i for i,x in enumerate(load_bus) if x == bus_i] 
+        # record the load        
+        if load_bus_i != []:
             # Load P and Q
-            base_Pd[ib] = base_time_series_data["Load_P_(MW)"][a].copy()
-            base_Pd[ib].remove(ib+1)
+            temp = all_Pd[load_bus_i[0]].copy()
+            temp.pop(0)
+            base_Pd.append(temp)
             
-         
-            # Peak load P
-            peak_Pd[ib] = base_Pd[ib][peak_hour]
+           
+            # Peak load P and Q
+            peak_Pd.append(base_Pd[ib][peak_hour])
             
-            a+=1
+                      
+        # record 0 load
         else:
-            base_Pd[ib] = 0
+            temp = [0]*24
+            base_Pd.append(temp)
+           
+            peak_Pd.append(0)
+            
         
         
     return peak_Pd
@@ -229,12 +258,14 @@ def get_peak_data(mpc,  base_time_series_data, peak_hour = 19):
 
 # ''' Main '''
 # cont_list = []
-# country = "HR" # Select country for case study: "PT", "UK" or "HR"
-# test_case =  "HR_2020_Location_1"
+# country = "PT" # Select country for case study: "PT", "UK" or "HR"
+# test_case = 'Transmission_Network_PT_2020' 
 # peak_hour = 19
-
+# ci_catalogue = "Default"
+# ci_cost = "Default"
+# output_data = 0
 # # read input data outputs mpc and load infor
-# mpc, base_time_series_data,  multiplier, NoCon = read_input_data( cont_list, country,test_case)
+# mpc, base_time_series_data,  multiplier, NoCon,ci_catalogue,ci_cost= read_input_data( cont_list, country,test_case,ci_catalogue,ci_cost)
 
 # # get peak load for screening model
 # peak_Pd = get_peak_data(mpc, base_time_series_data, peak_hour)
