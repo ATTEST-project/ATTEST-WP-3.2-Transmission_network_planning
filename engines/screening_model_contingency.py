@@ -304,8 +304,8 @@ def model_screening(mpc,cont_list , prev_invest, peak_Pd, mult,NoTime = 1):
     def addVar(m):
       
         # Gen
-        m.Pgen = Var(m.Set['Gen'],m.Set['Tim'], domain=NonNegativeReals, initialize=10)
-        m.Cgen = Var(m.Set['Gen'], m.Set['Tim'], domain=NonNegativeReals, initialize=10)
+        m.Pgen = Var(m.Set['Gen'],m.Set['Cont'], m.Set['Tim'], domain=NonNegativeReals, initialize=10)
+        m.Cgen = Var(m.Set['Gen'],m.Set['Cont'], m.Set['Tim'], domain=NonNegativeReals, initialize=10)
     
         # Branch
         m.Pbra = Var(m.Set['Bra'], m.Set['Cont'], m.Set['Tim'], domain=Reals, initialize=0) # Branch power flow
@@ -323,14 +323,14 @@ def model_screening(mpc,cont_list , prev_invest, peak_Pd, mult,NoTime = 1):
     class rules:
     
        # Gen output constraint rules
-        def genMax_rule(m, xg, xt):
+        def genMax_rule(m, xg,xk, xt):
             
-            return m.Pgen[xg,  xt] <= mult * m.para["Gen"+str(xg)+"_PMAX"]#*mpc["gen"]["GEN"][xg] # gen status
+            return m.Pgen[xg, xk, xt] <= mult * m.para["Gen"+str(xg)+"_PMAX"]#*mpc["gen"]["GEN"][xg] # gen status
             
         
-        def genMin_rule(m,xg, xt):
+        def genMin_rule(m,xg, xk, xt):
            
-            return m.Pgen[xg, xt] >= mult *m.para["Gen"+str(xg)+"_PMIN"]#*mpc["gen"]["GEN"][xg] # gen status
+            return m.Pgen[xg,xk, xt] >= m.para["Gen"+str(xg)+"_PMIN"]#*mpc["gen"]["GEN"][xg] # gen status
         
         
         
@@ -338,7 +338,7 @@ def model_screening(mpc,cont_list , prev_invest, peak_Pd, mult,NoTime = 1):
         # DC power flow
         def DCPF_rule(m, xbr,xk, xt):
             
-            br_X = mpc['branch']['BR_X'][xbr]
+            br_X = mpc['branch']['BR_X'][xbr]/ mpc['baseMVA']
             fbus_name = mpc['branch']['F_BUS'][xbr]
             fbus = mpc['bus']['BUS_I'].index(fbus_name)
             tbus_name = mpc['branch']['T_BUS'][xbr]
@@ -357,46 +357,76 @@ def model_screening(mpc,cont_list , prev_invest, peak_Pd, mult,NoTime = 1):
             return m.Ang[slc_bus,xk, xt] == 0
         
     
-        # Branch capacity 
-        # TODO: check line status relation with investment
-        def braCapacity_rule(m,xbr,xk,xt):
-            if m.para["Branch"+str(xbr)+"_RATE_A"] != 0:
-                return m.Pbra[xbr, xk, xt] <=  cont_list[xk][xbr] * \
-                                                ( (m.ICbra[xbr, xt] + prev_invest[xbr] + m.para["Branch"+str(xbr)+"_RATE_A"] )  ) 
-            else:
-                return  m.Pbra[xbr, xk, xt]  <= cont_list[xk][xbr] * float('inf') #* mpc["branch"]["BR_STATUS"][xbr]
+        # # Branch capacity 
+        # # TODO: check line status relation with investment
+        # def braCapacity_rule(m,xbr,xk,xt):
+        #     if m.para["Branch"+str(xbr)+"_RATE_A"] != 0:
+        #         return m.Pbra[xbr, xk, xt] <=  cont_list[xk][xbr] * \
+        #                                         ( (m.ICbra[xbr, xt] + prev_invest[xbr] + m.para["Branch"+str(xbr)+"_RATE_A"] )  ) 
+        #     else:
+        #         return  m.Pbra[xbr, xk, xt]  <= cont_list[xk][xbr] * float('inf') #* mpc["branch"]["BR_STATUS"][xbr]
        
+        
+        # # both flow directions       
+        # def braCapacityN_rule(m,xbr,xk, xt):
+        #     if m.para["Branch"+str(xbr)+"_RATE_A"] != 0:
+        #         return  - m.Pbra[xbr,xk,  xt] <= cont_list[xk][xbr] *\
+        #                                         ( (m.ICbra[xbr, xt] + prev_invest[xbr] + m.para["Branch"+str(xbr)+"_RATE_A"] )  )
+        #     else:
+        #         return  - m.Pbra[xbr,xk,  xt]  <= cont_list[xk][xbr] * float('inf') #* mpc["branch"]["BR_STATUS"][xbr]
+        
+        
+        # Branch capacity 
+        def braCapacity_rule(m,xbr,xk,xt):
+            if cont_list[xk][xbr] == 0:
+                return Constraint.Skip
+            else:             
+                if m.para["Branch"+str(xbr)+"_RATE_A"] != 0:                  
+                    return m.Pbra[xbr, xk, xt] <=  ( (m.ICbra[xbr, xt] + prev_invest[xbr] + m.para["Branch"+str(xbr)+"_RATE_A"] )  ) 
+                    
+                else:   
+                    return  m.Pbra[xbr, xk, xt]  <=  float('inf') #* mpc["branch"]["BR_STATUS"][xbr]
+                
+                    
+        
         # both flow directions       
         def braCapacityN_rule(m,xbr,xk, xt):
-            if m.para["Branch"+str(xbr)+"_RATE_A"] != 0:
-                return  - m.Pbra[xbr,xk,  xt] <= cont_list[xk][xbr] *\
-                                                ( (m.ICbra[xbr, xt] + prev_invest[xbr] + m.para["Branch"+str(xbr)+"_RATE_A"] )  )
-            else:
-                return  - m.Pbra[xbr,xk,  xt]  <= cont_list[xk][xbr] * float('inf') #* mpc["branch"]["BR_STATUS"][xbr]
+            if cont_list[xk][xbr] == 0:
+                return Constraint.Skip
+            else:             
+                if m.para["Branch"+str(xbr)+"_RATE_A"] != 0:
+                    return  - m.Pbra[xbr,xk,  xt] <=  ( (m.ICbra[xbr, xt] + prev_invest[xbr] + m.para["Branch"+str(xbr)+"_RATE_A"] )  )
+                
+                else:
+                    return  - m.Pbra[xbr,xk,  xt]  <=  float('inf') #* mpc["branch"]["BR_STATUS"][xbr]
+            
+            
+        
+        
+        
         
         
         # Nodal power balance
         def nodeBalance_rule(m, xb,xk,xt):
             
     
-            return sum( m.Pgen[genCbus[xb][i],xt]  for i in range(len(genCbus[xb])) )  \
+            return sum( m.Pgen[genCbus[xb][i],xk,xt]  for i in range(len(genCbus[xb])) )  \
                     + sum( m.Pbra[braTbus[xb][i]-noDiff,xk,xt]  for i in range(len(braTbus[xb])) )  \
                     == sum( m.Pbra[braFbus[xb][i]-noDiff,xk,xt]  for i in range(len(braFbus[xb])) ) \
                       + mult *Pd[xb] - m.Plc[xb,xk,xt]
     
-    
+        def loadcurtail_rule(m, xb,xk,xt):
+            
+            return  mult *Pd[xb] >= m.Plc[xb,xk,xt]
         
         # # Cost Constraints
         # Piece wise gen cost: Number of piece = 3
-        def pwcost_rule(m,xg,xt):
-            if Val(m.Pgen[xg,xt]) <= xval[1][xg]:
-                return m.Cgen[xg,xt] == m.Pgen[xg,xt] * lcost[0][xg]
-            else:
-                if Val(m.Pgen[xg,xt]) <= xval[2][xg]:
-                    return m.Cgen[xg,xt] == m.Pgen[xg,xt] * lcost[1][xg]
-                else:
-                    return m.Cgen[xg,xt] == m.Pgen[xg,xt] * lcost[2][xg]
+        def pwcost_rule(m,xg,xk,xp,xt):
+                      
+            return m.Cgen[xg,xk,xt] >= m.Pgen[xg,xk,xt] * lcost[xp][xg] + min_y[xp][xg] 
             
+            
+
                 
     
         
@@ -405,11 +435,11 @@ def model_screening(mpc,cont_list , prev_invest, peak_Pd, mult,NoTime = 1):
     def addConstraints(m):
         
        # Add Gen constraint rules
-        m.genMax = Constraint( m.Set['Gen'],m.Set['Tim'], rule=rules.genMax_rule )
-        m.genMin = Constraint( m.Set['Gen'], m.Set['Tim'], rule=rules.genMin_rule )
+        m.genMax = Constraint( m.Set['Gen'], m.Set['Cont'], m.Set['Tim'], rule=rules.genMax_rule )
+        m.genMin = Constraint( m.Set['Gen'], m.Set['Cont'], m.Set['Tim'], rule=rules.genMin_rule )
        
         # piecve wise gen cost
-        m.pwcost = Constraint(m.Set['Gen'], m.Set['Tim'], rule=rules.pwcost_rule)
+        m.pwcost = Constraint(m.Set['Gen'],m.Set['Cont'], range(NoPieces),  m.Set['Tim'],rule=rules.pwcost_rule)
         
         # Add branch flow DC OPF
         m.DCPF = Constraint( m.Set['Bra'], m.Set['Cont'], m.Set['Tim'], rule=rules.DCPF_rule ) 
@@ -426,7 +456,7 @@ def model_screening(mpc,cont_list , prev_invest, peak_Pd, mult,NoTime = 1):
         # Add nodal balance constraint rules
         m.nodeBalance = Constraint( m.Set['Bus'],m.Set['Cont'],m.Set['Tim'], rule=rules.nodeBalance_rule ) 
         
-    
+        m.loadcurtail = Constraint( m.Set['Bus'],m.Set['Cont'],m.Set['Tim'], rule=rules.loadcurtail_rule)  
         
     
         return m
@@ -436,7 +466,7 @@ def model_screening(mpc,cont_list , prev_invest, peak_Pd, mult,NoTime = 1):
     def genCost_rule(mpc):
         if mpc['gencost']['MODEL'] != []:
             # Define piece wise cost curve approximation 
-            LGcost = []
+            LGcost = np.zeros((3, mpc['NoGen']), dtype=float)
             xval = np.zeros((4,mpc['NoGen']), dtype=float)
             yval = np.zeros((4,mpc['NoGen']), dtype=float)
             lcost = np.zeros((3, mpc['NoGen']), dtype=float)
@@ -458,15 +488,15 @@ def model_screening(mpc,cont_list , prev_invest, peak_Pd, mult,NoTime = 1):
                 
                 else:                                                 # Polinomial model
                     # Select number of pieces for the approximation
-                    # if xLen == 0:  # Default case
+                   
                     Delta = mpc['gen']['PMAX'][NoGen]
-                    if Delta == 0:
-                        LGcost.append(0)
-                    else:
+                    
+                    if Delta > 0 :
+                 
                         Delta /= 3
                    
-                        NoPieces = int(np.floor(mpc['gen']['PMAX'][NoGen]/Delta))
-
+                        NoPieces = 3#int(np.floor(mpc['gen']['PMAX'][NoGen]/Delta))
+    
                         aux = mpc['gen']['PMIN'][NoGen]
                         for xp in range(NoPieces+1):
                             xval[xp][NoGen] = aux
@@ -480,13 +510,16 @@ def model_screening(mpc,cont_list , prev_invest, peak_Pd, mult,NoTime = 1):
                         # Convert to LP constraints 
                         for xv in range(NoPieces):
                             lcost[xv][NoGen] = (yval[xv+1][NoGen]-yval[xv][NoGen]) / (xval[xv+1][NoGen] - xval[xv][NoGen])
-            
+                    
+                   
                         
-                        # lcost = [ k1  y0-k1*x0
-                        #           k1  y0-k1*x0
-                        #           k1  y0-k1*x0  ]
                         
-                        LGcost.append(lcost[1][0])  
+                # LGcost =  y0-lcost*x0
+                for xp in range(NoPieces):
+                    LGcost[xp][NoGen] = yval[xp+1][NoGen] - xval[xp+1][NoGen] *  lcost[xp][NoGen]
+          
+                
+                
                         
 
                             
@@ -502,7 +535,9 @@ def model_screening(mpc,cont_list , prev_invest, peak_Pd, mult,NoTime = 1):
             
                 
                     
-        return  (lcost, xval,yval)
+        return  (NoPieces, lcost, LGcost)
+
+
     
     # find all connections
     def nodeConnections_rule():
@@ -545,11 +580,11 @@ def model_screening(mpc,cont_list , prev_invest, peak_Pd, mult,NoTime = 1):
     
         # investment cost: £200/MVA #TODO: update the cost
         return (        # investment cost
-                        sum(m.ICbra[xbr,xt]*cicost for xbr in m.Set['Bra'] for xt in m.Set['Tim'] ) +
+                        sum(m.ICbra[xbr,xt] for xbr in m.Set['Bra'] for xt in m.Set['Tim'] ) *cicost +
                         # generation cost
-                        sum( m.Cgen[xg,xt] for xg in m.Set['Gen'] for xt in m.Set['Tim'] ) +
+                        sum( m.Cgen[xg,0,xt] for xg in m.Set['Gen'] for xt in m.Set['Tim'] ) +
                         # load curtailment cost
-                        sum( m.Plc[xb,xk,xt]*penalty_cost  for xb in m.Set['Bus'] for xk in m.Set['Cont'] for xt in m.Set['Tim'])
+                        sum( m.Plc[xb,xk,xt]  for xb in m.Set['Bus'] for xk in m.Set['Cont'] for xt in m.Set['Tim']) *penalty_cost
                 
                 )
     
@@ -572,7 +607,7 @@ def model_screening(mpc,cont_list , prev_invest, peak_Pd, mult,NoTime = 1):
     
     # read mpc file and find info, define gen cost
     
-    lcost, xval,yval = genCost_rule(mpc)
+    NoPieces, lcost, min_y = genCost_rule(mpc)
     
     # if not specified, demand value PD is read from mpc file
     noDiff, genCbus, braFbus, braTbus, Pd = nodeConnections_rule()
@@ -615,10 +650,29 @@ def model_screening(mpc,cont_list , prev_invest, peak_Pd, mult,NoTime = 1):
     # #print (Val(sum(model.Cgen[i,0] for i in range(5))))
     # # print (Val(sum(model.Pgen[i,0] for i in range(5))))
     # print("Total investment cost: ", Val(sum(model.ICbra[xbr,xt]*cicost for xbr in model.Set['Bra'] for xt in model.Set['Tim'] )))
-    # print("Load curtailment: ", Val(sum( model.Plc[xb,xk,xt]  for xb in model.Set['Bus'] for xk in model.Set['Cont'] for xt in model.Set['Tim'])))
-    # # Increased branch capacity (MVA exceeded capacity limits)
-
+    print("Load curtailment: ", Val(sum( model.Plc[xb,xk,xt]  for xb in model.Set['Bus'] for xk in model.Set['Cont'] for xt in model.Set['Tim'])))
     
+    print("Gen cost: ", Val(sum( model.Cgen[xg,0,xt]  for xg in model.Set['Gen'] for xt in model.Set['Tim'])))
+    
+    print("PMAX: ", mult *sum( mpc["gen"]["PMAX"]))
+    print("Pgen: ", Val(sum(model.Pgen[xg,0,0] for xg in range(mpc["NoGen"]))))
+    print("Pd: ", mult *sum(Pd))
+    
+    for xk in model.Set['Cont']:
+        # print(xk, "_Load curtailment: ", Val(sum( model.Plc[xb,xk,xt]  for xb in model.Set['Bus'] for xt in model.Set['Tim'])))
+        for xb in model.Set['Bus'] :
+            if Val( model.Plc[xb,xk,0]  ) > 0 :
+                print("Cont: ", xk," bus: ",xb, " lc: ", Val( model.Plc[xb,xk,0]  ))
+                
+    # for xb in model.Set["Bus"]:
+    #     if genCbus[xb] != []:
+    #         print("bus: ", xb, ", Pgen", Val(sum( model.Pgen[genCbus[xb][i],0,0]  for i in range(len(genCbus[xb])) )))
+    #     else:
+    #         print("bus: ", xb,  ", Pgen = [] ")
+            
+
+
+
     maxICbra=[]
     interv=[]
     for xb in range(mpc['NoBranch']):
@@ -698,12 +752,20 @@ def main_screening(mpc,multiplier,cicost, penalty_cost, peak_Pd, cont_list):
 #             [1, 1, 1, 1, 0, 1],
 #             [1, 1, 1, 1, 1, 0]]
 
-# # remove contingency for testing
-cont_list= [[1]*592] 
+# N-1 Contingency
+cont_list= [[1]*100] 
+
+cont_list = (cont_list[0]-np.diag(cont_list[0]) ).tolist()
+
+cont_list.append([1]*100)
+
+    
+
+
 
 ''' Test case '''
-country = "PT"  # Select country for case study: "PT", "UK" or "HR"
-test_case='Transmission_Network_UK2' # "Transmission_Network_PT_2030_Active_Economy" # 'Transmission_Network_PT_2020'  #"HR_2020_Location_1"#'case5' #' 
+country = "UK"  # Select country for case study: "PT", "UK" or "HR"
+test_case='Transmission_Network_UK3' # "Transmission_Network_PT_2030_Active_Economy" # 'Transmission_Network_PT_2020'  #"HR_2020_Location_1"#'case5' #' 
 ci_catalogue = "Default"
 ci_cost = "Default"
 # read input data outputs mpc and load infor
@@ -721,7 +783,7 @@ mpc, base_time_series_data,  multiplier, NoCon,ci_catalogue,ci_cost= read_input_
 # update peak demand values
 # get peak load for screening model
 peak_hour = 19
-peak_Pd = get_peak_data(mpc, base_time_series_data, peak_hour)
+peak_Pd = []# get_peak_data(mpc, base_time_series_data, peak_hour)
 
 ''' Cost information'''
 # branch investment cost
