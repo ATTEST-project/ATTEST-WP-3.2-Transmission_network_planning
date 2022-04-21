@@ -357,24 +357,7 @@ def model_screening(mpc,cont_list , prev_invest, peak_Pd, mult,NoTime = 1):
             return m.Ang[slc_bus,xk, xt] == 0
         
     
-        # # Branch capacity 
-        # # TODO: check line status relation with investment
-        # def braCapacity_rule(m,xbr,xk,xt):
-        #     if m.para["Branch"+str(xbr)+"_RATE_A"] != 0:
-        #         return m.Pbra[xbr, xk, xt] <=  cont_list[xk][xbr] * \
-        #                                         ( (m.ICbra[xbr, xt] + prev_invest[xbr] + m.para["Branch"+str(xbr)+"_RATE_A"] )  ) 
-        #     else:
-        #         return  m.Pbra[xbr, xk, xt]  <= cont_list[xk][xbr] * float('inf') #* mpc["branch"]["BR_STATUS"][xbr]
        
-        
-        # # both flow directions       
-        # def braCapacityN_rule(m,xbr,xk, xt):
-        #     if m.para["Branch"+str(xbr)+"_RATE_A"] != 0:
-        #         return  - m.Pbra[xbr,xk,  xt] <= cont_list[xk][xbr] *\
-        #                                         ( (m.ICbra[xbr, xt] + prev_invest[xbr] + m.para["Branch"+str(xbr)+"_RATE_A"] )  )
-        #     else:
-        #         return  - m.Pbra[xbr,xk,  xt]  <= cont_list[xk][xbr] * float('inf') #* mpc["branch"]["BR_STATUS"][xbr]
-        
         
         # Branch capacity 
         def braCapacity_rule(m,xbr,xk,xt):
@@ -647,9 +630,6 @@ def model_screening(mpc,cont_list , prev_invest, peak_Pd, mult,NoTime = 1):
     ''' Print results '''
     
     print('min obj cost:',Val(model.obj))
-    # #print (Val(sum(model.Cgen[i,0] for i in range(5))))
-    # # print (Val(sum(model.Pgen[i,0] for i in range(5))))
-    # print("Total investment cost: ", Val(sum(model.ICbra[xbr,xt]*cicost for xbr in model.Set['Bra'] for xt in model.Set['Tim'] )))
     print("Load curtailment: ", Val(sum( model.Plc[xb,xk,xt]  for xb in model.Set['Bus'] for xk in model.Set['Cont'] for xt in model.Set['Tim'])))
     
     print("Gen cost: ", Val(sum( model.Cgen[xg,0,xt]  for xg in model.Set['Gen'] for xt in model.Set['Tim'])))
@@ -664,11 +644,7 @@ def model_screening(mpc,cont_list , prev_invest, peak_Pd, mult,NoTime = 1):
             if Val( model.Plc[xb,xk,0]  ) > 0 :
                 print("Cont: ", xk," bus: ",xb, " lc: ", Val( model.Plc[xb,xk,0]  ))
                 
-    # for xb in model.Set["Bus"]:
-    #     if genCbus[xb] != []:
-    #         print("bus: ", xb, ", Pgen", Val(sum( model.Pgen[genCbus[xb][i],0,0]  for i in range(len(genCbus[xb])) )))
-    #     else:
-    #         print("bus: ", xb,  ", Pgen = [] ")
+
             
 
 
@@ -752,13 +728,18 @@ def main_screening(mpc,multiplier,cicost, penalty_cost, peak_Pd, cont_list):
 #             [1, 1, 1, 1, 0, 1],
 #             [1, 1, 1, 1, 1, 0]]
 
-# N-1 Contingency
-cont_list= [[1]*100] 
+# # remove contingency for testing
+cont_list = [[1]*100] 
+# cont_list[0][2] = 0
+temp_list = (cont_list[0]-np.diag(cont_list[0]) ).tolist()
 
-cont_list = (cont_list[0]-np.diag(cont_list[0]) ).tolist()
+cont_list.extend(temp_list)
 
-cont_list.append([1]*100)
+# for i in range(15):
+#     cont_list.append([1]*100)
+    
 
+#     cont_list[i+1][i] = 0
     
 
 
