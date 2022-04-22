@@ -37,6 +37,8 @@ import math
 import numpy as np
 from scenarios_multipliers import get_mult
 from input_output_function import  get_peak_data, read_input_data
+import cProfile
+import pstats
 
 
 @dataclass
@@ -357,7 +359,24 @@ def model_screening(mpc,cont_list , prev_invest, peak_Pd, mult,NoTime = 1):
             return m.Ang[slc_bus,xk, xt] == 0
         
     
+        # # Branch capacity 
+        # # TODO: check line status relation with investment
+        # def braCapacity_rule(m,xbr,xk,xt):
+        #     if m.para["Branch"+str(xbr)+"_RATE_A"] != 0:
+        #         return m.Pbra[xbr, xk, xt] <=  cont_list[xk][xbr] * \
+        #                                         ( (m.ICbra[xbr, xt] + prev_invest[xbr] + m.para["Branch"+str(xbr)+"_RATE_A"] )  ) 
+        #     else:
+        #         return  m.Pbra[xbr, xk, xt]  <= cont_list[xk][xbr] * float('inf') #* mpc["branch"]["BR_STATUS"][xbr]
        
+        
+        # # both flow directions       
+        # def braCapacityN_rule(m,xbr,xk, xt):
+        #     if m.para["Branch"+str(xbr)+"_RATE_A"] != 0:
+        #         return  - m.Pbra[xbr,xk,  xt] <= cont_list[xk][xbr] *\
+        #                                         ( (m.ICbra[xbr, xt] + prev_invest[xbr] + m.para["Branch"+str(xbr)+"_RATE_A"] )  )
+        #     else:
+        #         return  - m.Pbra[xbr,xk,  xt]  <= cont_list[xk][xbr] * float('inf') #* mpc["branch"]["BR_STATUS"][xbr]
+        
         
         # Branch capacity 
         def braCapacity_rule(m,xbr,xk,xt):
@@ -630,6 +649,9 @@ def model_screening(mpc,cont_list , prev_invest, peak_Pd, mult,NoTime = 1):
     ''' Print results '''
     
     print('min obj cost:',Val(model.obj))
+    # #print (Val(sum(model.Cgen[i,0] for i in range(5))))
+    # # print (Val(sum(model.Pgen[i,0] for i in range(5))))
+    # print("Total investment cost: ", Val(sum(model.ICbra[xbr,xt]*cicost for xbr in model.Set['Bra'] for xt in model.Set['Tim'] )))
     print("Load curtailment: ", Val(sum( model.Plc[xb,xk,xt]  for xb in model.Set['Bus'] for xk in model.Set['Cont'] for xt in model.Set['Tim'])))
     
     print("Gen cost: ", Val(sum( model.Cgen[xg,0,xt]  for xg in model.Set['Gen'] for xt in model.Set['Tim'])))
@@ -644,7 +666,11 @@ def model_screening(mpc,cont_list , prev_invest, peak_Pd, mult,NoTime = 1):
             if Val( model.Plc[xb,xk,0]  ) > 0 :
                 print("Cont: ", xk," bus: ",xb, " lc: ", Val( model.Plc[xb,xk,0]  ))
                 
-
+    # for xb in model.Set["Bus"]:
+    #     if genCbus[xb] != []:
+    #         print("bus: ", xb, ", Pgen", Val(sum( model.Pgen[genCbus[xb][i],0,0]  for i in range(len(genCbus[xb])) )))
+    #     else:
+    #         print("bus: ", xb,  ", Pgen = [] ")
             
 
 
@@ -658,7 +684,7 @@ def model_screening(mpc,cont_list , prev_invest, peak_Pd, mult,NoTime = 1):
         maxICbra.append( max(tempICbra) )
         if maxICbra[xb] > 0:
             interv.append( maxICbra[xb])
-            # print('Increase ', str(maxICbra[xb]),' on Branch '+ str(xb), ", Cap:", maxICbra[xb]+mpc["branch"]["RATE_A"][xb]  )
+            print('Increase ', str(maxICbra[xb]),' on Branch '+ str(xb))#, ", Cap:", maxICbra[xb]+mpc["branch"]["RATE_A"][xb]  )
                   # + ", from bus: " + str(mpc["branch"]["F_BUS"][xb]) 
                   # + ", to bus: " + str(mpc["branch"]["T_BUS"][xb]) )
     
@@ -711,35 +737,15 @@ def main_screening(mpc,multiplier,cicost, penalty_cost, peak_Pd, cont_list):
 
 
 
-
+profiler = cProfile.Profile()
+profiler.enable()
 
 ####  inputs
 
 ''' contingency info '''
-# cont_list= [[1, 1, 1, 1, 1, 1],
-#             [0, 1, 1, 1, 1, 1], 
-#             [1, 1, 1, 1, 1, 0]] 
+# initial contingency list, if no input, generate N-1 contingencies later
+cont_list = []
 
-# cont_list= [[1, 1, 1, 1, 1, 1],
-#             [0, 1, 1, 1, 1, 1], 
-#             [1, 0, 1, 1, 1, 1],
-#             [1, 1, 0, 1, 1, 1],
-#             [1, 1, 1, 0, 1, 1],
-#             [1, 1, 1, 1, 0, 1],
-#             [1, 1, 1, 1, 1, 0]]
-
-# # remove contingency for testing
-cont_list = [[1]*100] 
-# cont_list[0][2] = 0
-temp_list = (cont_list[0]-np.diag(cont_list[0]) ).tolist()
-
-cont_list.extend(temp_list)
-
-# for i in range(15):
-#     cont_list.append([1]*100)
-    
-
-#     cont_list[i+1][i] = 0
     
 
 
@@ -749,6 +755,7 @@ country = "UK"  # Select country for case study: "PT", "UK" or "HR"
 test_case='Transmission_Network_UK3' # "Transmission_Network_PT_2030_Active_Economy" # 'Transmission_Network_PT_2020'  #"HR_2020_Location_1"#'case5' #' 
 ci_catalogue = "Default"
 ci_cost = "Default"
+
 # read input data outputs mpc and load infor
 # mpc, base_time_series_data, multiplier, NoCon = read_input_data( cont_list, country,test_case)
 mpc, base_time_series_data,  multiplier, NoCon,ci_catalogue,ci_cost= read_input_data( cont_list, country,test_case,ci_catalogue,ci_cost)
@@ -759,6 +766,17 @@ mpc, base_time_series_data,  multiplier, NoCon,ci_catalogue,ci_cost= read_input_
 
 # # get multipliers for different years and scenarios
 # multiplier = get_mult(country) 
+
+# generate N-1 contingencies
+if cont_list==[]:
+    cont_list = [[1]*mpc["NoBranch"]] 
+    # cont_list[0][2] = 0
+    temp_list = (cont_list[0]-np.diag(cont_list[0]) ).tolist()
+
+    cont_list.extend(temp_list)
+
+
+
 
 ''' Load information '''
 # update peak demand values
@@ -790,3 +808,10 @@ for xi in range(len(interv_list)):
 interv_list = list(set(interv_list))
 interv_list.sort()
 print("Reduced intervention list: ",interv_list)
+
+
+
+profiler.disable()
+# sort output with total time
+stats = pstats.Stats(profiler).sort_stats('tottime')
+stats.print_stats(1)
