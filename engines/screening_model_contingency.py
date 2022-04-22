@@ -327,14 +327,14 @@ def model_screening(mpc,cont_list , prev_invest, peak_Pd, mult,NoTime = 1):
        # Gen output constraint rules
         def genMax_rule(m, xg,xk, xt):
             if gen_status == True and mpc["gen"]["GEN"][xg] == 0 :
-                return Constraint.Skip
+                return m.Pgen[xg,  xk, xt] == 0 
             else:
                 return m.Pgen[xg, xk, xt] <= mult * m.para["Gen"+str(xg)+"_PMAX"]
             
         
         def genMin_rule(m,xg, xk, xt):
             if gen_status == True and mpc["gen"]["GEN"][xg] == 0 :
-                return Constraint.Skip
+                return m.Pgen[xg,  xk, xt] == 0 
             else:   
                 return m.Pgen[xg,xk, xt] >= m.para["Gen"+str(xg)+"_PMIN"]
         
@@ -349,9 +349,16 @@ def model_screening(mpc,cont_list , prev_invest, peak_Pd, mult,NoTime = 1):
             fbus = mpc['bus']['BUS_I'].index(fbus_name)
             tbus_name = mpc['branch']['T_BUS'][xbr]
             tbus = mpc['bus']['BUS_I'].index(tbus_name)
-            # pu2value = mpc['bus']['BASE_KV'][0]**2 / mpc['baseMVA']
-           
-            return  m.Pbra[xbr,xk, xt] == ( m.Ang[fbus,xk, xt] - m.Ang[tbus,xk, xt]) / br_X
+            
+            if line_status == True and mpc["branch"]["BR_STATUS"][xbr] == 0:
+                temp_line_stat = 0
+            else:
+                temp_line_stat = 1
+            
+            if cont_list[xk][xbr] == 0 or temp_line_stat == 0:
+                return Constraint.Skip
+            else:             
+                return  m.Pbra[xbr,xk, xt] == ( m.Ang[fbus,xk, xt] - m.Ang[tbus,xk, xt]) / br_X
         
         
         
@@ -409,7 +416,7 @@ def model_screening(mpc,cont_list , prev_invest, peak_Pd, mult,NoTime = 1):
             
             
             if cont_list[xk][xbr] == 0 or temp_line_stat == 0:
-                return Constraint.Skip
+                return  Constraint.Skip
             else:             
                 if m.para["Branch"+str(xbr)+"_RATE_A"] != 0:
                     return  - m.Pbra[xbr,xk,  xt] <=  m.ICbra[xbr, xt] + prev_invest[xbr] + m.para["Branch"+str(xbr)+"_RATE_A"] 
@@ -765,11 +772,11 @@ cont_list = []
 # if Ture, consider status from .m file; 
 # if False, all gen and lines are on
 gen_status = False 
-line_status = False 
+line_status = False  
 
 ''' Test case '''
-country = "HR"  # Select country for case study: "PT", "UK" or "HR"
-test_case="HR_2020_Location_1"#'Transmission_Network_UK3' # "Transmission_Network_PT_2030_Active_Economy" # 'Transmission_Network_PT_2020'  #'case5' #' 
+country = "UK"  # Select country for case study: "PT", "UK" or "HR"
+test_case='Transmission_Network_UK3' # "HR_2020_Location_1"#"Transmission_Network_PT_2030_Active_Economy" # 'Transmission_Network_PT_2020'  #'case5' #' 
 ci_catalogue = "Default"
 ci_cost = "Default"
 
