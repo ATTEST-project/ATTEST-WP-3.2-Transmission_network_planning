@@ -326,13 +326,17 @@ def model_screening(mpc,cont_list , prev_invest, peak_Pd, mult,NoTime = 1):
     
        # Gen output constraint rules
         def genMax_rule(m, xg,xk, xt):
-            
-            return m.Pgen[xg, xk, xt] <= mult * m.para["Gen"+str(xg)+"_PMAX"]#*mpc["gen"]["GEN"][xg] # gen status
+            if gen_status == True and mpc["gen"]["GEN"][xg] == 0 :
+                return Constraint.Skip
+            else:
+                return m.Pgen[xg, xk, xt] <= mult * m.para["Gen"+str(xg)+"_PMAX"]
             
         
         def genMin_rule(m,xg, xk, xt):
-           
-            return m.Pgen[xg,xk, xt] >= m.para["Gen"+str(xg)+"_PMIN"]#*mpc["gen"]["GEN"][xg] # gen status
+            if gen_status == True and mpc["gen"]["GEN"][xg] == 0 :
+                return Constraint.Skip
+            else:   
+                return m.Pgen[xg,xk, xt] >= m.para["Gen"+str(xg)+"_PMIN"]
         
         
         
@@ -380,27 +384,38 @@ def model_screening(mpc,cont_list , prev_invest, peak_Pd, mult,NoTime = 1):
         
         # Branch capacity 
         def braCapacity_rule(m,xbr,xk,xt):
-            if cont_list[xk][xbr] == 0:
+            if line_status == True and mpc["branch"]["BR_STATUS"][xbr] == 0:
+                temp_line_stat = 0
+            else:
+                temp_line_stat = 1
+            
+            if cont_list[xk][xbr] == 0 or temp_line_stat == 0:
                 return Constraint.Skip
             else:             
                 if m.para["Branch"+str(xbr)+"_RATE_A"] != 0:                  
-                    return m.Pbra[xbr, xk, xt] <=  ( (m.ICbra[xbr, xt] + prev_invest[xbr] + m.para["Branch"+str(xbr)+"_RATE_A"] )  ) 
+                    return m.Pbra[xbr, xk, xt] <=   m.ICbra[xbr, xt] + prev_invest[xbr] + m.para["Branch"+str(xbr)+"_RATE_A"] 
                     
                 else:   
-                    return  m.Pbra[xbr, xk, xt]  <=  float('inf') #* mpc["branch"]["BR_STATUS"][xbr]
+                    return  m.Pbra[xbr, xk, xt]  <=  float('inf')
                 
                     
         
         # both flow directions       
         def braCapacityN_rule(m,xbr,xk, xt):
-            if cont_list[xk][xbr] == 0:
+            if line_status == True and mpc["branch"]["BR_STATUS"][xbr] == 0:
+                temp_line_stat = 0
+            else:
+                temp_line_stat = 1
+            
+            
+            if cont_list[xk][xbr] == 0 or temp_line_stat == 0:
                 return Constraint.Skip
             else:             
                 if m.para["Branch"+str(xbr)+"_RATE_A"] != 0:
-                    return  - m.Pbra[xbr,xk,  xt] <=  ( (m.ICbra[xbr, xt] + prev_invest[xbr] + m.para["Branch"+str(xbr)+"_RATE_A"] )  )
+                    return  - m.Pbra[xbr,xk,  xt] <=  m.ICbra[xbr, xt] + prev_invest[xbr] + m.para["Branch"+str(xbr)+"_RATE_A"] 
                 
                 else:
-                    return  - m.Pbra[xbr,xk,  xt]  <=  float('inf') #* mpc["branch"]["BR_STATUS"][xbr]
+                    return  - m.Pbra[xbr,xk,  xt]  <=  float('inf') 
             
             
         
@@ -419,7 +434,7 @@ def model_screening(mpc,cont_list , prev_invest, peak_Pd, mult,NoTime = 1):
     
         def loadcurtail_rule(m, xb,xk,xt):
             
-            return  mult *Pd[xb] >= m.Plc[xb,xk,xt]
+            return  mult *abs(Pd[xb]) >= m.Plc[xb,xk,xt]
         
         # # Cost Constraints
         # Piece wise gen cost: Number of piece = 3
@@ -746,13 +761,15 @@ profiler.enable()
 # initial contingency list, if no input, generate N-1 contingencies later
 cont_list = []
 
-    
-
-
+# Define gen and line status, Default to False
+# if Ture, consider status from .m file; 
+# if False, all gen and lines are on
+gen_status = False 
+line_status = False 
 
 ''' Test case '''
-country = "UK"  # Select country for case study: "PT", "UK" or "HR"
-test_case='Transmission_Network_UK3' # "Transmission_Network_PT_2030_Active_Economy" # 'Transmission_Network_PT_2020'  #"HR_2020_Location_1"#'case5' #' 
+country = "HR"  # Select country for case study: "PT", "UK" or "HR"
+test_case="HR_2020_Location_1"#'Transmission_Network_UK3' # "Transmission_Network_PT_2030_Active_Economy" # 'Transmission_Network_PT_2020'  #'case5' #' 
 ci_catalogue = "Default"
 ci_cost = "Default"
 
@@ -770,7 +787,7 @@ mpc, base_time_series_data,  multiplier, NoCon,ci_catalogue,ci_cost= read_input_
 # generate N-1 contingencies
 if cont_list==[]:
     cont_list = [[1]*mpc["NoBranch"]] 
-    # cont_list[0][2] = 0
+
     temp_list = (cont_list[0]-np.diag(cont_list[0]) ).tolist()
 
     cont_list.extend(temp_list)
