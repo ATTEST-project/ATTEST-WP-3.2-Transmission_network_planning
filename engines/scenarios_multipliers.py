@@ -30,16 +30,29 @@ def get_mult(country_selected= "HR"):
             }
         }
     elif country_selected == "UK":# UK CASE:
-        mean_annual_growth = {
+            ### Initial forecast from deliverables D2.3:
+        # mean_annual_growth = {
+        #     "Active":{
+        #         "2030":0.8,
+        #         "2040":1.6,
+        #         "2050":1.0
+        #     },
+        #     "Slow":{
+        #         "2030":0.45,
+        #         "2040":1.08,
+        #         "2050":1.2
+        #     }
+        ### Updated forecast to match FES (increased loads):
+            mean_annual_growth = {
             "Active":{
-                "2030":0.8,
-                "2040":1.6,
-                "2050":1.0
+                "2030":1.89,
+                "2040":3.0,
+                "2050":2.5,
             },
             "Slow":{
-                "2030":0.45,
-                "2040":1.08,
-                "2050":1.2
+                "2030":1.1,
+                "2040":2.0,
+                "2050":1.0
             }
         }
     elif country_selected == "HR":# CROATIAN POWER SYSTEM:
