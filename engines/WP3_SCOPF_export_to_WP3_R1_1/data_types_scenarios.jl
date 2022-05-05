@@ -1,0 +1,28 @@
+mutable struct RES_scenarios
+    scen_bus_num::Int64
+    scen_num::Int64
+    scen_t1::Float64
+    scen_t2::Float64
+    scen_t3::Float64
+    scen_t4::Float64
+    scen_t5::Float64
+    scen_t6::Float64
+    scen_t7::Float64
+    scen_t8::Float64
+    scen_t9::Float64
+    scen_t10::Float64
+    scen_t11::Float64
+    scen_t12::Float64
+    scen_t13::Float64
+    scen_t14::Float64
+    scen_t15::Float64
+    scen_t16::Float64
+    scen_t17::Float64
+    scen_t18::Float64
+    scen_t19::Float64
+    scen_t20::Float64
+    scen_t21::Float64
+    scen_t22::Float64
+    scen_t23::Float64
+    scen_t24::Float64
+end

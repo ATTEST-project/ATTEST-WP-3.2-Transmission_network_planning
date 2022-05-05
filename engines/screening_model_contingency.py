@@ -769,14 +769,14 @@ profiler.enable()
 cont_list = []
 
 # Define gen and line status, Default to False
-# if Ture, consider status from .m file; 
+# if True, consider status from .m file; 
 # if False, all gen and lines are on
 gen_status = False 
 line_status = False  
 
 ''' Test case '''
-country = "UK"  # Select country for case study: "PT", "UK" or "HR"
-test_case='Transmission_Network_UK3' # "HR_2020_Location_1"#"Transmission_Network_PT_2030_Active_Economy" # 'Transmission_Network_PT_2020'  #'case5' #' 
+country = "HR"  # Select country for case study: "PT", "UK" or "HR"
+test_case=  'case5' #"HR_2020_Location_1"#'Transmission_Network_PT_2020_new'  #'Transmission_Network_UK3' # ' 
 ci_catalogue = "Default"
 ci_cost = "Default"
 
@@ -794,6 +794,8 @@ mpc, base_time_series_data,  multiplier, NoCon,ci_catalogue,ci_cost= read_input_
 # generate N-1 contingencies
 if cont_list==[]:
     cont_list = [[1]*mpc["NoBranch"]] 
+    # temp_list = [[1]*mpc["NoBranch"]]
+    # temp_list[0][42] = 0
 
     temp_list = (cont_list[0]-np.diag(cont_list[0]) ).tolist()
 
@@ -810,7 +812,7 @@ peak_Pd = []# get_peak_data(mpc, base_time_series_data, peak_hour)
 
 ''' Cost information'''
 # branch investment cost
-cicost = 100 # £/Mw/km
+cicost = 5 # £/Mw/km
 # curtailment cost
 penalty_cost = 1e4
 
@@ -834,8 +836,15 @@ interv_list.sort()
 print("Reduced intervention list: ",interv_list)
 
 
+''' Output json file for the investment model''' 
+with open('results/screen_result.json', 'w') as fp:
+    json.dump(interv_list, fp)
+
+
 
 profiler.disable()
 # sort output with total time
 stats = pstats.Stats(profiler).sort_stats('tottime')
-stats.print_stats(1)
+# stats.print_stats(1)
+
+print("Screening model finishes, results output to the folder as 'screen_result.json'.")

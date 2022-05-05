@@ -60,7 +60,7 @@ def read_input_data(cont_list, country = "HR", test_case = "HR_2020_Location_1",
     
     ''' Load xlsx file'''
     # base_time_series_data = get_data("Transmission_Network_PT_2020_24hGenerationLoadData.ods")
-    base_time_series_data  = pd.read_excel('tests/excel/Transmission_Network_PT_2020_24hGenerationLoadData.xlsx', sheet_name=None)
+    base_time_series_data  = pd.read_excel('Transmission_Network_PT_2020_24hGenerationLoadData.xlsx', sheet_name=None)
     print('load xlsx file')
    
     
@@ -70,104 +70,62 @@ def read_input_data(cont_list, country = "HR", test_case = "HR_2020_Location_1",
         ci_catalogue = [10,50,100,200,500,800,1000,2000,5000]
     
     if ci_cost == "Default":
-        ci_cost = [5 * i for i in ci_catalogue]
+        ci_cost = [100 * i for i in ci_catalogue]
 
     return (mpc,  base_time_series_data,  multiplier, NoCon,ci_catalogue,ci_cost)
 
 
 
-                     
-def output_data2Json(NoPath, NoYear, path_sce, sum_CO, yearly_CO, ci, sum_ciCost, Cflex, Pflex, outputAll=False,country = "HR", test_case = "HR_2020_Location_1" ):
+
+def output_data(output_data, country = "HR", test_case = "HR_2020_Location_1" ):
+    output_data = 0
     
-    output_data = {}
-    sce_data = {}
-    year_num = [2020, 2030, 2040, 2050]
-    output_data = { "Country": country, 
-                    "Case name": test_case}
-    
-    # output all the pathways (scenarios)
-    if outputAll == True:      
-        for xp in range(NoPath):
-            sce_data["Total investment cost (EUR)"] = sum_ciCost +  sum(Cflex[xy][path_sce[xp][xy]] for xy in range(NoYear) ),
-            sce_data["Net Present Cost (EUR)"] =  sum_CO,
-            
-            for xy in range(NoYear):
-                
-                sce_data[str(year_num[xy])] = {
-                                        "Operation cost (EUR/year)": yearly_CO[xy][path_sce[xp][xy]], 
-                                        "Branch investment (MVA)":  ci[xy][path_sce[xp][xy]], 
-                                        "Flexibility investment (MW)": Pflex[xy][path_sce[xp][xy]], 
-                                     }
-            
-            output_data["Scenario " +str(xp+1)] = sce_data
-            
-    else:
-        # only output two extreme scenarios
-        temp_xp = 0
-        for xp in [0,NoPath-1]:
-            
-            temp_xp += 1
-            sce_data["Total investment cost (EUR)"] = sum_ciCost +  sum(Cflex[xy][path_sce[xp][xy]] for xy in range(NoYear) ),
-            sce_data["Net Present Cost (EUR)"] =  sum_CO,
-            
-            for xy in range(NoYear):
-                
-                sce_data[str(year_num[xy])] = {
-                                        "Operation cost (EUR/year)": yearly_CO[xy][path_sce[xp][xy]], 
-                                        "Branch investment (MVA)":  ci[xy][path_sce[xp][xy]], 
-                                        "Flexibility investment (MW)": Pflex[xy][path_sce[xp][xy]], 
-                                     }
-           
-            output_data["Scenario " +str(temp_xp)] = sce_data
-        
-        
-    
-    # output_data_template = {
-    #                             "Country": country, 
-    #                             "Case name": test_case,
-    #                             "Scenario 1": 
-    #                                 {
-    #                                     "Total investment cost (EUR)": 0, 
-    #                                     "Net Present Cost (EUR)":0,
-    #                                     "2020": {"Operation cost (EUR/year)": 0, 
-    #                                               "Branch investment (MVA)": [], 
-    #                                               "Flexibility investment (MW)": []}, 
-    #                                     "2030": {"Operation cost (EUR/year)": 0, 
-    #                                               "Branch investment (MVA)": [], 
-    #                                               "Flexibility investment (MW)": []}, 
-    #                                     "2040": {"Operation cost (EUR/year)": 0, 
-    #                                               "Branch investment (MVA)": [], 
-    #                                               "Flexibility investment (MW)": []}, 
-    #                                     "2050": {"Operation cost (EUR/year)": 0, 
-    #                                               "Branch investment (MVA)": [], 
-    #                                               "Flexibility investment (MW)": []}, 
-    #                                 },
-    #                             "Scenario 2": 
-    #                                 {
-    #                                     "Total investment cost (EUR)": 0, 
-    #                                     "Net Present Cost (EUR)":0,
-    #                                     "2020": {"Operation cost (EUR/year)": 0, 
-    #                                               "Branch investment (MVA)": [], 
-    #                                               "Flexibility investment (MW)": []}, 
-    #                                     "2030": {"Operation cost (EUR/year)": 0, 
-    #                                               "Branch investment (MVA)": [], 
-    #                                               "Flexibility investment (MW)": []}, 
-    #                                     "2040": {"Operation cost (EUR/year)": 0, 
-    #                                               "Branch investment (MVA)": [], 
-    #                                               "Flexibility investment (MW)": []}, 
-    #                                     "2050": {"Operation cost (EUR/year)": 0, 
-    #                                               "Branch investment (MVA)": [], 
-    #                                               "Flexibility investment (MW)": []}, 
-    #                                 },
-    #                         }
+    output_data_template = {
+                                "Country": country, 
+                                "Case name": test_case,
+                                "Scenario 1": 
+                                    {
+                                        "Total investment cost (EUR)": 0, 
+                                        "Net Present Cost (EUR)":0,
+                                        "2020": {"Operation cost (EUR/year)": 0, 
+                                                 "Branch investment (MVA)": [], 
+                                                 "Flexibility investment (MW)": []}, 
+                                        "2030": {"Operation cost (EUR/year)": 0, 
+                                                 "Branch investment (MVA)": [], 
+                                                 "Flexibility investment (MW)": []}, 
+                                        "2040": {"Operation cost (EUR/year)": 0, 
+                                                 "Branch investment (MVA)": [], 
+                                                 "Flexibility investment (MW)": []}, 
+                                        "2050": {"Operation cost (EUR/year)": 0, 
+                                                 "Branch investment (MVA)": [], 
+                                                 "Flexibility investment (MW)": []}, 
+                                    },
+                                "Scenario 2": 
+                                    {
+                                        "Total investment cost (EUR)": 0, 
+                                        "Net Present Cost (EUR)":0,
+                                        "2020": {"Operation cost (EUR/year)": 0, 
+                                                 "Branch investment (MVA)": [], 
+                                                 "Flexibility investment (MW)": []}, 
+                                        "2030": {"Operation cost (EUR/year)": 0, 
+                                                 "Branch investment (MVA)": [], 
+                                                 "Flexibility investment (MW)": []}, 
+                                        "2040": {"Operation cost (EUR/year)": 0, 
+                                                 "Branch investment (MVA)": [], 
+                                                 "Flexibility investment (MW)": []}, 
+                                        "2050": {"Operation cost (EUR/year)": 0, 
+                                                 "Branch investment (MVA)": [], 
+                                                 "Flexibility investment (MW)": []}, 
+                                    },
+                            }
         
     # data into template
         
     ''' Output json file''' 
-    with open('results/investment_result.json', 'w') as fp:
+    with open('Output_Data_Investment.json', 'w') as fp:
         json.dump(output_data, fp)
     
-    return print("Investment result file created")
+    return print("Output files created")
 
 
 
