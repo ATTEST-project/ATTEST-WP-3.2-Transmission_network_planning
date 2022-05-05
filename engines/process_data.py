@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 """
-Created on Fri Apr 29 18:21:30 2022
+@author: Wangwei Kong
 
-@author: p96677wk
+Data process
 """
 from __future__ import (division, print_function)
 from pyomo.core import ConcreteModel, Constraint, minimize, NonNegativeReals, \

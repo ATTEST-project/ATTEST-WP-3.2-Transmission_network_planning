@@ -1,8 +1,9 @@
 # -*- coding: utf-8 -*-
 """
-Created on Mon Feb 21 10:44:43 2022
 
-@author: p96677wk
+@author: Wangwei Kong
+
+Run SCACOPF in .jl
 """
 
 # import julia

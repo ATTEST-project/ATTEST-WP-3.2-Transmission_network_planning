@@ -1,26 +1,23 @@
 # -*- coding: utf-8 -*-
 """
 
+
 @author: Wangwei Kong
 
 """
-
 from __future__ import (division, print_function)
 from pyomo.core import ConcreteModel, Constraint, minimize, NonNegativeReals, \
  Objective, Var,  Binary, Set, Reals
 from pyomo.environ import SolverFactory
 from pyomo.core import value as Val
 import networkx as nx
-import pyomo.environ as pyo
-
+from dataclasses import dataclass
 import json
 import os
 import math
 import numpy as np
 
-# # import data class for network information
-# from a_network_dataclass import network_variable, network_parameter, nodes_info_network
-from dataclasses import dataclass
+
 @dataclass
 class network_variable:
     name                :   str     = None      # Name of the variable
@@ -57,159 +54,162 @@ class nodes_info_network:
     bus                 :   int     = None      # Number of the bus related to the graph's node
     ends                :   list    = None      # list of ends for branches in format [from, to]
 
-# read paras and vars from mpc (.json)
-# from a_readVarPara import readVarPara
-def readVarPara(mpc,network_parameter,network_variable):
-
-    '''Input parameters for generator, bus and branch'''
-    
-    '''
-        Recorded parameters are:
-                 auxGen = ['PMAX', 'PMIN', 'QMAX', 'QMIN', 'VG']
-                 auxBus = ['BASE_KV', 'PD', 'QD', 'VMAX', 'VMIN']
-                 auxBranch = ['BR_B', 'BR_R', 'BR_X', 'RATE_A', 'BR_STATUS']
-
-        Recorded variables are:
-                 auxGen=['Pout','Qout']
-                 auxBus=['Pin','Qin''Pout','Qout']
-                 auxBranch=['P','Q','ANG']    
-    '''
-    
-    # Input generator parameters   
-    nw_parameters=[]
-    auxGen = ['PMAX', 'PMIN', 'QMAX', 'QMIN', 'VG']
-    
-    for NoGen in range(mpc['NoGen']):
-        for gen_para_name in auxGen:
-            gen_para_temp = network_parameter( 
-                        name             = gen_para_name,      
-                        position_tree    = None,      
-                        hour             = None,      
-                        ID               = 'Gen'+str(NoGen),    
-                        type             = 'generator',      
-                        sub_type         = None,      
-                        bus              = mpc['gen']['GEN_BUS'][NoGen],      
-                        ends             = None,      
-                        value            = mpc['gen'][gen_para_name][NoGen]
-                                          )
-            # Add generator parameters  
-            nw_parameters.append(gen_para_temp)
-
-    del auxGen,gen_para_temp, gen_para_name
-    
-    # Input bus parameters   
-    auxBus = ['BASE_KV', 'PD', 'QD', 'VMAX', 'VMIN']
-    
-    for NoBus in range(mpc['NoBus']):
-        for bus_para_name in auxBus:
-            bus_para_temp = network_parameter( 
-                        name             = bus_para_name,      
-                        position_tree    = None,      
-                        hour             = None,      
-                        ID               = 'Bus'+str(NoBus),  
-                        type             = 'bus',      
-                        sub_type         = None,      
-                        bus              = mpc['bus']['BUS_I'][NoBus],      
-                        ends             = None,      
-                        value            = mpc['bus'][bus_para_name][NoBus]
-                                          )        
-            # Add generator parameters  
-            nw_parameters.append(bus_para_temp)
-    del auxBus, bus_para_temp, bus_para_name
-    
-    
-    # Input branch parameters   
-    auxBranch = ['BR_B', 'BR_R', 'BR_X', 'RATE_A', 'BR_STATUS']
-    
-    for NoBranch in range(mpc['NoBranch']):
-        for branch_para_name in auxBranch:
-            branch_para_temp = network_parameter( 
-                        name             = branch_para_name,      
-                        position_tree    = None,      
-                        hour             = None,      
-                        ID               = 'Branch'+str(NoBranch),
-                        type             = 'branch',      
-                        sub_type         = None,                            
-                        ends             = [mpc['branch']['F_BUS'][NoBranch], mpc['branch']['T_BUS'][NoBranch]],     
-                        value            = mpc['branch'][branch_para_name][NoBranch]
-                                          )    
-            # Add branch parameters  
-            nw_parameters.append(branch_para_temp)
-    del auxBranch, branch_para_temp, branch_para_name
-    
-    # ####################################################################
-    # ####################################################################
-    
-    '''Input vars for generator, bus and branch'''
-    # Input gen vars   
-    nw_variables=[]
-    auxGen=['Pout','Qout']
-    for NoGen in range(mpc['NoGen']):
-        for gen_var_name in auxGen:
-            gen_var_temp = network_variable( 
-                        name             = gen_var_name,      
-                        position_tree    = None,      
-                        hour             = None,      
-                        ID               = 'Gen'+str(NoGen),    
-                        type             = 'generator',      
-                        sub_type         = None,        
-                        value            = None
-                                          )
-            # Add generator vars  
-           
-            nw_variables.append(gen_var_temp)
-    del auxGen, gen_var_temp, gen_var_name
-    
-    
-    # Input bus vars   
-    auxBus=['Pin','Qin','Pout','Qout']
-    for NoBus in range(mpc['NoBus']):
-        for bus_var_name in auxBus:
-            bus_var_temp = network_variable( 
-                        name             = bus_var_name,      
-                        position_tree    = None,      
-                        hour             = None,      
-                        ID               = 'Bus'+str(NoBus),    
-                        type             = 'bus',      
-                        sub_type         = None,        
-                        value            = None
-                                          )
-            # Add bus vars 
-            nw_variables.append(bus_var_temp)
-    del auxBus, bus_var_temp, bus_var_name
-    
-    
-    # Input branch vars   
-    auxBranch=['P','Q','ANG']
-    for NoBranch in range(mpc['NoBranch']):
-        for branch_var_name in auxBranch:
-            branch_var_temp = network_variable( 
-                        name             = branch_var_name,      
-                        position_tree    = None,      
-                        hour             = None,      
-                        ID               = 'Branch'+str(NoBranch),    
-                        type             = 'branch',      
-                        sub_type         = None,        
-                        value            = None
-                                          )
-            # Add bus vars 
-            nw_variables.append(branch_var_temp)
-    del auxBranch, branch_var_temp, branch_var_name
-    
-    
-    # NoID is total number of elements  NoID = NoGen + NoBranch + NoBus
-    NoID = mpc['NoGen'] + mpc['NoBranch'] + mpc['NoBus']
-    
-    return nw_parameters, nw_variables
 # ####################################################################
+# ####################################################################
+def main_screening():
     
-def DCOPF_function(mpc,NoTime):
+    ''''read paras and vars from jason file'''
+    def readVarPara():
     
-            
+        '''Input parameters for generator, bus and branch'''
+        
+        '''
+            Recorded parameters are:
+                     auxGen = ['PMAX', 'PMIN', 'QMAX', 'QMIN', 'VG']
+                     auxBus = ['BASE_KV', 'PD', 'QD', 'VMAX', 'VMIN']
+                     auxBranch = ['BR_B', 'BR_R', 'BR_X', 'RATE_A', 'BR_STATUS']
+    
+            Recorded variables are:
+                     auxGen=['Pout','Qout']
+                     auxBus=['Pin','Qin''Pout','Qout']
+                     auxBranch=['P','Q','ANG']    
+        '''
+        
+        # Input generator parameters   
+        nw_parameters=[]
+        auxGen = ['PMAX', 'PMIN', 'QMAX', 'QMIN', 'VG']
+        
+        for NoGen in range(mpc['NoGen']):
+            for gen_para_name in auxGen:
+                gen_para_temp = network_parameter( 
+                            name             = gen_para_name,      
+                            position_tree    = None,      
+                            hour             = None,      
+                            ID               = 'Gen'+str(NoGen),    
+                            type             = 'generator',      
+                            sub_type         = None,      
+                            bus              = mpc['gen']['GEN_BUS'][NoGen],      
+                            ends             = None,      
+                            value            = mpc['gen'][gen_para_name][NoGen]
+                                              )
+                # Add generator parameters  
+                nw_parameters.append(gen_para_temp)
+    
+        del auxGen,gen_para_temp, gen_para_name
+        
+        # Input bus parameters   
+        auxBus = ['BASE_KV', 'PD', 'QD', 'VMAX', 'VMIN']
+        
+        for NoBus in range(mpc['NoBus']):
+            for bus_para_name in auxBus:
+                bus_para_temp = network_parameter( 
+                            name             = bus_para_name,      
+                            position_tree    = None,      
+                            hour             = None,      
+                            ID               = 'Bus'+str(NoBus),  
+                            type             = 'bus',      
+                            sub_type         = None,      
+                            bus              = mpc['bus']['BUS_I'][NoBus],      
+                            ends             = None,      
+                            value            = mpc['bus'][bus_para_name][NoBus]
+                                              )        
+                # Add generator parameters  
+                nw_parameters.append(bus_para_temp)
+        del auxBus, bus_para_temp, bus_para_name
+        
+        
+        # Input branch parameters   
+        auxBranch = ['BR_B', 'BR_R', 'BR_X', 'RATE_A', 'BR_STATUS']
+        
+        for NoBranch in range(mpc['NoBranch']):
+            for branch_para_name in auxBranch:
+                branch_para_temp = network_parameter( 
+                            name             = branch_para_name,      
+                            position_tree    = None,      
+                            hour             = None,      
+                            ID               = 'Branch'+str(NoBranch),
+                            type             = 'branch',      
+                            sub_type         = None,                            
+                            ends             = [mpc['branch']['F_BUS'][NoBranch], mpc['branch']['T_BUS'][NoBranch]],     
+                            value            = mpc['branch'][branch_para_name][NoBranch]
+                                              )    
+                # Add branch parameters  
+                nw_parameters.append(branch_para_temp)
+        del auxBranch, branch_para_temp, branch_para_name
+        
+        # ####################################################################
+        # ####################################################################
+        
+        '''Input vars for generator, bus and branch'''
+        # Input gen vars   
+        nw_variables=[]
+        auxGen=['Pout','Qout']
+        for NoGen in range(mpc['NoGen']):
+            for gen_var_name in auxGen:
+                gen_var_temp = network_variable( 
+                            name             = gen_var_name,      
+                            position_tree    = None,      
+                            hour             = None,      
+                            ID               = 'Gen'+str(NoGen),    
+                            type             = 'generator',      
+                            sub_type         = None,        
+                            value            = None
+                                              )
+                # Add generator vars  
+               
+                nw_variables.append(gen_var_temp)
+        del auxGen, gen_var_temp, gen_var_name
+        
+        
+        # Input bus vars   
+        auxBus=['Pin','Qin','Pout','Qout']
+        for NoBus in range(mpc['NoBus']):
+            for bus_var_name in auxBus:
+                bus_var_temp = network_variable( 
+                            name             = bus_var_name,      
+                            position_tree    = None,      
+                            hour             = None,      
+                            ID               = 'Bus'+str(NoBus),    
+                            type             = 'bus',      
+                            sub_type         = None,        
+                            value            = None
+                                              )
+                # Add bus vars 
+                nw_variables.append(bus_var_temp)
+        del auxBus, bus_var_temp, bus_var_name
+        
+        
+        # Input branch vars   
+        auxBranch=['P','Q','ANG']
+        for NoBranch in range(mpc['NoBranch']):
+            for branch_var_name in auxBranch:
+                branch_var_temp = network_variable( 
+                            name             = branch_var_name,      
+                            position_tree    = None,      
+                            hour             = None,      
+                            ID               = 'Branch'+str(NoBranch),    
+                            type             = 'branch',      
+                            sub_type         = None,        
+                            value            = None
+                                              )
+                # Add bus vars 
+                nw_variables.append(branch_var_temp)
+        del auxBranch, branch_var_temp, branch_var_name
+        
+        
+        # NoID is total number of elements  NoID = NoGen + NoBranch + NoBus
+        NoID = mpc['NoGen'] + mpc['NoBranch'] + mpc['NoBus']
+        
+        return nw_parameters, nw_variables
+    
+    
+    # ####################################################################
+    # ####################################################################
+    
     '''Network model to record var and para in graph and get values from node'''
     class NetworkModel():
         def __init__(self):
-            self.readVarPara = readVarPara(mpc,network_parameter,network_variable)
+            self.readVarPara = readVarPara()
             self.network_parameters = self.readVarPara[0] # nw_parameters
             self.network_variables = self.readVarPara[1]  # nw_variables
             self._create_graph()
@@ -339,7 +339,7 @@ def DCOPF_function(mpc,NoTime):
         m.Set['Bus'] = range(mpc['NoBus'])
         m.Set['Gen'] = range(mpc['NoGen'])
         m.Set['Tim'] = range(NoTime) #range(24)
-        #m.zset = range(3) # piece wise generator cost
+        m.zset = range(3) # piece wise generator cost
     
         return m
     
@@ -362,12 +362,13 @@ def DCOPF_function(mpc,NoTime):
     def addVar(m):
       
         # Gen
-        m.Pgen = Var(m.Set['Gen'],m.Set['Tim'], domain=Reals, initialize=0)
-        m.Cgen = Var(m.Set['Gen'],m.Set['Tim'], domain=Reals, initialize=0)
-#
+        m.Pgen = Var(m.Set['Gen'],m.Set['Tim'], domain=NonNegativeReals, initialize=10)
+        m.Cgen = Var(m.Set['Gen'],m.Set['Tim'], domain=NonNegativeReals, initialize=10)
+       
+        
         # Branch
         m.Pbra = Var(m.Set['Bra'], m.Set['Tim'], domain=Reals, initialize=0) # Branch power flow
-        #m.ICbra = Var(m.Set['Bra'], m.Set['Tim'], domain=NonNegativeReals, initialize=0) # invest capacity
+        m.ICbra = Var(m.Set['Bra'], m.Set['Tim'], domain=NonNegativeReals, initialize=0) # invest capacity
         
         # Bus angle
         m.Ang = Var(m.Set['Bus'], m.Set['Tim'], bounds=(-2*math.pi, 2*math.pi), initialize=0) # from 0
@@ -422,11 +423,11 @@ def DCOPF_function(mpc,NoTime):
             return m.Ang[slc_bus,xt] == 0
         
     
-            # Branch capacity 
+        # Branch capacity 
         def braCapacity_rule(m,xbr,xt):
             noDiff = mpc['NoGen'] + mpc['NoBus'] # change node number to branch number
             if NetworkModel.network._node[xbr + noDiff]['obj'].parameters[3].value != 0:
-                return  m.Pbra[xbr,xt] <= NetworkModel.network._node[xbr + noDiff]['obj'].parameters[3].value #\
+                return  m.Pbra[xbr,xt] <= m.ICbra[xbr,xt] + NetworkModel.network._node[xbr + noDiff]['obj'].parameters[3].value #\
             else:
                 return  m.Pbra[xbr,xt] <= float('inf')
     
@@ -434,9 +435,9 @@ def DCOPF_function(mpc,NoTime):
         def braCapacityN_rule(m,xbr,xt):
             noDiff = mpc['NoGen'] + mpc['NoBus'] # change node number to branch number
             if NetworkModel.network._node[xbr + noDiff]['obj'].parameters[3].value != 0:
-                return  -m.Pbra[xbr,xt] <=   NetworkModel.network._node[xbr + noDiff]['obj'].parameters[3].value #\
+                return  m.Pbra[xbr,xt] >= - m.ICbra[xbr,xt] - NetworkModel.network._node[xbr + noDiff]['obj'].parameters[3].value #\
             else:
-                return  -m.Pbra[xbr,xt] <= float('inf')
+                return  m.Pbra[xbr,xt] >= -float('inf')
         
         
     
@@ -467,8 +468,7 @@ def DCOPF_function(mpc,NoTime):
                 else:
                     return m.Cgen[xg,xt] == m.Pgen[xg,xt] * lcost[2][xg]
             
-        
-        
+                
         
         
     
@@ -486,7 +486,7 @@ def DCOPF_function(mpc,NoTime):
         m.DCPF = Constraint( m.Set['Bra'], m.Set['Tim'], rule=rules.DCPF_rule ) 
         
         # Set slack bus angle to 0
-       # m.slackBus = Constraint( m.Set['Tim'], rule=rules.slackBus_rule ) 
+        m.slackBus = Constraint( m.Set['Tim'], rule=rules.slackBus_rule ) 
         
         
         # Add branch capacity constraints
@@ -498,18 +498,17 @@ def DCOPF_function(mpc,NoTime):
         m.nodeBalance = Constraint( m.Set['Bus'],m.Set['Tim'], rule=rules.nodeBalance_rule )    
     
         return m
-      
     
     # Objective function 
     def OFrule(m):
     
         # investment cost: £200/MVA #TODO: update the cost
         return (        # investment cost
-                       # sum(m.ICbra[xbr,xt]*1e-5 for xbr in m.Set['Bra'] for xt in m.Set['Tim'] ) +
+                        sum(m.ICbra[xbr,xt]*1e-5 for xbr in m.Set['Bra'] for xt in m.Set['Tim'] ) +
                         # generation cost
                         sum( m.Cgen[xg,xt] for xg in m.Set['Gen'] for xt in m.Set['Tim'] ) +
                         # load curtailment cost
-                        sum( m.Plc[xb,xt]*1e3 for xb in m.Set['Bus'] for xt in m.Set['Tim'])
+                        sum( m.Plc[xb,xt]*1e10 for xb in m.Set['Bus'] for xt in m.Set['Tim'])
                 
                 )
     
@@ -541,23 +540,15 @@ def DCOPF_function(mpc,NoTime):
                 else:                                                 # Polinomial model
                     # Select number of pieces for the approximation
                     if xLen == 0:  # Default case
-                        
                         Delta = mpc['gen']['PMAX'][NoGen]
-                        
-                        
                         if Delta == 0:
-                            lcost[0][NoGen]=1
-                            lcost[1][NoGen]=1
-                            lcost[2][NoGen]=1
+                            LGcost.append(0)
                         else:
                             Delta /= 3
                        
                             NoPieces = int(np.floor(mpc['gen']['PMAX'][NoGen]/Delta))
-                            
-                            
+    
                             aux = mpc['gen']['PMIN'][NoGen]
-                            
-                                
                             for xp in range(NoPieces+1):
                                 xval[xp][NoGen] = aux
                                 xc = mpc['gencost']['NCOST'][NoGen]-1 
@@ -665,18 +656,19 @@ def DCOPF_function(mpc,NoTime):
     
     
     
-    # # Number of time points
-    # NoTime = 2
+    # Number of time points
+    NoTime = 1
     
-    # # load json file from file directory
-    # mpc = json.load(open(os.path.join(os.path.dirname(__file__), 
-    #                                   'tests', 'json', 
-    #                                   'Transmission_Network_UK2.json')))    # Transmission_Network_UK2.json
+    
+    # load json file from file directory
+    mpc = json.load(open(os.path.join(os.path.dirname(__file__), 
+                                      'tests', 'json', 
+                                      'Transmission_Network_UK2.json')))    # Transmission_Network_UK2.json
     
     # """  change load in mpc """
     # for tempi in range(30): #[21,22]: #
-    #     for i in range(NoTime):
-    #         mpc["demandP"][str(i)][tempi] = mpc["demandP"][str(i)][tempi]*100
+    #     for i in range(24):
+    #         mpc["demandP"][str(i)][tempi] = mpc["demandP"][str(i)][tempi]*1
        
     
     
@@ -698,7 +690,7 @@ def DCOPF_function(mpc,NoTime):
     
     # Defining concrete optimisation model
     model = ConcreteModel()
-    model.dual = pyo.Suffix(direction=pyo.Suffix.IMPORT_EXPORT)
+    
     # Adding sets
     model = addSet(model)
     
@@ -714,75 +706,54 @@ def DCOPF_function(mpc,NoTime):
     # Adding objective function
     model.obj = Objective(rule=OFrule, sense=minimize)
     
-    # def test_rule(model,xt):
-    #         return model.Pgen[0,0] >= 400 #139-183
-    # model.test = Constraint(  rule=test_rule )
-    
-    
     # solve pyomo model
     solver = SolverFactory('glpk')
     results = solver.solve(model)
     # solver.solve(model)
     
     
+    ''' Print results '''
+    
+    print('min obj cost:',Val(model.obj))
+    # print (Val(sum(model.Cgen[i,0] for i in range(5))))
+    # print (Val(sum(model.Pgen[i,0] for i in range(5))))
+    
+    # Increased branch capacity (MVA exceeded capacity limits)
+    #model.ICbra.pprint() 
+    #model.Pgen.pprint()
+    # model.Pbra.pprint()
     
     
-   #  ''' Print results '''
-    
-   # # print('min obj cost:',Val(model.obj))
-   
-   #  print('min obj cost:',Val(model.obj))
-   #  print("generation cost:", Val(sum( model.Cgen[xg,xt].value for xg in model.Set['Gen'] for xt in model.Set['Tim'] )))
-   #  print("lc cost: ", Val(sum( model.Plc[xb,xt]*1e3 for xb in model.Set['Bus'] for xt in model.Set['Tim'])))
-        
-    
-  
-    plc_result=[]
-    dual_bus=[]
-    for xb in range(mpc['NoBus']):
-        temp = []
-        for xt in range(NoTime):
-            temp.append( Val(model.Plc[xb,xt]) )
-            dual_bus.append( model.dual[model.nodeBalance[xb,xt]])
-            
-        plc_result.append( max(temp) )
-        if plc_result[xb] > 0:
-           print('Load curtailment of '+ str(plc_result[xb])+" at bus "+str(xb) )
-
-            
-            
-           # print("nodal price (dual variable) on bus "+str(xb)+" : "+str(dual_bus[xb]))
-    
-    
-    
-    dual_bra=[]
+    maxICbra=[]
     for xb in range(mpc['NoBranch']):
+        tempICbra = []
         for xt in range(NoTime):
-            
-            
-            if model.dual[model.braCapacity[xb,xt]] == 0:
-                if model.dual[model.braCapacityN[xb,xt]]== 0:
-                    dual_bra.append(0)
-                else:
-                    dual_bra.append(-1*model.dual[model.braCapacityN[xb,xt]])
-            else:
-                if model.dual[model.braCapacity[xb,xt]] == 0:
-                    dual_bra.append(0)
-                else:
-                    dual_bra.append(-1*model.dual[model.braCapacity[xb,xt]])
-            
-           # print(model.dual[model.braCapacity[xb,xt]])
-            #print(model.dual[model.braCapacityN[xb,xt]])
+            tempICbra.append( Val(model.ICbra[xb,xt]) )
+        maxICbra.append( max(tempICbra) )
+        if maxICbra[xb] > 0:
+            print('Increase '+ str(maxICbra[xb]) +' (MW) on Branch '+ str(xb) 
+                  + ", from bus: " + str(mpc["branch"]["F_BUS"][xb]) 
+                  + ", to bus: " + str(mpc["branch"]["T_BUS"][xb]) )
     
-    # print("nodal price")
-    # for xb in range(mpc["NoBus"]):
-    #     for xt in range(NoTime):
-    #         print (model.dual[model.nodeBalance[xb,xt]])
-    # print("dual branch")
-    # print(dual_bra)
-            
-    # print("Gen output:")
-    # model.Pgen.pprint()  
-    # model.Pbra.pprint()      
+    
+    # if sum(maxICbra) == 0:
+    #     print('No requirement for line capacity increase')   
+    # else :
+    #     print('Required increase capacity on branches:', maxICbra)
+    
+    
+    
+    # '''Test screening model in Pypsa'''
+    # from conversion_model_pyene2pypsa import PypsaOnly
+    
+    # converter2 = PypsaOnly()
+    # nu = converter2.pyene2pypsa(mpc,NoTime)
+    
+    # #nu[0].pf()
+    # nu[0].lopf()
+    # #nu[0].lopf(solver_name='gurobi', solver_io="python")
+    # print(nu[0].lines_t.p0)
+    # print(nu[0].generators_t.p)
+    # #print(nu[0].loads_t.p)
 
-    return (Val(model.obj), plc_result, dual_bra, model.Pbra)
+

@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 """
-Convert m into json
+@author: Wangwei Kong
+
+Convert .m file into .json
 """
 
 import numpy as np

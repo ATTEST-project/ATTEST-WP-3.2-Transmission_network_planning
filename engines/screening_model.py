@@ -1,32 +1,47 @@
 # -*- coding: utf-8 -*-
-"""
-
-
+'''
 @author: Wangwei Kong
 
-"""
+Screening model consider different years and scenarios with contingency 
+
+    Main function:
+        Required inputs: 
+            Test case: country name, case name, .m file related to the case name
+            Load info: multipliers for different year/ scenarios, yearly peak load
+            Cost: branch investment cost (default to 100 $/MW), laod curtailment penalty (default to 1e4 $/MW)
+            Contingency: contingency status (True/False), contingency lists
+            Investment catalogue
+        
+            
+        Outputs:
+            Invtervension list: branch investments values for all years and scenarios
+            
+            Yearly investments (printed not stored): branch investment for each year
+            
+        Note:
+            The screening model is run for each year/ scenario to find the branch investments.
+            Each year (y) will take previous investments from year y-1, then form new investments for year y.
+                            
+    
+'''
+
 from __future__ import (division, print_function)
 from pyomo.core import ConcreteModel, Constraint, minimize, NonNegativeReals, \
  Objective, Var,  Binary, Set, Reals
 from pyomo.environ import SolverFactory
 from pyomo.core import value as Val
 import networkx as nx
+import pyomo.environ as pyo
 from dataclasses import dataclass
 import json
 import os
 import math
 import numpy as np
+from scenarios_multipliers import get_mult
+from input_output_function import  get_peak_data, read_input_data
+import cProfile
+import pstats
 
-
-@dataclass
-class network_variable:
-    name                :   str     = None      # Name of the variable
-    position_tree       :   dict    = None      # Position in the energy tree - representative days
-    hour                :   int     = None      # Hour of the solution in case of multiple hours
-    ID                  :   str     = None      # ID of element
-    type                :   str     = None      # Type of element, e.g. bus, branch
-    sub_type            :   str     = None      # Sub type of element, e.g. thermal, hydro
-    value               :   float   = None      # Value of the solution for this specific variable
 
 @dataclass
 class network_parameter:
@@ -56,8 +71,7 @@ class nodes_info_network:
 
 # ####################################################################
 # ####################################################################
-def main_screening():
-    
+def model_screening(mpc,cont_list , prev_invest, peak_Pd, mult,NoTime = 1):
     ''''read paras and vars from jason file'''
     def readVarPara():
     
@@ -137,81 +151,21 @@ def main_screening():
                 nw_parameters.append(branch_para_temp)
         del auxBranch, branch_para_temp, branch_para_name
         
-        # ####################################################################
-        # ####################################################################
+     
         
-        '''Input vars for generator, bus and branch'''
-        # Input gen vars   
-        nw_variables=[]
-        auxGen=['Pout','Qout']
-        for NoGen in range(mpc['NoGen']):
-            for gen_var_name in auxGen:
-                gen_var_temp = network_variable( 
-                            name             = gen_var_name,      
-                            position_tree    = None,      
-                            hour             = None,      
-                            ID               = 'Gen'+str(NoGen),    
-                            type             = 'generator',      
-                            sub_type         = None,        
-                            value            = None
-                                              )
-                # Add generator vars  
-               
-                nw_variables.append(gen_var_temp)
-        del auxGen, gen_var_temp, gen_var_name
-        
-        
-        # Input bus vars   
-        auxBus=['Pin','Qin','Pout','Qout']
-        for NoBus in range(mpc['NoBus']):
-            for bus_var_name in auxBus:
-                bus_var_temp = network_variable( 
-                            name             = bus_var_name,      
-                            position_tree    = None,      
-                            hour             = None,      
-                            ID               = 'Bus'+str(NoBus),    
-                            type             = 'bus',      
-                            sub_type         = None,        
-                            value            = None
-                                              )
-                # Add bus vars 
-                nw_variables.append(bus_var_temp)
-        del auxBus, bus_var_temp, bus_var_name
-        
-        
-        # Input branch vars   
-        auxBranch=['P','Q','ANG']
-        for NoBranch in range(mpc['NoBranch']):
-            for branch_var_name in auxBranch:
-                branch_var_temp = network_variable( 
-                            name             = branch_var_name,      
-                            position_tree    = None,      
-                            hour             = None,      
-                            ID               = 'Branch'+str(NoBranch),    
-                            type             = 'branch',      
-                            sub_type         = None,        
-                            value            = None
-                                              )
-                # Add bus vars 
-                nw_variables.append(branch_var_temp)
-        del auxBranch, branch_var_temp, branch_var_name
-        
-        
-        # NoID is total number of elements  NoID = NoGen + NoBranch + NoBus
-        NoID = mpc['NoGen'] + mpc['NoBranch'] + mpc['NoBus']
-        
-        return nw_parameters, nw_variables
+        return nw_parameters
     
     
     # ####################################################################
     # ####################################################################
-    
+        
+        
     '''Network model to record var and para in graph and get values from node'''
     class NetworkModel():
         def __init__(self):
             self.readVarPara = readVarPara()
-            self.network_parameters = self.readVarPara[0] # nw_parameters
-            self.network_variables = self.readVarPara[1]  # nw_variables
+            self.network_parameters = self.readVarPara # nw_parameters
+            # self.network_variables = self.readVarPara[1]  # nw_variables
             self._create_graph()
             
             
@@ -240,16 +194,7 @@ def main_screening():
                          counter += 1
                          nodes_graph.append(node)
                      exist = False
-    
-               # Adding variables to nodes 
-               for variable in self.network_variables:
-                   for node_g in nodes_graph:
-                       if node_g.ID == variable.ID:
-                           if node_g.variables:
-                               node_g.variables.append(variable)
-                           else:
-                               node_g.variables = [variable]
-                           break
+         
         
                # Adding nodes to graph
                for node_g in nodes_graph:
@@ -332,14 +277,15 @@ def main_screening():
     '''optimization (pyomo) model'''
     
     #  Sets 
-    def addSet(m):
+    def addSet(m): 
         m.Set={}
         ''' Add pyomo sets '''
         m.Set['Bra'] = range(mpc['NoBranch'])
         m.Set['Bus'] = range(mpc['NoBus'])
         m.Set['Gen'] = range(mpc['NoGen'])
         m.Set['Tim'] = range(NoTime) #range(24)
-        m.zset = range(3) # piece wise generator cost
+        #m.zset = range(3) # piece wise generator cost
+        m.Set['Cont'] = range(len(cont_list))
     
         return m
     
@@ -362,162 +308,191 @@ def main_screening():
     def addVar(m):
       
         # Gen
-        m.Pgen = Var(m.Set['Gen'],m.Set['Tim'], domain=NonNegativeReals, initialize=10)
-        m.Cgen = Var(m.Set['Gen'],m.Set['Tim'], domain=NonNegativeReals, initialize=10)
-       
-        
+        m.Pgen = Var(m.Set['Gen'],m.Set['Cont'], m.Set['Tim'], domain=NonNegativeReals, initialize=10)
+        m.Cgen = Var(m.Set['Gen'],m.Set['Cont'], m.Set['Tim'], domain=NonNegativeReals, initialize=10)
+    
         # Branch
-        m.Pbra = Var(m.Set['Bra'], m.Set['Tim'], domain=Reals, initialize=0) # Branch power flow
+        m.Pbra = Var(m.Set['Bra'], m.Set['Cont'], m.Set['Tim'], domain=Reals, initialize=0) # Branch power flow
         m.ICbra = Var(m.Set['Bra'], m.Set['Tim'], domain=NonNegativeReals, initialize=0) # invest capacity
         
         # Bus angle
-        m.Ang = Var(m.Set['Bus'], m.Set['Tim'], bounds=(-2*math.pi, 2*math.pi), initialize=0) # from 0
+        m.Ang = Var(m.Set['Bus'], m.Set['Cont'], m.Set['Tim'], bounds=(-2*math.pi, 2*math.pi), initialize=0) # from 0
         
         # Load curtailment
-        m.Plc = Var(m.Set['Bus'], m.Set['Tim'], domain=NonNegativeReals, initialize=0)
+        m.Plc = Var(m.Set['Bus'], m.Set['Cont'],  m.Set['Tim'], domain=NonNegativeReals, initialize=0)
         
         return m
          
     
     class rules:
     
-        # Gen output constraint rules
-        def genMax_rule(m, xg, xt):
-            pmax=[]
-            for node in NetworkModel.network.nodes(data=True):
-                if node[1]['obj'].type == "generator":
-                    pmax.append( node[1]['obj'].parameters[0].value)
-            return m.Pgen[xg,xt] <= pmax[xg]  # Gpout<=Pmax
-            del pmax
+       # Gen output constraint rules
+        def genMax_rule(m, xg,xk, xt):
+            if gen_status == True and mpc["gen"]["GEN"][xg] == 0 :
+                return m.Pgen[xg,  xk, xt] == 0 
+            else:
+                return m.Pgen[xg, xk, xt] <= mult * m.para["Gen"+str(xg)+"_PMAX"]
+            
         
-        def genMin_rule(m,xg,xt):
-            pmin=[]
-            for node in NetworkModel.network.nodes(data=True):
-                if node[1]['obj'].type == "generator":
-                    pmin.append( node[1]['obj'].parameters[1].value)
-            return m.Pgen[xg,xt] >= pmin[xg]  # Gpout>=Pmin
-            del pmin
+        def genMin_rule(m,xg, xk, xt):
+            if gen_status == True and mpc["gen"]["GEN"][xg] == 0 :
+                return m.Pgen[xg,  xk, xt] == 0 
+            else:   
+                return m.Pgen[xg,xk, xt] >= m.para["Gen"+str(xg)+"_PMIN"]
+        
         
         
         # Branch constraint
         # DC power flow
-        def DCPF_rule(m, xbr,xt):
-            br_X=[]
-            fbus = []
-            tbus = []
-            pu2value = mpc['bus']['BASE_KV'][0]**2 / mpc['baseMVA']
-            for node in NetworkModel.network.nodes(data=True):
-                if node[1]['obj'].type == "branch":
-                    fbus.append ( node[1]['obj'].ends[0] -1 )
-                    tbus.append ( node[1]['obj'].ends[1] -1 )
-                    br_X.append ( node[1]['obj'].parameters[2].value/100 )
+        def DCPF_rule(m, xbr,xk, xt):
             
-            return  m.Pbra[xbr,xt] == ( m.Ang[fbus[xbr],xt] - m.Ang[tbus[xbr],xt]) / br_X[xbr]
+            br_X = mpc['branch']['BR_X'][xbr]/ mpc['baseMVA']
+            fbus_name = mpc['branch']['F_BUS'][xbr]
+            fbus = mpc['bus']['BUS_I'].index(fbus_name)
+            tbus_name = mpc['branch']['T_BUS'][xbr]
+            tbus = mpc['bus']['BUS_I'].index(tbus_name)
+            
+            if line_status == True and mpc["branch"]["BR_STATUS"][xbr] == 0:
+                temp_line_stat = 0
+            else:
+                temp_line_stat = 1
+            
+            if cont_list[xk][xbr] == 0 or temp_line_stat == 0:
+                return Constraint.Skip
+            else:             
+                return  m.Pbra[xbr,xk, xt] == ( m.Ang[fbus,xk, xt] - m.Ang[tbus,xk, xt]) / br_X
         
         
-        def slackBus_rule(m,xt):
+        
+        def slackBus_rule(m,xk, xt):
             for i in range(mpc['NoBus']):
                 if mpc['bus']['BUS_TYPE'][i] == 3:
                     slc_bus = i
             
-            return m.Ang[slc_bus,xt] == 0
+            return m.Ang[slc_bus,xk, xt] == 0
         
     
+        # # Branch capacity 
+        # # TODO: check line status relation with investment
+        # def braCapacity_rule(m,xbr,xk,xt):
+        #     if m.para["Branch"+str(xbr)+"_RATE_A"] != 0:
+        #         return m.Pbra[xbr, xk, xt] <=  cont_list[xk][xbr] * \
+        #                                         ( (m.ICbra[xbr, xt] + prev_invest[xbr] + m.para["Branch"+str(xbr)+"_RATE_A"] )  ) 
+        #     else:
+        #         return  m.Pbra[xbr, xk, xt]  <= cont_list[xk][xbr] * float('inf') #* mpc["branch"]["BR_STATUS"][xbr]
+       
+        
+        # # both flow directions       
+        # def braCapacityN_rule(m,xbr,xk, xt):
+        #     if m.para["Branch"+str(xbr)+"_RATE_A"] != 0:
+        #         return  - m.Pbra[xbr,xk,  xt] <= cont_list[xk][xbr] *\
+        #                                         ( (m.ICbra[xbr, xt] + prev_invest[xbr] + m.para["Branch"+str(xbr)+"_RATE_A"] )  )
+        #     else:
+        #         return  - m.Pbra[xbr,xk,  xt]  <= cont_list[xk][xbr] * float('inf') #* mpc["branch"]["BR_STATUS"][xbr]
+        
+        
         # Branch capacity 
-        def braCapacity_rule(m,xbr,xt):
-            noDiff = mpc['NoGen'] + mpc['NoBus'] # change node number to branch number
-            if NetworkModel.network._node[xbr + noDiff]['obj'].parameters[3].value != 0:
-                return  m.Pbra[xbr,xt] <= m.ICbra[xbr,xt] + NetworkModel.network._node[xbr + noDiff]['obj'].parameters[3].value #\
+        def braCapacity_rule(m,xbr,xk,xt):
+            if line_status == True and mpc["branch"]["BR_STATUS"][xbr] == 0:
+                temp_line_stat = 0
             else:
-                return  m.Pbra[xbr,xt] <= float('inf')
-    
-        # both flow directions
-        def braCapacityN_rule(m,xbr,xt):
-            noDiff = mpc['NoGen'] + mpc['NoBus'] # change node number to branch number
-            if NetworkModel.network._node[xbr + noDiff]['obj'].parameters[3].value != 0:
-                return  m.Pbra[xbr,xt] >= - m.ICbra[xbr,xt] - NetworkModel.network._node[xbr + noDiff]['obj'].parameters[3].value #\
-            else:
-                return  m.Pbra[xbr,xt] >= -float('inf')
-        
-        
-    
-        # Nodal power balance
-        def nodeBalance_rule(m, xb,xt):
+                temp_line_stat = 1
             
-            noDiff = nodeConnections[0]
-            genCbus = nodeConnections[1]
-            braFbus = nodeConnections[2]
-            braTbus = nodeConnections[3]
-            Pd = nodeConnections[4]
+            if cont_list[xk][xbr] == 0 or temp_line_stat == 0:
+                return Constraint.Skip
+            else:             
+                if m.para["Branch"+str(xbr)+"_RATE_A"] != 0:                  
+                    return m.Pbra[xbr, xk, xt] <=   m.ICbra[xbr, xt] + prev_invest[xbr] + m.para["Branch"+str(xbr)+"_RATE_A"] 
+                    
+                else:   
+                    return  m.Pbra[xbr, xk, xt]  <=  float('inf')
+                
+                    
+        
+        # both flow directions       
+        def braCapacityN_rule(m,xbr,xk, xt):
+            if line_status == True and mpc["branch"]["BR_STATUS"][xbr] == 0:
+                temp_line_stat = 0
+            else:
+                temp_line_stat = 1
+            
+            
+            if cont_list[xk][xbr] == 0 or temp_line_stat == 0:
+                return  Constraint.Skip
+            else:             
+                if m.para["Branch"+str(xbr)+"_RATE_A"] != 0:
+                    return  - m.Pbra[xbr,xk,  xt] <=  m.ICbra[xbr, xt] + prev_invest[xbr] + m.para["Branch"+str(xbr)+"_RATE_A"] 
+                
+                else:
+                    return  - m.Pbra[xbr,xk,  xt]  <=  float('inf') 
+            
+            
+        
+        
+        
+        
+        
+        # Nodal power balance
+        def nodeBalance_rule(m, xb,xk,xt):
+            
     
-            return sum( m.Pgen[genCbus[xb][i],xt]  for i in range(len(genCbus[xb])) )  \
-                    + sum( m.Pbra[braTbus[xb][i]-noDiff,xt]  for i in range(len(braTbus[xb])) )  \
-                    == sum( m.Pbra[braFbus[xb][i]-noDiff,xt]  for i in range(len(braFbus[xb])) ) \
-                      + Pd[xb][xt] - m.Plc[xb,xt]
+            return sum( m.Pgen[genCbus[xb][i],xk,xt]  for i in range(len(genCbus[xb])) )  \
+                    + sum( m.Pbra[braTbus[xb][i]-noDiff,xk,xt]  for i in range(len(braTbus[xb])) )  \
+                    == sum( m.Pbra[braFbus[xb][i]-noDiff,xk,xt]  for i in range(len(braFbus[xb])) ) \
+                      + mult *Pd[xb] - m.Plc[xb,xk,xt]
     
-    
+        def loadcurtail_rule(m, xb,xk,xt):
+            
+            return  mult *abs(Pd[xb]) >= m.Plc[xb,xk,xt]
         
         # # Cost Constraints
         # Piece wise gen cost: Number of piece = 3
-        def pwcost_rule(m,xg,xt):
-            if Val(m.Pgen[xg,xt]) <= xval[1][xg]:
-                return m.Cgen[xg,xt] == m.Pgen[xg,xt] * lcost[0][xg]
-            else:
-                if Val(m.Pgen[xg,xt]) <= xval[2][xg]:
-                    return m.Cgen[xg,xt] == m.Pgen[xg,xt] * lcost[1][xg]
-                else:
-                    return m.Cgen[xg,xt] == m.Pgen[xg,xt] * lcost[2][xg]
+        def pwcost_rule(m,xg,xk,xp,xt):
+                      
+            return m.Cgen[xg,xk,xt] >= m.Pgen[xg,xk,xt] * lcost[xp][xg] + min_y[xp][xg] 
             
+            
+
                 
-        
+    
         
     
               
     def addConstraints(m):
         
-        # Add Gen constraint rules
-        m.genMax = Constraint( m.Set['Gen'], m.Set['Tim'], rule=rules.genMax_rule )
-        m.genMin = Constraint( m.Set['Gen'], m.Set['Tim'], rule=rules.genMin_rule )
+       # Add Gen constraint rules
+        m.genMax = Constraint( m.Set['Gen'], m.Set['Cont'], m.Set['Tim'], rule=rules.genMax_rule )
+        m.genMin = Constraint( m.Set['Gen'], m.Set['Cont'], m.Set['Tim'], rule=rules.genMin_rule )
        
         # piecve wise gen cost
-        m.pwcost = Constraint(m.Set['Gen'],  m.Set['Tim'], rule=rules.pwcost_rule)
+        m.pwcost = Constraint(m.Set['Gen'],m.Set['Cont'], range(NoPieces),  m.Set['Tim'],rule=rules.pwcost_rule)
         
         # Add branch flow DC OPF
-        m.DCPF = Constraint( m.Set['Bra'], m.Set['Tim'], rule=rules.DCPF_rule ) 
+        m.DCPF = Constraint( m.Set['Bra'], m.Set['Cont'], m.Set['Tim'], rule=rules.DCPF_rule ) 
         
         # Set slack bus angle to 0
-        m.slackBus = Constraint( m.Set['Tim'], rule=rules.slackBus_rule ) 
+        m.slackBus = Constraint( m.Set['Cont'],m.Set['Tim'], rule=rules.slackBus_rule ) 
         
         
         # Add branch capacity constraints
-        m.braCapacity = Constraint( m.Set['Bra'], m.Set['Tim'], rule=rules.braCapacity_rule )
-        m.braCapacityN = Constraint( m.Set['Bra'], m.Set['Tim'], rule=rules.braCapacityN_rule )
+        m.braCapacity = Constraint( m.Set['Bra'],m.Set['Cont'], m.Set['Tim'], rule=rules.braCapacity_rule )
+        m.braCapacityN = Constraint( m.Set['Bra'],m.Set['Cont'], m.Set['Tim'], rule=rules.braCapacityN_rule )
         
     
         # Add nodal balance constraint rules
-        m.nodeBalance = Constraint( m.Set['Bus'],m.Set['Tim'], rule=rules.nodeBalance_rule )    
+        m.nodeBalance = Constraint( m.Set['Bus'],m.Set['Cont'],m.Set['Tim'], rule=rules.nodeBalance_rule ) 
+        
+        m.loadcurtail = Constraint( m.Set['Bus'],m.Set['Cont'],m.Set['Tim'], rule=rules.loadcurtail_rule)  
+        
     
         return m
     
-    # Objective function 
-    def OFrule(m):
-    
-        # investment cost: £200/MVA #TODO: update the cost
-        return (        # investment cost
-                        sum(m.ICbra[xbr,xt]*1e-5 for xbr in m.Set['Bra'] for xt in m.Set['Tim'] ) +
-                        # generation cost
-                        sum( m.Cgen[xg,xt] for xg in m.Set['Gen'] for xt in m.Set['Tim'] ) +
-                        # load curtailment cost
-                        sum( m.Plc[xb,xt]*1e10 for xb in m.Set['Bus'] for xt in m.Set['Tim'])
-                
-                )
-    
-    
-    
+        
     # piece wise gen cost
-    def genCost_rule(xLen=0):
+    def genCost_rule(mpc):
+        if mpc['gencost']['MODEL'] != []:
             # Define piece wise cost curve approximation 
-            LGcost = []
+            LGcost = np.zeros((3, mpc['NoGen']), dtype=float)
             xval = np.zeros((4,mpc['NoGen']), dtype=float)
             yval = np.zeros((4,mpc['NoGen']), dtype=float)
             lcost = np.zeros((3, mpc['NoGen']), dtype=float)
@@ -539,138 +514,117 @@ def main_screening():
                 
                 else:                                                 # Polinomial model
                     # Select number of pieces for the approximation
-                    if xLen == 0:  # Default case
-                        Delta = mpc['gen']['PMAX'][NoGen]
-                        if Delta == 0:
-                            LGcost.append(0)
-                        else:
-                            Delta /= 3
-                       
-                            NoPieces = int(np.floor(mpc['gen']['PMAX'][NoGen]/Delta))
-    
-                            aux = mpc['gen']['PMIN'][NoGen]
-                            for xp in range(NoPieces+1):
-                                xval[xp][NoGen] = aux
-                                xc = mpc['gencost']['NCOST'][NoGen]-1 
-                                yval[xp][NoGen] = mpc['gencost']['COST'][NoGen][xc]
-                                for x in range(1, mpc['gencost']['NCOST'][NoGen]):
-                                    xc -= 1
-                                    yval[xp][NoGen] += mpc['gencost']['COST'][NoGen][xc]*xval[xp][NoGen]**x
-                                aux += Delta
-            
-                            # Convert to LP constraints 
-                            for xv in range(NoPieces):
-                                lcost[xv][NoGen] = (yval[xv+1][NoGen]-yval[xv][NoGen]) / (xval[xv+1][NoGen] - xval[xv][NoGen])
-                
-                            
-                            # lcost = [ k1  y0-k1*x0
-                            #           k1  y0-k1*x0
-                            #           k1  y0-k1*x0  ]
-                            
-                            LGcost.append(lcost[1][0])  
+                   
+                    Delta = mpc['gen']['PMAX'][NoGen]
                     
-            return  (lcost, xval,yval)
+                    if Delta > 0 :
+                 
+                        Delta /= 3
+                   
+                        NoPieces = 3#int(np.floor(mpc['gen']['PMAX'][NoGen]/Delta))
+    
+                        aux = mpc['gen']['PMIN'][NoGen]
+                        for xp in range(NoPieces+1):
+                            xval[xp][NoGen] = aux
+                            xc = mpc['gencost']['NCOST'][NoGen]-1 
+                            yval[xp][NoGen] = mpc['gencost']['COST'][NoGen][xc]
+                            for x in range(1, mpc['gencost']['NCOST'][NoGen]):
+                                xc -= 1
+                                yval[xp][NoGen] += mpc['gencost']['COST'][NoGen][xc]*xval[xp][NoGen]**x
+                            aux += Delta
+        
+                        # Convert to LP constraints 
+                        for xv in range(NoPieces):
+                            lcost[xv][NoGen] = (yval[xv+1][NoGen]-yval[xv][NoGen]) / (xval[xv+1][NoGen] - xval[xv][NoGen])
+                    
+                   
+                        
+                        
+                # LGcost =  y0-lcost*x0
+                for xp in range(NoPieces):
+                    LGcost[xp][NoGen] = yval[xp+1][NoGen] - xval[xp+1][NoGen] *  lcost[xp][NoGen]
+          
+                
+                
+                        
+
+                            
+        else:
+            xval = np.random.uniform(low=10, high=50, size=(4,mpc['NoGen']))
+            xval[1] = xval[1]*5 
+            xval[2] = xval[2]*10
+            xval[3] = xval[3]*15
+            yval = np.ones((4,mpc['NoGen']), dtype=float)
+            lcost = np.random.uniform(low=1, high=10, size=(3,mpc['NoGen']))
+            lcost[1] = lcost[1]*3
+            lcost[2] = lcost[2]*5
+            
+                
+                    
+        return  (NoPieces, lcost, LGcost)
+
+
     
     # find all connections
     def nodeConnections_rule():
-        # Node recorded: gen + bus + branch
-        # Node numbers : mpc['NoGen'] + mpc['NoBus'] + mpc['NoBranch']
-        # gen from node: 0
-        #     to   node: (mpc['NoGen'] - 1)
-        # bus from node: (mpc['NoGen'] )
-        #     to   node: (mpc['NoGen'] + mpc['NoBus'] - 1)
-        # bra from node: (mpc['NoGen'] + mpc['NoBus'])
-        #     to   node: (mpc['NoGen'] + mpc['NoBus'] + mpc['NoBranch'] -1)
-         
-        noDiff = mpc['NoGen'] + mpc['NoBus'] # change node number to branch number
-        
-        genCbus = {} # all the generators connected to each bus
-        braFbus = {} # all the branches from each bus
-        braTbus = {} # all the branches to each bus
-        for NoBus in range(mpc['NoBus']):
-            genCbus[NoBus] = []
-            braFbus[NoBus] = []
-            braTbus[NoBus] = []
-      
     
-        for connect in range(len(NetworkModel.branches_graph)):
-            for node in NetworkModel.network.nodes(data=True): 
-                if node[1]['obj'].type == "generator" :
-                    if node[1]['obj'].node == NetworkModel.branches_graph[connect][0] \
-                        or node[1]['obj'].node == NetworkModel.branches_graph[connect][1]:
-                        
-                        NoBus = node[1]['obj'].bus - 1
-                        genCbus[NoBus].append (node[1]['obj'].node)
-                
-                elif node[1]['obj'].type == "branch" :
-                    if node[1]['obj'].node == NetworkModel.branches_graph[connect][1]:
-                        NoBus = node[1]['obj'].ends[0] - 1
-                        braFbus[NoBus].append (node[1]['obj'].node)
-                    
-                    elif node[1]['obj'].node == NetworkModel.branches_graph[connect][0]:
-                        NoBus = node[1]['obj'].ends[1] - 1
-                        braTbus[NoBus].append (node[1]['obj'].node)
-                        
+        noDiff = 0
         
-        
-        Pd={}
-        for xn in range(mpc['NoBus']):
-            Pd[xn] = []
+        # genCbus[bus][gen_number]
+        genCbus = []
+        braFbus = []
+        braTbus = []
+        # only 1 timepoint for Pd
+        Pd = []
+        for xb in range(mpc["NoBus"]):
+            bus_number = mpc["bus"]["BUS_I"][xb]
+            # find generator connections
+            gen_number = [i for i,x in enumerate(mpc["gen"]["GEN_BUS"]) if x==bus_number]
+            genCbus.append(gen_number)
             
+            # find branch from this bus
+            braF_number = [i for i,x in enumerate(mpc["branch"]["F_BUS"]) if x==bus_number]
+            braFbus.append(braF_number)
+            # find branch to this bus
+            braT_number = [i for i,x in enumerate(mpc["branch"]["T_BUS"]) if x==bus_number]
+            braTbus.append(braT_number)
             
-        if NoTime == 1:
+            #record demand value
+            Pd.append( mpc['bus']['PD'][xb])
     
-            for xn in range(mpc['NoBus']):
-                Pd[xn].append( mpc['bus']['PD'][xn])
-        
-        else :
-          
-            demP = np.zeros(NoTime, dtype=float) 
-            for xn in range(mpc['NoBus']):
-                
-                if mpc['bus']['PD'][xn] != 0:          
-                    for xt in range(NoTime): 
-                        demP[xt] = mpc['demandP'][str(xt)][xn]
-                        Pd[xn].append(demP[xt])
-                else:
-                    for xt in range(NoTime): 
-                        demP[xt] = 0
-                        Pd[xn].append(demP[xt])
-    
-                
+        if peak_Pd !=[] :
+            Pd = peak_Pd
             
+    
+       
         return (noDiff, genCbus, braFbus, braTbus, Pd)
+    
+    
+    
+    # Objective function 
+    def OFrule(m):
+    
+        # investment cost: £200/MVA #TODO: update the cost
+        return (        # investment cost
+                        sum(m.ICbra[xbr,xt] for xbr in m.Set['Bra'] for xt in m.Set['Tim'] ) *cicost +
+                        # generation cost
+                        sum( m.Cgen[xg,0,xt] for xg in m.Set['Gen'] for xt in m.Set['Tim'] ) +
+                        # load curtailment cost
+                        sum( m.Plc[xb,xk,xt]  for xb in m.Set['Bus'] for xk in m.Set['Cont'] for xt in m.Set['Tim']) *penalty_cost
+                
+                )
+    
+    
+    
     
     
     
     ###############################################################################################
     ###############################################################################################   
     ###############################################################################################
-    ###############################################################################################
-    
-    '''
-    
-        Main function starts here
-        
-    '''
     
     
-    
-    # Number of time points
-    NoTime = 1
-    
-    
-    # load json file from file directory
-    mpc = json.load(open(os.path.join(os.path.dirname(__file__), 
-                                      'tests', 'json', 
-                                      'Transmission_Network_UK2.json')))    # Transmission_Network_UK2.json
-    
-    # """  change load in mpc """
-    # for tempi in range(30): #[21,22]: #
-    #     for i in range(24):
-    #         mpc["demandP"][str(i)][tempi] = mpc["demandP"][str(i)][tempi]*1
-       
-    
+   
     
     # build network model use graph
     NetworkModel = NetworkModel()
@@ -678,19 +632,18 @@ def main_screening():
     
     
     # read mpc file and find info, define gen cost
-    genCost = genCost_rule()
-    lcost = genCost[0]
-    xval = genCost[1]
-    yval = genCost[2]
     
-    nodeConnections = nodeConnections_rule()
+    NoPieces, lcost, min_y = genCost_rule(mpc)
+    
+    # if not specified, demand value PD is read from mpc file
+    noDiff, genCbus, braFbus, braTbus, Pd = nodeConnections_rule()
     
     
     ''' Build a pyomo model '''
     
     # Defining concrete optimisation model
     model = ConcreteModel()
-    
+    model.dual = pyo.Suffix(direction=pyo.Suffix.IMPORT_EXPORT)
     # Adding sets
     model = addSet(model)
     
@@ -709,51 +662,191 @@ def main_screening():
     # solve pyomo model
     solver = SolverFactory('glpk')
     results = solver.solve(model)
+
     # solver.solve(model)
+    # print(results)
+    print ('solver termination condition: ', results.solver.termination_condition)
+
+    
     
     
     ''' Print results '''
     
     print('min obj cost:',Val(model.obj))
-    # print (Val(sum(model.Cgen[i,0] for i in range(5))))
-    # print (Val(sum(model.Pgen[i,0] for i in range(5))))
+    # #print (Val(sum(model.Cgen[i,0] for i in range(5))))
+    # # print (Val(sum(model.Pgen[i,0] for i in range(5))))
+    # print("Total investment cost: ", Val(sum(model.ICbra[xbr,xt]*cicost for xbr in model.Set['Bra'] for xt in model.Set['Tim'] )))
+    print("Load curtailment: ", Val(sum( model.Plc[xb,xk,xt]  for xb in model.Set['Bus'] for xk in model.Set['Cont'] for xt in model.Set['Tim'])))
     
-    # Increased branch capacity (MVA exceeded capacity limits)
-    #model.ICbra.pprint() 
-    #model.Pgen.pprint()
-    # model.Pbra.pprint()
+    print("Gen cost: ", Val(sum( model.Cgen[xg,0,xt]  for xg in model.Set['Gen'] for xt in model.Set['Tim'])))
     
+    print("PMAX: ", mult *sum( mpc["gen"]["PMAX"]))
+    print("Pgen: ", Val(sum(model.Pgen[xg,0,0] for xg in range(mpc["NoGen"]))))
+    print("Pd: ", mult *sum(Pd))
     
+    for xk in model.Set['Cont']:
+        # print(xk, "_Load curtailment: ", Val(sum( model.Plc[xb,xk,xt]  for xb in model.Set['Bus'] for xt in model.Set['Tim'])))
+        for xb in model.Set['Bus'] :
+            if Val( model.Plc[xb,xk,0]  ) > 0 :
+                print("Cont: ", xk," bus: ",xb, " lc: ", Val( model.Plc[xb,xk,0]  ))
+                
+    # for xb in model.Set["Bus"]:
+    #     if genCbus[xb] != []:
+    #         print("bus: ", xb, ", Pgen", Val(sum( model.Pgen[genCbus[xb][i],0,0]  for i in range(len(genCbus[xb])) )))
+    #     else:
+    #         print("bus: ", xb,  ", Pgen = [] ")
+            
+
+
+
     maxICbra=[]
+    interv=[]
     for xb in range(mpc['NoBranch']):
         tempICbra = []
         for xt in range(NoTime):
             tempICbra.append( Val(model.ICbra[xb,xt]) )
         maxICbra.append( max(tempICbra) )
         if maxICbra[xb] > 0:
-            print('Increase '+ str(maxICbra[xb]) +' (MW) on Branch '+ str(xb) 
-                  + ", from bus: " + str(mpc["branch"]["F_BUS"][xb]) 
-                  + ", to bus: " + str(mpc["branch"]["T_BUS"][xb]) )
-    
+            interv.append( maxICbra[xb])
+            print('Increase ', str(maxICbra[xb]),' on Branch '+ str(xb))#, ", Cap:", maxICbra[xb]+mpc["branch"]["RATE_A"][xb]  )
+                  # + ", from bus: " + str(mpc["branch"]["F_BUS"][xb]) 
+                  # + ", to bus: " + str(mpc["branch"]["T_BUS"][xb]) )
     
     # if sum(maxICbra) == 0:
     #     print('No requirement for line capacity increase')   
     # else :
     #     print('Required increase capacity on branches:', maxICbra)
     
-    
-    
-    # '''Test screening model in Pypsa'''
-    # from conversion_model_pyene2pypsa import PypsaOnly
-    
-    # converter2 = PypsaOnly()
-    # nu = converter2.pyene2pypsa(mpc,NoTime)
-    
-    # #nu[0].pf()
-    # nu[0].lopf()
-    # #nu[0].lopf(solver_name='gurobi', solver_io="python")
-    # print(nu[0].lines_t.p0)
-    # print(nu[0].generators_t.p)
-    # #print(nu[0].loads_t.p)
+    interv = [math.ceil(x) for x in interv]
+    interv.sort()
+    # print("intervention list: ",interv)
+
+    return interv, maxICbra
 
 
+def main_screening(mpc,multiplier,cicost, penalty_cost, peak_Pd, cont_list):
+    ''' Time point '''
+    # Number of time points
+    NoTime = 1
+
+    # initialise branch investments
+    prev_invest = [0]*mpc["NoBranch"]
+    interv_list = []
+    
+    
+    for xy in range(len(multiplier)):
+        print('\n----------- YEAR ', xy, ' ----------- ')
+        
+        for xsc in range(len(multiplier[xy])):
+            print('--> Scenario ', xsc)
+            mult = multiplier[xy][xsc]
+            
+            # each run will take preveious years last scenraio investment as the previous investment
+            temp_interv_list, temp_prev_invest = model_screening(mpc,  cont_list , prev_invest, peak_Pd, mult, NoTime)
+            # interv_list.append(temp_interv_list)
+            interv_list.extend(temp_interv_list)
+            
+            print("scenario interv_list : ", temp_interv_list)
+
+            
+        prev_invest = [a+b for a,b in zip(temp_prev_invest,prev_invest)]    
+        print("pre_invest for next year:",prev_invest)
+        
+    # remove duplicated values and sort in order
+    interv_list = list(set(interv_list))
+    interv_list.sort()  
+    print("Final intervention list: ",interv_list)
+
+    return interv_list
+
+
+
+profiler = cProfile.Profile()
+profiler.enable()
+
+####  inputs
+
+''' contingency info '''
+# initial contingency list, if no input, generate N-1 contingencies later
+cont_list = []
+
+# Define gen and line status, Default to False
+# if True, consider status from .m file; 
+# if False, all gen and lines are on
+gen_status = False 
+line_status = False  
+
+''' Test case '''
+country = "HR"  # Select country for case study: "PT", "UK" or "HR"
+test_case=  'case5' #"HR_2020_Location_1"#'Transmission_Network_PT_2020_new'  #'Transmission_Network_UK3' # ' 
+ci_catalogue = "Default"
+ci_cost = "Default"
+
+# read input data outputs mpc and load infor
+# mpc, base_time_series_data, multiplier, NoCon = read_input_data( cont_list, country,test_case)
+mpc, base_time_series_data,  multiplier, NoCon,ci_catalogue,ci_cost= read_input_data( cont_list, country,test_case,ci_catalogue,ci_cost)
+
+# # load json file from file directory
+# mpc = json.load(open(os.path.join(os.path.dirname(__file__), 
+#                                   'tests', 'json', test_case+'.json')))
+
+# # get multipliers for different years and scenarios
+# multiplier = get_mult(country) 
+
+# generate N-1 contingencies
+if cont_list==[]:
+    cont_list = [[1]*mpc["NoBranch"]] 
+    # temp_list = [[1]*mpc["NoBranch"]]
+    # temp_list[0][42] = 0
+
+    temp_list = (cont_list[0]-np.diag(cont_list[0]) ).tolist()
+
+    cont_list.extend(temp_list)
+
+
+
+
+''' Load information '''
+# update peak demand values
+# get peak load for screening model
+peak_hour = 19
+peak_Pd = []# get_peak_data(mpc, base_time_series_data, peak_hour)
+
+''' Cost information'''
+# branch investment cost
+cicost = 5 # £/Mw/km
+# curtailment cost
+penalty_cost = 1e4
+
+
+
+''' Outputs '''
+interv_list = main_screening(mpc, multiplier ,cicost, penalty_cost ,peak_Pd, cont_list)
+
+
+# given investment catalogue
+# ci_catalogue = [10,50,100,200,500,800,1000,2000,5000]
+# reduce catalogue
+
+
+for xi in range(len(interv_list)):
+    interv_list[xi] = min([i for i in ci_catalogue if i >= interv_list[xi]])
+    
+    
+interv_list = list(set(interv_list))
+interv_list.sort()
+print("Reduced intervention list: ",interv_list)
+
+
+''' Output json file for the investment model''' 
+with open('results/screen_result.json', 'w') as fp:
+    json.dump(interv_list, fp)
+
+
+
+profiler.disable()
+# sort output with total time
+stats = pstats.Stats(profiler).sort_stats('tottime')
+# stats.print_stats(1)
+
+print("Screening model finishes, results output to the folder as 'screen_result.json'.")

@@ -1,8 +1,9 @@
 # -*- coding: utf-8 -*-
 """
-Created on Fri Apr 29 18:27:23 2022
 
-@author: p96677wk
+@author: Wangwei Kong
+
+Part 1 of the investment model
 """
 
 from __future__ import (division, print_function)

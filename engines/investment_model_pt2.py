@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 """
-Created on Fri Apr 29 18:12:20 2022
+@author: Wangwei Kong
 
-@author: p96677wk
+Part 2 of the investment model
 """
 from __future__ import (division, print_function)
 from pyomo.core import ConcreteModel, Constraint, minimize, NonNegativeReals, \

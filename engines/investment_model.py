@@ -1,8 +1,7 @@
 # -*- coding: utf-8 -*-
 """
-Created on Fri Feb 11 17:03:56 2022
 
-@author: p96677wk
+@author: Wangwei Kong
 
 The investment model uses output from the screening model as input,
     Part 1 find the optimal network reinforcement considering contingencies,

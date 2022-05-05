@@ -1,10 +1,9 @@
 # -*- coding: utf-8 -*-
 """
-Created on Fri Mar 18 10:27:16 2022
 
-@author: p96677wk
+@author: Wangwei Kong
 
-parallel lines
+Reagrrage orders of parallel lines
 """
 from collections import defaultdict
 

@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 """
-Created on Tue May  3 17:32:29 2022
+@author: Wangwei Kong
 
-@author: p96677wk
+Prepare pyomo model
 """
 
 
