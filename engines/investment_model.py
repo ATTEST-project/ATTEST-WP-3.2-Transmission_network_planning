@@ -173,11 +173,11 @@ output_data2Json(NoPath, NoYear, path_sce, sum_CO, yearly_CO, ci_pt2, sum_ciCost
 # print("\n*********************************************")
 # print('Total min obj cost:', Val(model.obj)   )        
 # print("Total operation cost:", sum_CO )
-# print("Total branch investment cost:",sum_ciCost_pt2)
+# print("Total branch investment coInvestmentst:",sum_ciCost_pt2)
 # print("Total flex investment cost:", Cflex_pt2)
 # print("*********************************************")     
 
         
-print("Screening model finishes, results output to the folder as 'investment_result.json'.")
+print("Investment model finishes, results output to the folder as 'investment_result.json'.")
 
 
