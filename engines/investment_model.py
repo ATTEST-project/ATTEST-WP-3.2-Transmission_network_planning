@@ -4,8 +4,8 @@
 @author: Wangwei Kong
 
 The investment model uses output from the screening model as input,
-    Part 1 find the optimal network reinforcement considering contingencies,
-    Part 2 determines the trade-off between investment cost and noral operation cost to find the optimal investment decisions. 
+    Part 1 finds the optimal network reinforcement considering contingencies,
+    Part 2 determines the trade-off between investment cost and normal operation cost to find the optimal investment decisions. 
 
 
 The outputs are in json file, includes the investment decisions and costs

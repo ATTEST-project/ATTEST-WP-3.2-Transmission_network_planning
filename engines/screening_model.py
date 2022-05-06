@@ -8,7 +8,7 @@ Screening model consider different years and scenarios with contingency
         Required inputs: 
             Test case: country name, case name, .m file related to the case name
             Load info: multipliers for different year/ scenarios, yearly peak load
-            Cost: branch investment cost (default to 100 $/MW), laod curtailment penalty (default to 1e4 $/MW)
+            Cost: branch investment cost (default to 100 $/MW), load curtailment penalty (default to 1e4 $/MW)
             Contingency: contingency status (True/False), contingency lists
             Investment catalogue
         
@@ -19,7 +19,7 @@ Screening model consider different years and scenarios with contingency
             Yearly investments (printed not stored): branch investment for each year
             
         Note:
-            The screening model is run for each year/ scenario to find the branch investments.
+            The screening model is run for each year/scenario to find the branch investments.
             Each year (y) will take previous investments from year y-1, then form new investments for year y.
                             
     
