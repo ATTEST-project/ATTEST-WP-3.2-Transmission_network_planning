@@ -265,7 +265,7 @@ def InvPt1_function(model,mpc, NoYear, NoSea, NoDay, penalty_cost, NoCon, NoSce,
     # count_opf = 0
     
     # TODO: Change back
-    while ite_z < 2 : #sum_plc_result > 0 or sum_qlc_result > 0 or ite_z <= 4 :
+    while ite_z < 2 : #sum_plc_result > 0 or sum_qlc_result > 0 or ite_z == 0 :
         
         print("\n---- iteration: ", ite_z)
         

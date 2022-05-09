@@ -678,11 +678,11 @@ def model_screening(mpc,cont_list , prev_invest, peak_Pd, mult,NoTime = 1):
     # print("Total investment cost: ", Val(sum(model.ICbra[xbr,xt]*cicost for xbr in model.Set['Bra'] for xt in model.Set['Tim'] )))
     print("Load curtailment: ", Val(sum( model.Plc[xb,xk,xt]  for xb in model.Set['Bus'] for xk in model.Set['Cont'] for xt in model.Set['Tim'])))
     
-    print("Gen cost: ", Val(sum( model.Cgen[xg,0,xt]  for xg in model.Set['Gen'] for xt in model.Set['Tim'])))
+    # print("Gen cost: ", Val(sum( model.Cgen[xg,0,xt]  for xg in model.Set['Gen'] for xt in model.Set['Tim'])))
     
-    print("PMAX: ", mult *sum( mpc["gen"]["PMAX"]))
-    print("Pgen: ", Val(sum(model.Pgen[xg,0,0] for xg in range(mpc["NoGen"]))))
-    print("Pd: ", mult *sum(Pd))
+    # print("PMAX: ", mult *sum( mpc["gen"]["PMAX"]))
+    # print("Pgen: ", Val(sum(model.Pgen[xg,0,0] for xg in range(mpc["NoGen"]))))
+    # print("Pd: ", mult *sum(Pd))
     
     for xk in model.Set['Cont']:
         # print(xk, "_Load curtailment: ", Val(sum( model.Plc[xb,xk,xt]  for xb in model.Set['Bus'] for xt in model.Set['Tim'])))
@@ -750,11 +750,12 @@ def main_screening(mpc,multiplier,cicost, penalty_cost, peak_Pd, cont_list):
 
             
         prev_invest = [a+b for a,b in zip(temp_prev_invest,prev_invest)]    
-        print("pre_invest for next year:",prev_invest)
+        # print("pre_invest for next year:",prev_invest)
         
     # remove duplicated values and sort in order
     interv_list = list(set(interv_list))
     interv_list.sort()  
+    print("\n -------------------------")
     print("Final intervention list: ",interv_list)
 
     return interv_list
@@ -778,9 +779,9 @@ line_status = False
 
 ''' Test case '''
 country = "HR"  # Select country for case study: "PT", "UK" or "HR"
-test_case=  'case5' #"HR_2020_Location_1"#'Transmission_Network_PT_2020_new'  #'Transmission_Network_UK3' # ' 
-ci_catalogue = "Default"
-ci_cost = "Default"
+test_case=  "HR_Location1" #'case5' #"HR_2020_Location_1"#'Transmission_Network_PT_2020_new'  #'Transmission_Network_UK3' # ' 
+ci_catalogue = "Default" # Default ci_catalogue = [10,50,100,200,500,800,1000,2000,5000]
+ci_cost = "Default" # Default ci_cost = 5*MVA
 
 # read input data outputs mpc and load infor
 # mpc, base_time_series_data, multiplier, NoCon = read_input_data( cont_list, country,test_case)

@@ -311,7 +311,7 @@ def json_directory():
 # NoTime = 1
 # converter = any2json()
 
-# country = 'Transmission_Network_UK2' #"HR_2020_Location_1" #"Transmission_Network_PT_2030_Active_Economy" #'case5'#'Transmission_Network_UK2'
+# country = "HR_Location1" #'Transmission_Network_UK2' #"Transmission_Network_PT_2030_Active_Economy" #'case5'#'Transmission_Network_UK2'
 # #country = 'case5t'
 
 # converter.matpower2json(folder_path=json_directory(), \
