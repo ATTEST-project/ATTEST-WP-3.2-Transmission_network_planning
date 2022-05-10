@@ -39,6 +39,7 @@ import math
 import numpy as np
 from scenarios_multipliers import get_mult
 from input_output_function import  get_peak_data, read_input_data
+from process_data import mult_for_bus
 import cProfile
 import pstats
 
@@ -91,7 +92,7 @@ def model_screening(mpc,cont_list , prev_invest, peak_Pd, mult,NoTime = 1):
         
         # Input generator parameters   
         nw_parameters=[]
-        auxGen = ['PMAX', 'PMIN', 'QMAX', 'QMIN', 'VG']
+        auxGen = ['PMAX', 'PMIN', 'QMAX', 'QMIN', 'VG','GEN_BUS']
         
         for NoGen in range(mpc['NoGen']):
             for gen_para_name in auxGen:
@@ -331,7 +332,8 @@ def model_screening(mpc,cont_list , prev_invest, peak_Pd, mult,NoTime = 1):
             if gen_status == True and mpc["gen"]["GEN"][xg] == 0 :
                 return m.Pgen[xg,  xk, xt] == 0 
             else:
-                return m.Pgen[xg, xk, xt] <= mult * m.para["Gen"+str(xg)+"_PMAX"]
+                gen_bus = m.para["Gen"+str(xg)+"_GEN_BUS"] -1
+                return m.Pgen[xg, xk, xt] <= mult[gen_bus] * m.para["Gen"+str(xg)+"_PMAX"]
             
         
         def genMin_rule(m,xg, xk, xt):
@@ -439,11 +441,11 @@ def model_screening(mpc,cont_list , prev_invest, peak_Pd, mult,NoTime = 1):
             return sum( m.Pgen[genCbus[xb][i],xk,xt]  for i in range(len(genCbus[xb])) )  \
                     + sum( m.Pbra[braTbus[xb][i]-noDiff,xk,xt]  for i in range(len(braTbus[xb])) )  \
                     == sum( m.Pbra[braFbus[xb][i]-noDiff,xk,xt]  for i in range(len(braFbus[xb])) ) \
-                      + mult *Pd[xb] - m.Plc[xb,xk,xt]
+                      + mult[xb] *Pd[xb] - m.Plc[xb,xk,xt]
     
         def loadcurtail_rule(m, xb,xk,xt):
             
-            return  mult *abs(Pd[xb]) >= m.Plc[xb,xk,xt]
+            return  mult[xb] *abs(Pd[xb]) >= m.Plc[xb,xk,xt]
         
         # # Cost Constraints
         # Piece wise gen cost: Number of piece = 3
@@ -794,6 +796,12 @@ mpc, base_time_series_data,  multiplier, NoCon,ci_catalogue,ci_cost= read_input_
 # # get multipliers for different years and scenarios
 # multiplier = get_mult(country) 
 
+# required inputs of multipliers for each bus, if not specified, all buses have the same multiplier
+busMult_input = []
+# expande multiplier for each bus
+multiplier_bus = mult_for_bus(busMult_input, multiplier, mpc)
+
+
 # generate N-1 contingencies
 if cont_list==[]:
     cont_list = [[1]*mpc["NoBranch"]] 
@@ -822,7 +830,7 @@ penalty_cost = 1e4
 
 
 ''' Outputs '''
-interv_list = main_screening(mpc, multiplier ,cicost, penalty_cost ,peak_Pd, cont_list)
+interv_list = main_screening(mpc, multiplier_bus ,cicost, penalty_cost ,peak_Pd, cont_list)
 
 
 # given investment catalogue

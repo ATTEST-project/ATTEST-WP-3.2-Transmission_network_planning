@@ -21,7 +21,7 @@ import json
 import os
 from input_output_function import read_input_data, output_data2Json ,get_time_series_data
 from scenarios_multipliers import get_mult
-from process_data import initial_value, recordValues, replaceGenCost
+from process_data import initial_value, recordValues, replaceGenCost,mult_for_bus
 from investment_model_pt2 import InvPt2_function
 from investment_model_pt1 import InvPt1_function
 from model_preparation import prepare_invest_model
@@ -55,6 +55,10 @@ mpc = json.load(open(os.path.join(os.path.dirname(__file__),
 
 multiplier = get_mult(country) # default to HR
 
+# required inputs of multipliers for each bus, if not specified, all buses have the same multiplier
+busMult_input = []
+# expande multiplier for each bus
+multiplier_bus = mult_for_bus(busMult_input, multiplier, mpc)
 
 # Information about year and scenarios
 NoYear = 1
@@ -143,7 +147,7 @@ outputAll = False
 '''Main '''
 print("Form optimisation model")
 # prepare the optimisation model with input data
-mpc,model, no_ysce, tree_ysce,path_sce,noDiff, genCbus,braFbus,braTbus,Pd, Qd = prepare_invest_model(mpc, NoPath,prob, NoYear, NoSce,NoSea, NoDay,DF,CRF,SF,S_ci,ci_cost,Budget_cost,penalty_cost, peak_Pd,peak_Qd,multiplier,cos_pf,sin_pf,CPflex,CQflex,Pflex_max,Qflex_max,gen_status,line_status)
+mpc,model, no_ysce, tree_ysce,path_sce,noDiff, genCbus,braFbus,braTbus,Pd, Qd = prepare_invest_model(mpc, NoPath,prob, NoYear, NoSce,NoSea, NoDay,DF,CRF,SF,S_ci,ci_cost,Budget_cost,penalty_cost, peak_Pd,peak_Qd,multiplier_bus,cos_pf,sin_pf,CPflex,CQflex,Pflex_max,Qflex_max,gen_status,line_status)
 
 # record branch capacity and gen cost
 bra_cap, gen_cost = recordValues(mpc)

@@ -141,3 +141,21 @@ def replaceGenCost(mpc, gen_cost, action):
             mpc["gencost"]["COST"][xgc][0] = gen_cost[xgc]
     
     return mpc
+
+
+def mult_for_bus(busMult_input, multiplier, mpc):
+    
+    if busMult_input == []: 
+        mult_bus = []
+        for xy in range(len(multiplier)):
+            mult_bus.append([])
+            for xsc in range(len(multiplier[xy])):
+                mult_bus[xy].append([])
+                
+                temp_mult =  [multiplier[xy][xsc]]*mpc["NoBranch"]
+                mult_bus[xy][xsc]= temp_mult
+    
+    else:
+        mult_bus = busMult_input.copy()
+        
+    return mult_bus

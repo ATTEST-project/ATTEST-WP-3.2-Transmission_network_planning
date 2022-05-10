@@ -74,7 +74,7 @@ def prepare_invest_model(mpc, NoPath, prob,NoYear, NoSce,NoSea, NoDay,DF,CRF,SF,
         
         # Input generator parameters   
         nw_parameters=[]
-        auxGen = ['PMAX', 'PMIN', 'QMAX', 'QMIN', 'VG']
+        auxGen = ['PMAX', 'PMIN', 'QMAX', 'QMIN', 'VG','GEN_BUS']
         # gen_para = []
         
         for NoGen in range(mpc['NoGen']):
@@ -370,7 +370,8 @@ def prepare_invest_model(mpc, NoPath, prob,NoYear, NoSce,NoSea, NoDay,DF,CRF,SF,
             if gen_status == True and mpc["gen"]["GEN"][xg] == 0 :
                 return m.Pgen[xg,  xy,xsc, xse, xd, xt] == 0 
             else:
-                return m.Pgen[xg, xy,xsc, xse, xd, xt] <= m.para["Gen"+str(xg)+"_PMAX"] * multiplier[xy][xsc] 
+                gen_bus = m.para["Gen"+str(xg)+"_GEN_BUS"] -1
+                return m.Pgen[xg, xy,xsc, xse, xd, xt] <= m.para["Gen"+str(xg)+"_PMAX"] * multiplier[xy][xsc][gen_bus] 
        
             
         
@@ -385,7 +386,8 @@ def prepare_invest_model(mpc, NoPath, prob,NoYear, NoSce,NoSea, NoDay,DF,CRF,SF,
             if gen_status == True and mpc["gen"]["GEN"][xg] == 0 :
                 return m.Qgen[xg, xy,xsc, xse, xd, xt] == 0 
             else:
-                return m.Qgen[xg, xy,xsc, xse, xd, xt] <=  m.para["Gen"+str(xg)+"_QMAX"] * multiplier[xy][xsc]
+                gen_bus = m.para["Gen"+str(xg)+"_GEN_BUS"] -1
+                return m.Qgen[xg, xy,xsc, xse, xd, xt] <=  m.para["Gen"+str(xg)+"_QMAX"] * multiplier[xy][xsc][gen_bus] 
             
         
         def genQMin_rule(m, xg, xy,xsc, xse, xd, xt):
@@ -402,27 +404,27 @@ def prepare_invest_model(mpc, NoPath, prob,NoYear, NoSce,NoSea, NoDay,DF,CRF,SF,
             if Pflex_max == None:
                 return m.Pflex[xb, xy,xsc, xse, xd,  xt] == 0
             else: 
-                return  m.Pflex[xb, xy,xsc, xse, xd, xt] <= Pflex_max * multiplier[xy][xsc]
+                return  m.Pflex[xb, xy,xsc, xse, xd, xt] <= Pflex_max * multiplier[xy][xsc][xb]
         
         def flexPMin_rule(m, xb, xy,xsc, xse,xd, xt):
             if Pflex_max == None:
                 return m.Pflex[xb,xy,xsc, xse, xd, xt] == 0
             else: 
-                return  m.Pflex[xb,xy,xsc, xse, xd, xt] >= - Pflex_max* multiplier[xy][xsc]
+                return  m.Pflex[xb,xy,xsc, xse, xd, xt] >= - Pflex_max* multiplier[xy][xsc][xb]
         
         def flexQMax_rule(m, xb, xy,xsc, xse, xd, xt):
             # Qflex_max = None
             if Qflex_max == None:
                 return m.Qflex[xb, xy,xsc, xse, xd,  xt] == 0
             else: 
-                return  m.Qflex[xb, xy,xsc, xse, xd,  xt] <= Qflex_max * multiplier[xy][xsc]
+                return  m.Qflex[xb, xy,xsc, xse, xd,  xt] <= Qflex_max * multiplier[xy][xsc][xb]
         
         def flexQMin_rule(m, xb, xy,xsc, xse, xd, xt):
             # Qflex_max = None
             if Qflex_max == None:
                 return m.Qflex[xb,xy,xsc, xse, xd, xt] == 0
             else: 
-                return m.Qflex[xb,xy,xsc, xse, xd, xt] >= -Qflex_max* multiplier[xy][xsc]
+                return m.Qflex[xb,xy,xsc, xse, xd, xt] >= -Qflex_max* multiplier[xy][xsc][xb]
             
         # def flexS_rule(m, xb, xt):
         #     cos_pf  = 0.98 #TODO: update power factor
@@ -563,7 +565,7 @@ def prepare_invest_model(mpc, NoPath, prob,NoYear, NoSce,NoSea, NoDay,DF,CRF,SF,
             return sum( m.Pgen[genCbus[xb][i],xy,xsc, xse, xd, xt]  for i in range(len(genCbus[xb])) ) + m.Pflex[xb,xy,xsc, xse, xd,xt]   \
                     + sum( m.Pbra[braTbus[xb][i]- noDiff,xy,xsc, xse, xd,xt]  for i in range(len(braTbus[xb])) )  \
                     == sum( m.Pbra[braFbus[xb][i]- noDiff,xy,xsc, xse, xd,xt]  for i in range(len(braFbus[xb])) ) \
-                      + Pd[xb]* multiplier[xy][xsc] - m.Plc[xb,xy,xsc, xse, xd,xt]
+                      + Pd[xb]* multiplier[xy][xsc][xb] - m.Plc[xb,xy,xsc, xse, xd,xt]
     
     
         # Nodal power balance Q
@@ -572,15 +574,15 @@ def prepare_invest_model(mpc, NoPath, prob,NoYear, NoSce,NoSea, NoDay,DF,CRF,SF,
             return sum( m.Qgen[genCbus[xb][i],xy,xsc, xse, xd,xt]  for i in range(len(genCbus[xb])) ) + m.Qflex[xb,xy,xsc, xse, xd,xt]   \
                     + sum( m.Qbra[braTbus[xb][i]-noDiff,xy,xsc, xse, xd,xt]  for i in range(len(braTbus[xb])) )  \
                     == sum( m.Qbra[braFbus[xb][i]-noDiff,xy,xsc, xse, xd,xt]  for i in range(len(braFbus[xb])) ) \
-                      + Qd[xb]* multiplier[xy][xsc] - m.Qlc[xb,xy,xsc, xse, xd,xt]
+                      + Qd[xb]* multiplier[xy][xsc][xb] - m.Qlc[xb,xy,xsc, xse, xd,xt]
           
         def loadcurtail_rule(m, xb,xy,xsc, xse, xd, xt):
             
-            return  multiplier[xy][xsc] *abs(Pd[xb]) >= m.Plc[xb,xy,xsc, xse, xd,xt]
+            return  multiplier[xy][xsc][xb] *abs(Pd[xb]) >= m.Plc[xb,xy,xsc, xse, xd,xt]
         
         def loadcurtailQ_rule(m, xb, xy,xsc, xse, xd, xt):
             
-            return  multiplier[xy][xsc] *abs(Qd[xb]) >= m.Qlc[xb,xy,xsc, xse, xd,xt]
+            return  multiplier[xy][xsc][xb] *abs(Qd[xb]) >= m.Qlc[xb,xy,xsc, xse, xd,xt]
     
         # # Cost Constraints
         # Piece wise gen cost: Number of piece = 3
