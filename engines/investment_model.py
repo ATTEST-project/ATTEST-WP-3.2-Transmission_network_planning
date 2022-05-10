@@ -177,7 +177,7 @@ output_data2Json(NoPath, NoYear, path_sce, sum_CO, yearly_CO, ci_pt2, sum_ciCost
 # print("Total flex investment cost:", Cflex_pt2)
 # print("*********************************************")     
 
-        
+print("\n -------------------------")        
 print("Investment model finishes, results output to the folder as 'investment_result.json'.")
 
 

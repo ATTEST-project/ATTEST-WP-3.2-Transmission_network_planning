@@ -519,6 +519,8 @@ def prepare_invest_model(mpc, NoPath, prob,NoYear, NoSce,NoSea, NoDay,DF,CRF,SF,
             else:
                 # only one option from the list of intervesion can be adopted
                 return sum(m.ci[xintv,xbr,xy,xsc]  for xintv in m.Set["Intv"]) <= 1
+           
+            
         
         def investCost_rule(m,xy,xsc):
            
@@ -924,7 +926,7 @@ def prepare_invest_model(mpc, NoPath, prob,NoYear, NoSce,NoSea, NoDay,DF,CRF,SF,
 
 
     print("Investment model starts")
-    print("Generate scneario tree based on input information")
+    print("Generate scenario tree based on input information")
     # get total number of nodes and edges of the scenario tree       
     no_ysce , tree_ysce = form_tree(NoYear, NoSce) 
     path_sce = form_path_sce_tree(NoPath, NoYear, NoSce)
@@ -936,7 +938,7 @@ def prepare_invest_model(mpc, NoPath, prob,NoYear, NoSce,NoSea, NoDay,DF,CRF,SF,
     noDiff, genCbus,braFbus,braTbus,Pd, Qd = nodeConnections_rule()
     NoPieces, lcost, min_y = genCost_rule(mpc)
     
-    print("Form optimisation model")
+    # print("Form optimisation model")
     # build a pyomo model
     model, solver = prepare_model(mpc,NetworkModel)
     

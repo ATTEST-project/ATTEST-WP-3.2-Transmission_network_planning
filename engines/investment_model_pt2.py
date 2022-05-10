@@ -158,7 +158,7 @@ def InvPt2_function(model,mpc, penalty_cost, NoCon, prob,DF, CRF, SF, NoSce,path
         if obj_pt2 >= obj_ref:
             
             obj_change = False
-            print("Part 2 finihsed")
+            print("Part 2 finished")
             
             
             
