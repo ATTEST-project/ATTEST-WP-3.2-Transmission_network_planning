@@ -332,8 +332,9 @@ def model_screening(mpc,cont_list , prev_invest, peak_Pd, mult,NoTime = 1):
             if gen_status == True and mpc["gen"]["GEN"][xg] == 0 :
                 return m.Pgen[xg,  xk, xt] == 0 
             else:
-                gen_bus = m.para["Gen"+str(xg)+"_GEN_BUS"] -1
-                return m.Pgen[xg, xk, xt] <= mult[gen_bus] * m.para["Gen"+str(xg)+"_PMAX"]
+                gen_bus = m.para["Gen"+str(xg)+"_GEN_BUS"]
+                bus_number = [i for i,x in enumerate(mpc["bus"]["BUS_I"]) if x==gen_bus]
+                return m.Pgen[xg, xk, xt] <= mult[bus_number[0]] * m.para["Gen"+str(xg)+"_PMAX"]
             
         
         def genMin_rule(m,xg, xk, xt):
