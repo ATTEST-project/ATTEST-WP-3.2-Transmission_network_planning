@@ -60,7 +60,7 @@ def InvPt2_function(model,mpc, penalty_cost, NoCon, prob,DF, CRF, SF, NoSce,path
                                   
                                       sum( yearly_dual_Pbra[xy][xsc][xbr] *
                                             (
-                                                sum( m.ci[xintv,xbr,xy, xsc]*S_ci[xintv]  for xintv in m.Set["Intv"] ) 
+                                                sum( m.ci[xbr,xintv,xy, xsc]*S_ci[str(xbr)][xintv]  for xintv in model.Set["Intev"][xbr] ) 
                                                  - ci_pt1[xy][xsc][xbr]  ) 
                                           for xbr in m.Set['Bra']  )
                                     )
@@ -148,9 +148,11 @@ def InvPt2_function(model,mpc, penalty_cost, NoCon, prob,DF, CRF, SF, NoSce,path
         
         # new obj cost includes operation cost
         obj_pt2 =  Val(model.obj)
+        
     
         # record new ci
-        ci_pt2_update = record_invest_from_pyo_result(model, mpc,NoSce, model.ci)   
+        ci_pt2_update = record_invest_from_pyo_result(model, mpc,NoSce, model.ci, S_ci)   
+        print( ci_pt2_update )
         
         # print( ci_pt2_update)
      
@@ -184,6 +186,7 @@ def InvPt2_function(model,mpc, penalty_cost, NoCon, prob,DF, CRF, SF, NoSce,path
     Cflex_pt2 = Cflex_pt1
     Pflex_pt2 = Pflex_pt1
     
+    print( ci_pt2_update )
     
     return (model, CO_pt2, yearly_CO, ci_pt2_update, ciCost_pt2, yearly_ciCost, Cflex_pt2,Pflex_pt2)
 

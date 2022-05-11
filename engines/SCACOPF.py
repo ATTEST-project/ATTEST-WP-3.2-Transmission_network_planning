@@ -55,6 +55,7 @@ def run_SCACOPF_jl(mpc, NoCon, penalty_cost = 1e4, sbase = 100):
     
     os.chdir(os.path.dirname(sys.argv[0]))
     
+    
     # open output json file from acopf
     file = open(folder+'export_WP3.json')
     OPF_results = json.load(file)
@@ -209,6 +210,7 @@ def run_SCACOPF_jl(mpc, NoCon, penalty_cost = 1e4, sbase = 100):
 
 # TODO: Update output file for multiple scensrios and years
 def output2json(mpc,ci, Pflex, Qflex ):
+    
     # os.chdir("WP3_SCOPF_export_to_WP3_R1_1")
     folder = "WP3_SCOPF_export_to_WP3_R1_1\\"
     # combine parallel lines, shift positions

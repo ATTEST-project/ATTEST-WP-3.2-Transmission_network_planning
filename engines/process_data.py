@@ -68,7 +68,7 @@ def record_bus_from_pyo_result(model,mpc,NoSce, pyo_var, year_peak):
                 
     return record_pyo_var
 
-def record_invest_from_pyo_result(model,mpc,NoSce, ci_var):
+def record_invest_from_pyo_result(model,mpc,NoSce, ci_var,S_ci):
     
     record_pyo_var = []
 
@@ -78,7 +78,10 @@ def record_invest_from_pyo_result(model,mpc,NoSce, ci_var):
           for xsc in range(NoSce**xy): 
               record_pyo_var[xy].append([])
               for xbr in range(mpc['NoBranch']):
-                  record_pyo_var[xy][xsc].append(Val(sum(ci_var[xint,xbr,xy,xsc] for xint in model.Set["Intv"])))
+                  if S_ci[str(xbr)] != []:
+                      record_pyo_var[xy][xsc].append(Val(sum(S_ci[str(xbr)][xint] * ci_var[xbr,xint,xy,xsc] for xint in model.Set["Intev"][xbr])))
+                  else:
+                      record_pyo_var[xy][xsc].append(0)
     
                 
     return record_pyo_var

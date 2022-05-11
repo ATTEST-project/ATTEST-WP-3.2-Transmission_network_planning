@@ -60,7 +60,7 @@ def InvPt1_function(model,mpc, NoYear, NoSea, NoDay, penalty_cost, NoCon, NoSce,
                 (dual_Pbus_all[xy][xsc][xb] / (penalty_cost + CPflex)) * (model.Pflex[xb,xy,xsc, xse, xd,xt] - Pflex_result[xy][xsc][xb])    # assume one flex for each bus
             
         else:
-            return model.Plc[xb,xy,xsc, xse, xd,xt] == 0
+            return Constraint.Skip # model.Plc[xb,xy,xsc, xse, xd,xt] == 0
     
     def dualVarQ_rule(model,xb, xy,xsc, xse, xd, xt):
         # dual_bra_all = [bus][branch]
@@ -76,7 +76,7 @@ def InvPt1_function(model,mpc, NoYear, NoSea, NoDay, penalty_cost, NoCon, NoSce,
                 (dual_Qbus_all[xy][xsc][xb] / (penalty_cost + CQflex)) * (model.Qflex[xb,xy,xsc, xse, xd,xt] - Qflex_result[xy][xsc][xb])    # assume one flex for each bus
             
         else:
-            return model.Qlc[xb,xy,xsc, xse, xd,xt] == 0
+            return Constraint.Skip # model.Qlc[xb,xy,xsc, xse, xd,xt] == 0
         
     
     # trace branches that have impacts on the load curtailment
@@ -242,12 +242,12 @@ def InvPt1_function(model,mpc, NoYear, NoSea, NoDay, penalty_cost, NoCon, NoSce,
     
     # TODO: update these constraints
     def updateBinding_rule(model):
-        # print(sum(model.ci[xintv,xbr,xy,xsc ]*S_ci[xintv] for xintv in model.Set["Intv"])+ bra_cap[xbr], ">=",  abs(  OPF_Pbra[xbr] ) )
-        return sum(model.ci[xintv, xbr,xy,xsc]*S_ci[xintv] for xintv in model.Set["Intv"]) + bra_cap[xbr]>= \
+        # print(sum(model.ci[xbr,xintv,xy,xsc ]*S_ci[xintv] for xintv in model.Set["Intv"])+ bra_cap[xbr], ">=",  abs(  OPF_Pbra[xbr] ) )
+        return sum(model.ci[xbr, xintv,xy,xsc]*S_ci[str(xbr)][xintv] for xintv in model.Set["Intev"][xbr]) + bra_cap[xbr]>= \
               abs(  max_OPF_Pbra[xbr]/cos_pf[xbr] )
     
     def updateBindingQ_rule(model,xy,xsc):
-        return sum(model.ci[xintv, xbr,xy,xsc]*S_ci[xintv] for xintv in model.Set["Intv"]) + bra_cap[xbr]>= \
+        return sum(model.ci[xbr, xintv,xy,xsc]*S_ci[str(xbr)][xintv] for xintv in model.Set["Intev"][xbr]) + bra_cap[xbr]>= \
               abs(  max_OPF_Qbra[xbr] /sin_pf[xbr]  ) 
     
         
@@ -263,6 +263,8 @@ def InvPt1_function(model,mpc, NoYear, NoSea, NoDay, penalty_cost, NoCon, NoSce,
     sum_qlc_result = 0
     ite_z = 0
     # count_opf = 0
+    dual_Pbra_all_con= []
+    plc_result_con = []
     
     # TODO: Change back
     while ite_z < 2 : #sum_plc_result > 0 or sum_qlc_result > 0 or ite_z == 0 :
@@ -276,7 +278,7 @@ def InvPt1_function(model,mpc, NoYear, NoSea, NoDay, penalty_cost, NoCon, NoSce,
             solver = SolverFactory('glpk')
             results = solver.solve(model)
             print ('solver termination condition: ', results.solver.termination_condition)
-            # model.ciCost.pprint()
+            # model.ci.pprint()
     
             # Remove node balance rule
             model.del_component(model.nodeBalance)
@@ -301,12 +303,24 @@ def InvPt1_function(model,mpc, NoYear, NoSea, NoDay, penalty_cost, NoCon, NoSce,
             # add one constraint for each contingency
             
             if NoCon >= 1:
+                dual_Pbra_all = []
+                plc_result = []
                 for xc in range(NoCon):
-                    dual_Pbra_all = dual_Pbra_all_con[xc]
-                    plc_result = plc_result_con[xc]
-                    print("add duLine_ite_con", ite_z)
-                    model.add_component("dualVar_ite"+str(ite_z)+"con"+str(xc), Constraint(model.Set['Bus'],model.Set['YSce'] ,model.Set['Sea'], model.Set['Day'],model.Set['Tim'],rule=dualVar_rule ))               
-                    model.add_component("dualVarQ_ite"+str(ite_z)+"con"+str(xc), Constraint(model.Set['Bus'],model.Set['YSce'] ,model.Set['Sea'], model.Set['Day'],model.Set['Tim'],rule=dualVarQ_rule ))
+                    
+                    for xy in model.Set["Year"]:
+                        dual_Pbra_all.append([])
+                        plc_result.append([])
+                        for xsc in range(NoSce**xy):   
+                            dual_Pbra_all[xy].append([])
+                            plc_result[xy].append([])
+                            
+                            dual_Pbra_all[xy][xsc] = dual_Pbra_all_con[xy][xsc][xc].copy()
+                            plc_result[xy][xsc] = plc_result_con[xy][xsc][xc].copy()
+                    # dual_Pbra_all = dual_Pbra_all_con[xc]
+                    # plc_result = plc_result_con[xc]
+                    print("add duLine_ite_con", xc)
+                    model.add_component("dualVar_ite"+str(ite_z)+"_con"+str(xc), Constraint(model.Set['Bus'],model.Set['YSce'] ,model.Set['Sea'], model.Set['Day'],model.Set['Tim'],rule=dualVar_rule ))               
+                    model.add_component("dualVarQ_ite"+str(ite_z)+"_con"+str(xc), Constraint(model.Set['Bus'],model.Set['YSce'] ,model.Set['Sea'], model.Set['Day'],model.Set['Tim'],rule=dualVarQ_rule ))
                  
             
         
@@ -329,32 +343,36 @@ def InvPt1_function(model,mpc, NoYear, NoSea, NoDay, penalty_cost, NoCon, NoSce,
         Pbra_result = record_bra_from_pyo_result(model,mpc,NoSce, model.Pbra,True)
         Qbra_result = record_bra_from_pyo_result(model,mpc,NoSce, model.Qbra,True)
         
-        ci = record_invest_from_pyo_result(model,mpc,NoSce, model.ci)
+        ci = record_invest_from_pyo_result(model,mpc,NoSce, model.ci,S_ci)
         # record flex investment for each year each scenario, flex value is yearly peak, so seanson, day and time data are not required (set to 0)
         Pflex_result = record_bus_from_pyo_result(model,mpc,NoSce, model.Pflex,True)
         Qflex_result = record_bus_from_pyo_result(model,mpc,NoSce, model.Qflex,True)
   
         
     
-     
+
+        
+        
         # Print investment decisions
         
         for xy,xsc in model.Set["YSce"]:
             for xbr in model.Set['Bra']:
-               
-                if xy == 0:
-                    temp_ci = Val(sum( (model.ci[xintv,xbr,xy,xsc ])* S_ci[xintv]  for xintv in model.Set["Intv"] ) )
-                else:
-                    temp_ci = Val(sum( (model.ci[xintv,xbr,xy,xsc ] - model.ci[xintv,xbr,xy-1,math.floor(xsc/2) ])* S_ci[xintv]  for xintv in model.Set["Intv"] ) )
-                if  temp_ci > 0:
+                if S_ci[str(xbr)] != []:
+                    if xy == 0:
+                        temp_ci = Val(sum( (model.ci[xbr,xintv,xy,xsc ])* S_ci[str(xbr)][xintv]  for xintv in model.Set["Intev"][xbr] ) )
+                    else:
+                        temp_ci = Val(sum( (model.ci[xbr,xintv,xy,xsc ] - model.ci[xbr,xintv,xy-1,math.floor(xsc/2) ])* S_ci[str(xbr)][xintv]   for xintv in model.Set["Intev"][xbr] ) )
+                    if  temp_ci > 0:
                     
-                    print('Year:',xy,', Scenario:', xsc,', Branch:', xbr, ', increase cap:',temp_ci)
+                        print('Year:',xy,', Scenario:', xsc,', Branch:', xbr, ', increase cap:',temp_ci)
     
             for xb in model.Set["Bus"]:
                 temp_flex =  Val(model.Pflex[xb,xy,xsc,0,0,0])
                 if temp_flex > 0 :
                     print('Year:',xy,', Scenario:', xsc,', Bus:', xb, ', increase flex:', temp_flex)
-         
+        
+        
+                
     
         # create empty lists for each year               
         # power factor, load curtailments P,Q in normal and contingency
@@ -387,9 +405,9 @@ def InvPt1_function(model,mpc, NoYear, NoSea, NoDay, penalty_cost, NoCon, NoSce,
                 # ci = []
                 # for xbr in range(mpc['NoBranch']):
                 #    # mpc["branch"]["RATE_A"][xbr] = bra_cap[xbr]+ sum(S_ci[i]* Val(model.ci[i, xbr]) for i in model.Set["Intv"])
-                #     if sum( Val(model.ci[i,xbr,xy,xsc ]) for i in model.Set["Intv"]) > 0: 
+                #     if sum( Val(model.ci[xbr,i,xy,xsc ]) for i in model.Set["Intv"]) > 0: 
                         
-                #         ci.append( sum(S_ci[i]* Val(model.ci[i, xbr,xy,xsc ]) for i in model.Set["Intv"]))
+                #         ci.append( sum(S_ci[i]* Val(model.ci[xbr,i,xy,xsc ]) for i in model.Set["Intv"]))
                 #     else:
                 #         ci.append(0)
                         
@@ -402,6 +420,7 @@ def InvPt1_function(model,mpc, NoYear, NoSea, NoDay, penalty_cost, NoCon, NoSce,
                 
                 # Todo: update outputs for opf model
                 # output results to json file
+                print('output2json')
                 output2json(mpc,ci[0][0],Pflex_result[0][0], Qflex_result[0][0] )
                 # run scac OPF, Get plc and duals
                 
@@ -473,13 +492,13 @@ def InvPt1_function(model,mpc, NoYear, NoSea, NoDay, penalty_cost, NoCon, NoSce,
                         max_OPF_Pbra = max(abs(OPF_Pbra[xy][xsc][xbr]), max_OPF_Pbra_con )
                         # max_OPF_Qbra = max(abs(OPF_Qbra[xy][xsc][xbr]), max_OPF_Qbra_con )
                        
-                        
-                        if sum(Val(model.ci[i, xbr,xy,xsc]) for i in model.Set["Intv"]) >= 1 and max_OPF_Pbra/0.98 < mpc["branch"]["RATE_A"][xbr]:
-                            
-                            print("branch is invested but not binding:  ", xbr)
-                            model.add_component("updateBinding"+str(xy)+str(xsc)+str(ite_z)+str(xbr), rule=updateBinding_rule )
-                            # model.add_component("updateBindingQ"+str(xy)+str(xsc)+str(ite_z)+str(xbr), rule=updateBinding_rule )
-                       
+                        if S_ci[str(xbr)] != []:
+                            if sum(Val(model.ci[xbr,i,xy,xsc]) for i in model.Set["Intev"][xbr]) >= 1 and max_OPF_Pbra/0.98 < mpc["branch"]["RATE_A"][xbr]:
+                                
+                                print("branch is invested but not binding:  ", xbr)
+                                model.add_component("updateBinding"+str(xy)+str(xsc)+str(ite_z)+str(xbr), rule=updateBinding_rule )
+                                # model.add_component("updateBindingQ"+str(xy)+str(xsc)+str(ite_z)+str(xbr), rule=updateBinding_rule )
+                           
         
         
         
@@ -533,6 +552,7 @@ def InvPt1_function(model,mpc, NoYear, NoSea, NoDay, penalty_cost, NoCon, NoSce,
     # total flex cost from part 1
     Cflex_pt1 , Pflex_pt1, Qflex_pt1 =  getFlexFromPT1(model)
     # branch investment in part 1
+    model.ci.pprint()
     ci_pt1 = overInvstment_check(NoYear, NoSce,S_ci, mpc,model, OPF_Pbra, bra_cap)
     # total investment cost
     obj_pt1 =  Val(model.obj)

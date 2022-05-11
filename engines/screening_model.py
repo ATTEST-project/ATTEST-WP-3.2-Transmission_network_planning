@@ -736,6 +736,7 @@ def main_screening(mpc,multiplier,cicost, penalty_cost, peak_Pd, cont_list):
     prev_invest = [0]*mpc["NoBranch"]
     interv_list = []
     
+    interv_dict = {k: [] for k in range(mpc["NoBranch"])}
     
     for xy in range(len(multiplier)):
         print('\n----------- YEAR ', xy, ' ----------- ')
@@ -748,20 +749,25 @@ def main_screening(mpc,multiplier,cicost, penalty_cost, peak_Pd, cont_list):
             temp_interv_list, temp_prev_invest = model_screening(mpc,  cont_list , prev_invest, peak_Pd, mult, NoTime)
             # interv_list.append(temp_interv_list)
             interv_list.extend(temp_interv_list)
+                        
+            # print("scenario interv_list : ", temp_interv_list)
             
-            print("scenario interv_list : ", temp_interv_list)
+            # record intervention lists for each branch
+            for xbr in range(mpc["NoBranch"]):
+                interv_dict[xbr].append(temp_prev_invest[xbr])
+                interv_dict[xbr].sort()  
+            # print("scenario interv_dict : ", interv_dict)
 
             
         prev_invest = [a+b for a,b in zip(temp_prev_invest,prev_invest)]    
         # print("pre_invest for next year:",prev_invest)
         
-    # remove duplicated values and sort in order
-    interv_list = list(set(interv_list))
-    interv_list.sort()  
-    print("\n -------------------------")
-    print("Final intervention list: ",interv_list)
-
-    return interv_list
+    # # remove duplicated values and sort in order
+    # interv_list = list(set(interv_list))
+    # interv_list.sort()  
+    
+   
+    return interv_dict
 
 
 
@@ -782,7 +788,7 @@ line_status = False
 
 ''' Test case '''
 country = "HR"  # Select country for case study: "PT", "UK" or "HR"
-test_case=  "HR_Location1" #'case5' #"HR_2020_Location_1"#'Transmission_Network_PT_2020_new'  #'Transmission_Network_UK3' # ' 
+test_case=  'case5' #"HR_Location1" #"HR_2020_Location_1"#'Transmission_Network_PT_2020_new'  #'Transmission_Network_UK3' # ' 
 ci_catalogue = "Default" # Default ci_catalogue = [10,50,100,200,500,800,1000,2000,5000]
 ci_cost = "Default" # Default ci_cost = 5*MVA
 
@@ -831,7 +837,7 @@ penalty_cost = 1e4
 
 
 ''' Outputs '''
-interv_list = main_screening(mpc, multiplier_bus ,cicost, penalty_cost ,peak_Pd, cont_list)
+interv_dict = main_screening(mpc, multiplier_bus ,cicost, penalty_cost ,peak_Pd, cont_list)
 
 
 # given investment catalogue
@@ -839,18 +845,33 @@ interv_list = main_screening(mpc, multiplier_bus ,cicost, penalty_cost ,peak_Pd,
 # reduce catalogue
 
 
-for xi in range(len(interv_list)):
-    interv_list[xi] = min([i for i in ci_catalogue if i >= interv_list[xi]])
+# for xi in range(len(interv_list)):
+#     interv_list[xi] = min([i for i in ci_catalogue if i >= interv_list[xi]])
     
     
-interv_list = list(set(interv_list))
-interv_list.sort()
-print("Reduced intervention list: ",interv_list)
+# interv_list = list(set(interv_list))
+# interv_list.sort()
+# print("Reduced intervention list: ",interv_list)
+
+
+# reduce catalogue in the interv dictionary
+for xbr in range(mpc["NoBranch"]):
+    if sum(interv_dict[xbr]) > 0 :
+        for xi in range(len(interv_dict[xbr])):
+            interv_dict[xbr][xi] = min([i for i in ci_catalogue if i >= interv_dict[xbr][xi]])
+        
+        interv_dict[xbr] = list(set(interv_dict[xbr]))
+        interv_dict[xbr].sort()  
+    else:
+        interv_dict[xbr] = []
+print("\n -------------------------")        
+print("Reduced intervention dict: ",interv_dict)
+
 
 
 ''' Output json file for the investment model''' 
 with open('results/screen_result.json', 'w') as fp:
-    json.dump(interv_list, fp)
+    json.dump(interv_dict, fp)
 
 
 

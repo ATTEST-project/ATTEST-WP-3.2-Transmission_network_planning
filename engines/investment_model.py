@@ -31,29 +31,38 @@ from model_preparation import prepare_invest_model
 #### inputs for the investment model
 print("Gather inputs for the investment model")
 # Select country for case study: "PT", "UK" or "HR"
-country = "UK" 
+country = "HR" 
 
 # Define the case name
 #"HR_2020_Location_1"#'Transmission_Network_UK2' #"Transmission_Network_PT_2030_Active_Economy" # 
-net_name = 'case5' 
+test_case = 'case5' 
+
+
+
+ci_catalogue = "Default" # Default ci_catalogue = [10,50,100,200,500,800,1000,2000,5000]
+ci_cost = "Default" # Default ci_cost = 5*MVA
+
+cont_list = []
+# read input data outputs mpc and load infor
+mpc, base_time_series_data,  multiplier, NoCon,ci_catalogue,ci_cost= read_input_data( cont_list, country,test_case,ci_catalogue,ci_cost)
 
 # read input data
-# mpc, base_time_series_data,  multiplier = read_input_data( net_name )
+# mpc, base_time_series_data,  multiplier = read_input_data( test_case )
 # base_Pd , base_Qd ,peak_Pd ,peak_Qd ,base_Pflex_up, base_Pflex_dn , peak_Pflex_up , peak_Pflex_dn, gen_sta, peak_gen_sta = get_time_series_data(mpc,  base_time_series_data)
 
-''' Load json file''' 
-# load json file from file directory
-mpc = json.load(open(os.path.join(os.path.dirname(__file__), 
-                                  'tests', 'json', net_name+'.json')))
+# ''' Load json file''' 
+# # load json file from file directory
+# mpc = json.load(open(os.path.join(os.path.dirname(__file__), 
+#                                   'tests', 'json', test_case+'.json')))
   
 
-#  multiplier = [xy][xsc] 
-# multiplier = [] 
-# for xy in range(NoYear):
-#     xsc_temp = 2**xy
-#     multiplier.append([1]*xsc_temp )
+# #  multiplier = [xy][xsc] 
+# # multiplier = [] 
+# # for xy in range(NoYear):
+# #     xsc_temp = 2**xy
+# #     multiplier.append([1]*xsc_temp )
 
-multiplier = get_mult(country) # default to HR
+# multiplier = get_mult(country) # default to HR
 
 # required inputs of multipliers for each bus, if not specified, all buses have the same multiplier
 busMult_input = []
@@ -61,10 +70,10 @@ busMult_input = []
 multiplier_bus = mult_for_bus(busMult_input, multiplier, mpc)
 
 # Information about year and scenarios
-NoYear = 1
+NoYear = 2
 NoSea = 1 #3 # Season sequence: 0:(summer)	 1:(spring)	2:(winter)
 NoDay = 1 #2
-NoCon = 1
+NoCon = 2
 # each next year has two possible scenarios, using this to generate a scenario tree
 NoSce = 2
 # Total number of pathways and nodes based on inputs
@@ -76,7 +85,7 @@ prob = [1/NoPath] * NoPath
 
 # define budget cost for each year
 Budget_cost = [1e20]*NoYear
-penalty_cost = 1e3
+penalty_cost = 1e4
 
 # Discount factor
 d = 0.035 # discount rate <= 30 years: 3.5%
@@ -110,11 +119,19 @@ if os.path.exists('results/screen_result.json'):
     S_ci = json.load(open(os.path.join(os.path.dirname(__file__), 
                                       'results', 'screen_result.json')))
 else:
-    print("screen results not found. Please run screening model. ")
+    print("screen results not found. Using predefined intervetion lists, this will cause longer computing time. ")
+    S_ci = ci_catalogue
+    # expand catalogue for each branch
+    S_ci  = {k: ci_catalogue for k in range(mpc["NoBranch"])}
+    
 # S_ci =  [48, 58, 133] #[52, 131] #
 
 # if not specified, using a linear cost
-ci_cost = [5*i for i in S_ci]  # £/MW
+ci_cost = {k: [] for k in range(mpc["NoBranch"])}
+for xbr in range(mpc["NoBranch"]):
+    if S_ci[str(xbr)] != []:
+        ci_cost[xbr] = [5*i for i in S_ci[str(xbr)]]  # £/MW
+
 
 # if not specified, assume flex data to be
 CPflex = 1e3
@@ -170,7 +187,7 @@ model, sum_CO, yearly_CO, ci_pt2, sum_ciCost_pt2, yearly_ciCost, Cflex_pt2,Pflex
 
 
 
-output_data2Json(NoPath, NoYear, path_sce, sum_CO, yearly_CO, ci_pt2, sum_ciCost_pt2, Cflex_pt2,Pflex_pt2,outputAll, country , net_name )
+output_data2Json(NoPath, NoYear, path_sce, sum_CO, yearly_CO, ci_pt2, sum_ciCost_pt2, Cflex_pt2,Pflex_pt2,outputAll, country , test_case )
 
 # #### print final restuls
 # print("Investment model finishes")
