@@ -14,13 +14,13 @@ import os
 import math
 import numpy as np
 import copy
-from SCACOPF import run_SCACOPF_jl
-from SCACOPF import output2json
+from SCACOPF import run_SCACOPF_jl, output2json, process_flex_result
+from run_OPF_pp import ACOPF_function
 
 from process_data import record_bra_from_pyo_result,record_bus_from_pyo_result, record_invest_from_pyo_result,record_investCost_from_pyo_result
 
 
-def InvPt2_function(model,mpc, penalty_cost, NoCon, prob,DF, CRF, SF, NoSce,path_sce, S_ci, Cflex_pt1, Pflex_pt1,Qflex_pt1, ci_pt1,obj_pt1):
+def InvPt2_function(OPF_option,test_case,model,mpc, penalty_cost, NoCon, prob,DF, CRF, SF, NoSce,path_sce, S_ci, Cflex_pt1, Pflex_pt1,Qflex_pt1, ci_pt1,obj_pt1,multiplier_bus,):
     
     
     # run for the 24 h
@@ -71,8 +71,9 @@ def InvPt2_function(model,mpc, penalty_cost, NoCon, prob,DF, CRF, SF, NoSce,path
                 )
     
                          
-    def runACOPF(mpc, ci,Pflex,Qflex, penalty_cost):
+    def runACOPF(mpc, ci,Pflex,Qflex, multiplier_bus,penalty_cost,SF):
         # print("Run OPF ") 
+       
         
         yearly_CO = [] #[xy][xsc] 
         yearly_dual_Pbra = [] #[xy][xsc][xbr]  
@@ -80,33 +81,41 @@ def InvPt2_function(model,mpc, penalty_cost, NoCon, prob,DF, CRF, SF, NoSce,path
         # TODO:  run 24h ACOPF, remove contingency  
         # run ACOPF to get obj value for part 1
         for xy in model.Set["Year"]:
+                       
             yearly_CO.append([])
             yearly_dual_Pbra.append([])
             
             for xsc in range(NoSce**xy):   
+                mult = multiplier_bus[xy][xsc][0]
+                
                 yearly_CO[xy].append([])
                 yearly_dual_Pbra[xy].append([])
                 
                 # output investment plans for each year each scnenaior
                 output2json(mpc,ci[xy][xsc],Pflex[xy][xsc], Qflex[xy][xsc] )
-                
+                Pflex_up , Pflex_dn , Qflex_up ,Qflex_dn = process_flex_result(Pflex[xy][xsc], Qflex[xy][xsc] )
                 
                 # run ACOPF, get CO and duals for each year each scnenaior
-                
-                # CO_d_OPF,  dual_Pbra_d, dual_Qbra_d = ACOPF_24h(net_name,year,scenario, ci, flex_invest )
-                # CO, plc_result, qlc_result, OPF_Pbra ,OPF_Qbra, dual_Pbra, dual_Qbra = get_duals(net_name, ci,NoTime)
-                
-                #TODO: get the yearly sum of CO and duals
-                CO, cos_pf, sin_pf, plc_result,plc_result_con, qlc_result, \
-                    OPF_Pbra , OPF_Pbra_con ,OPF_Qbra, dual_Pbra,dual_Pbra_con, dual_Qbra, \
-                        dual_Pbus,dual_Pbus_con , dual_Qbus,dual_Qbus_con = run_SCACOPF_jl(mpc, 0, penalty_cost)
+    
+                if OPF_option == "jl":
+                    # run julia model
+                    #TODO: get the yearly sum of CO and duals
+                    CO, cos_pf, sin_pf, plc_result,plc_result_con, qlc_result, \
+                        OPF_Pbra , OPF_Pbra_con ,OPF_Qbra, dual_Pbra,dual_Pbra_con, dual_Qbra, \
+                            dual_Pbus,dual_Pbus_con , dual_Qbus,dual_Qbus_con = run_SCACOPF_jl(mpc, 0, penalty_cost)
+                    
+                if OPF_option == "pp":
+                    # run pandapower model
+                    CO, dual_Pbra = ACOPF_function(test_case,mpc, ci[xy][xsc],Pflex_up , Pflex_dn, mult,penalty_cost)
+                    
+
                 
                 print('Year:',xy,', Scenario:', xsc,', CO:', CO)
                 
+                # TODO: update the scaling factor
                 
-                
-                yearly_CO[xy][xsc] = CO
-                yearly_dual_Pbra[xy][xsc] = dual_Pbra       
+                yearly_CO[xy][xsc] = CO 
+                yearly_dual_Pbra[xy][xsc] = dual_Pbra
                 
         return (yearly_CO, yearly_dual_Pbra )
     
@@ -121,7 +130,7 @@ def InvPt2_function(model,mpc, penalty_cost, NoCon, prob,DF, CRF, SF, NoSce,path
     
     
             
-    yearly_CO, yearly_dual_Pbra = runACOPF(mpc, ci_pt1,Pflex_pt1,Qflex_pt1, penalty_cost)
+    yearly_CO, yearly_dual_Pbra = runACOPF(mpc, ci_pt1,Pflex_pt1,Qflex_pt1, multiplier_bus, penalty_cost,SF)
      
     obj_pt1 += sum(yearly_CO[xy][xsc] for xy, xsc in model.Set["YSce"])
     
@@ -160,8 +169,9 @@ def InvPt2_function(model,mpc, penalty_cost, NoCon, prob,DF, CRF, SF, NoSce,path
         if obj_pt2 >= obj_ref:
             
             obj_change = False
-            print("Part 2 finished")
             
+            CO_pt2 = sum(yearly_CO[xy][xsc] for xy, xsc in model.Set["YSce"])
+            print(CO_pt2)
             
             
             
@@ -171,7 +181,7 @@ def InvPt2_function(model,mpc, penalty_cost, NoCon, prob,DF, CRF, SF, NoSce,path
             # rerun ACOPF with new investment plans
             # TODO:  run 24h ACOPF, remove contingency     
             
-            yearly_CO, yearly_dual_Pbra = runACOPF(mpc, ci_pt2_update,Pflex_pt1,Qflex_pt1, penalty_cost)
+            yearly_CO, yearly_dual_Pbra = runACOPF(mpc, ci_pt2_update,Pflex_pt1,Qflex_pt1,multiplier_bus,penalty_cost,SF)
             
             CO_pt2 = sum(yearly_CO[xy][xsc] for xy, xsc in model.Set["YSce"])
             
@@ -186,6 +196,7 @@ def InvPt2_function(model,mpc, penalty_cost, NoCon, prob,DF, CRF, SF, NoSce,path
     Cflex_pt2 = Cflex_pt1
     Pflex_pt2 = Pflex_pt1
     
+    print("Part 2 finished")
     print( ci_pt2_update )
     
     return (model, CO_pt2, yearly_CO, ci_pt2_update, ciCost_pt2, yearly_ciCost, Cflex_pt2,Pflex_pt2)

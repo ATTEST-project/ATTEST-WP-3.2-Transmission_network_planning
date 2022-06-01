@@ -592,7 +592,7 @@ def model_screening(mpc,cont_list , prev_invest, peak_Pd, mult,NoTime = 1):
             braT_number = [i for i,x in enumerate(mpc["branch"]["T_BUS"]) if x==bus_number]
             braTbus.append(braT_number)
             
-            #record demand value
+            # record demand value
             Pd.append( mpc['bus']['PD'][xb])
     
         if peak_Pd !=[] :
@@ -787,8 +787,8 @@ gen_status = False
 line_status = False  
 
 ''' Test case '''
-country = "HR"  # Select country for case study: "PT", "UK" or "HR"
-test_case=  'case5' #"HR_Location1" #"HR_2020_Location_1"#'Transmission_Network_PT_2020_new'  #'Transmission_Network_UK3' # ' 
+country = "UK"  # Select country for case study: "PT", "UK" or "HR"
+test_case= 'case5' #'Transmission_Network_PT_2020_new'  #'Transmission_Network_UK3' #  "HR_Location1" #"HR_2020_Location_1"#
 ci_catalogue = "Default" # Default ci_catalogue = [10,50,100,200,500,800,1000,2000,5000]
 ci_cost = "Default" # Default ci_cost = 5*MVA
 
@@ -808,14 +808,15 @@ busMult_input = []
 # expande multiplier for each bus
 multiplier_bus = mult_for_bus(busMult_input, multiplier, mpc)
 
-
+# cont_list= [[1,1,1,1,1,1], [1,0,1,1,1,1]]
 # generate N-1 contingencies
 if cont_list==[]:
     cont_list = [[1]*mpc["NoBranch"]] 
-    # temp_list = [[1]*mpc["NoBranch"]]
-    # temp_list[0][42] = 0
 
     temp_list = (cont_list[0]-np.diag(cont_list[0]) ).tolist()
+    
+    # # reduce the size of contingency list
+    # temp_list = temp_list[:len(temp_list)//29]
 
     cont_list.extend(temp_list)
 
@@ -870,7 +871,7 @@ print("Reduced intervention dict: ",interv_dict)
 
 
 ''' Output json file for the investment model''' 
-with open('results/screen_result.json', 'w') as fp:
+with open('results/screen_result_PT_new.json', 'w') as fp:
     json.dump(interv_dict, fp)
 
 
@@ -878,6 +879,6 @@ with open('results/screen_result.json', 'w') as fp:
 profiler.disable()
 # sort output with total time
 stats = pstats.Stats(profiler).sort_stats('tottime')
-# stats.print_stats(1)
+stats.print_stats(1)
 
 print("Screening model finishes, results output to the folder as 'screen_result.json'.")

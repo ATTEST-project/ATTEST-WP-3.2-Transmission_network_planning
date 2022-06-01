@@ -281,7 +281,7 @@ def prepare_invest_model(mpc, NoPath, prob,NoYear, NoSce,NoSea, NoDay,DF,CRF,SF,
         m.Set['Day'] = range(NoDay)
         m.Set['Sea'] = range(NoSea)
         
-        m.Set['Intv'] = range(len(S_ci))
+        #m.Set['Intv'] = range(len(S_ci))
         
         m.Set['Intev'] = {}
         for xbr in m.Set["Bra"]:
@@ -663,8 +663,8 @@ def prepare_invest_model(mpc, NoPath, prob,NoYear, NoSce,NoSea, NoDay,DF,CRF,SF,
         # Add Gen constraint rules
         m.genMax = Constraint( m.Set['Gen'],m.Set['YSce'] ,m.Set['Sea'], m.Set['Day'],  m.Set['Tim'], rule=rules.genMax_rule )
         m.genMin = Constraint( m.Set['Gen'],m.Set['YSce'] ,m.Set['Sea'], m.Set['Day'], m.Set['Tim'], rule=rules.genMin_rule )
-        m.genQMax = Constraint( m.Set['Gen'],m.Set['YSce'] ,m.Set['Sea'], m.Set['Day'],  m.Set['Tim'], rule=rules.genQMax_rule )
-        m.genQMin = Constraint( m.Set['Gen'],m.Set['YSce'] ,m.Set['Sea'], m.Set['Day'], m.Set['Tim'],  rule=rules.genQMin_rule )
+        # m.genQMax = Constraint( m.Set['Gen'],m.Set['YSce'] ,m.Set['Sea'], m.Set['Day'],  m.Set['Tim'], rule=rules.genQMax_rule )
+        # m.genQMin = Constraint( m.Set['Gen'],m.Set['YSce'] ,m.Set['Sea'], m.Set['Day'], m.Set['Tim'],  rule=rules.genQMin_rule )
         
         # piecve wise gen cost
         m.pwcost = Constraint(m.Set['Gen'], m.Set['YSce'] ,m.Set['Sea'], m.Set['Day'],range(NoPieces),  m.Set['Tim'], rule=rules.pwcost_rule )

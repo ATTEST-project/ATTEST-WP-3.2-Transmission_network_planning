@@ -35,7 +35,7 @@ class any2json:
             "metadata": {
                 "title": name_json,
                 "description": 'power system of '+name_json,
-                "minimum_version": "0.4"
+                #"minimum_version": "0.4"
             },
             "version": 2,
             "baseMVA": None,
@@ -311,7 +311,7 @@ def json_directory():
 # NoTime = 1
 # converter = any2json()
 
-# country = "HR_Location1" #'Transmission_Network_UK2' #"Transmission_Network_PT_2030_Active_Economy" #'case5'#'Transmission_Network_UK2'
+# country = 'Transmission_Network_UK3' #"HR_Location3" #"Transmission_Network_PT_2030_Active_Economy" #'case5'#'Transmission_Network_UK2'
 # #country = 'case5t'
 
 # converter.matpower2json(folder_path=json_directory(), \

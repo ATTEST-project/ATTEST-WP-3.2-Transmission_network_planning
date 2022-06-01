@@ -78,9 +78,9 @@ def read_input_data(cont_list, country = "HR", test_case = "HR_2020_Location_1",
 
                      
 def output_data2Json(NoPath, NoYear, path_sce, sum_CO, yearly_CO, ci, sum_ciCost, Cflex, Pflex, outputAll=False,country = "HR", test_case = "HR_2020_Location_1" ):
-    
+
     output_data = {}
-    sce_data = {}
+    # sce_data = {}
     year_num = [2020, 2030, 2040, 2050]
     output_data = { "Country": country, 
                     "Case name": test_case}
@@ -88,8 +88,11 @@ def output_data2Json(NoPath, NoYear, path_sce, sum_CO, yearly_CO, ci, sum_ciCost
     # output all the pathways (scenarios)
     if outputAll == True:      
         for xp in range(NoPath):
-            sce_data["Total investment cost (EUR)"] = sum_ciCost +  sum(Cflex[xy][path_sce[xp][xy]] for xy in range(NoYear) ),
-            sce_data["Net Present Cost (EUR)"] =  sum_CO,
+            sce_data = {}
+            sce_data["Total investment cost (EUR)"] = sum_ciCost +  sum(Cflex[xy][path_sce[xp][xy]] for xy in range(NoYear) )
+            sce_data["Branch investment cost (EUR)"] = sum_ciCost
+            sce_data["Flexibility investment cost (EUR)"] =  sum(Cflex[xy][path_sce[xp][xy]] for xy in range(NoYear) )
+            sce_data["Total Operation Cost (EUR)"] =  sum_CO
             
             for xy in range(NoYear):
                 
@@ -107,18 +110,26 @@ def output_data2Json(NoPath, NoYear, path_sce, sum_CO, yearly_CO, ci, sum_ciCost
         for xp in [0,NoPath-1]:
             
             temp_xp += 1
-            sce_data["Total investment cost (EUR)"] = sum_ciCost +  sum(Cflex[xy][path_sce[xp][xy]] for xy in range(NoYear) ),
-            sce_data["Net Present Cost (EUR)"] =  sum_CO,
+            sce_data = {}
+            sce_data["Total investment cost (EUR)"] = sum_ciCost +  sum(Cflex[xy][path_sce[xp][xy]] for xy in range(NoYear) )
+            sce_data["Branch investment cost (EUR)"] = sum_ciCost
+            sce_data["Flexibility investment cost (EUR)"] =  sum(Cflex[xy][path_sce[xp][xy]] for xy in range(NoYear) )
+            sce_data["Net Present Operation Cost (EUR)"] =  sum_CO
             
             for xy in range(NoYear):
-                
+                 
                 sce_data[str(year_num[xy])] = {
                                         "Operation cost (EUR/year)": yearly_CO[xy][path_sce[xp][xy]], 
                                         "Branch investment (MVA)":  ci[xy][path_sce[xp][xy]], 
                                         "Flexibility investment (MW)": Pflex[xy][path_sce[xp][xy]], 
                                      }
-           
+                
+                   
+                
+         
             output_data["Scenario " +str(temp_xp)] = sce_data
+            
+           
         
         
     
@@ -164,7 +175,7 @@ def output_data2Json(NoPath, NoYear, path_sce, sum_CO, yearly_CO, ci, sum_ciCost
     # data into template
         
     ''' Output json file''' 
-    with open('results/investment_result.json', 'w') as fp:
+    with open('results/investment_result_'+ test_case +'.json', 'w') as fp:
         json.dump(output_data, fp)
     
     return print("Investment result file created")
@@ -249,7 +260,7 @@ def get_time_series_data(mpc,  base_time_series_data):
             
            
     print('read laod and flex data')         
-    return (base_Pd , base_Qd ,peak_Pd ,peak_Qd ,base_Pflex_up, base_Pflex_dn , peak_Pflex_up , peak_Pflex_dn)
+    return (base_Pd , base_Qd ,peak_Pd ,peak_Qd ,base_Pflex_up, base_Pflex_dn , peak_Pflex_up , peak_Pflex_dn,load_bus)
 
 
 

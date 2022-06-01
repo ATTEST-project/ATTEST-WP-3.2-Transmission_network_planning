@@ -38,7 +38,7 @@ def overInvstment_check(NoYear, NoSce, S_ci, mpc,model, OPF_Pbra, bra_cap):
                     for xintv in range(no_ci):
                         if Val(model.ci[xbr,no_ci-1-xintv, xy,xsc]) > 0 and abs(OPF_Pbra[xy][xsc][xbr]) <=  bra_cap[xbr]+S_ci[str(xbr)][no_ci-1-xintv-1] and xintv < no_ci-1: # new line
                             model.ci[xbr,no_ci-1-xintv, xy,xsc].value = 0
-                            model.ci[xbr,no_ci-1-xintv-1, xbr,xy,xsc].value = 1
+                            model.ci[xbr,no_ci-1-xintv-1, xy,xsc].value = 1
                             print("Change capacity investment on Branch ", xbr,": from ",S_ci[str(xbr)][no_ci-1-xintv], " to ", S_ci[str(xbr)][no_ci-1-xintv-1])
                         
                         if Val(model.ci[xbr,0, xy,xsc]) > 0 and abs(OPF_Pbra[xy][xsc][xbr]) <=  bra_cap[xbr] and xintv == no_ci-1:

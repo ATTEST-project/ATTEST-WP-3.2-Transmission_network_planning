@@ -79,7 +79,7 @@ def run_SCACOPF_jl(mpc, NoCon, penalty_cost = 1e4, sbase = 100):
     OPF_Pbra = [sbase * i for i in OPF_results["OPF_bra"]] 
     # TODO: update OPF_Qbra
     OPF_Qbra = [0]*6
-    cos_pf =  [a/((a**2 + b**2)**0.5) for a,b in zip(OPF_Pbra, OPF_Qbra)]
+    cos_pf =  [abs(a)/((a**2 + b**2)**0.5) for a,b in zip(OPF_Pbra, OPF_Qbra)]
     sin_pf = [(1-a**2)**0.5  for a in cos_pf]
     
     # OPF Flex results
@@ -207,19 +207,7 @@ def run_SCACOPF_jl(mpc, NoCon, penalty_cost = 1e4, sbase = 100):
     #     )
 
 
-
-# TODO: Update output file for multiple scensrios and years
-def output2json(mpc,ci, Pflex, Qflex ):
-    
-    # os.chdir("WP3_SCOPF_export_to_WP3_R1_1")
-    folder = "WP3_SCOPF_export_to_WP3_R1_1\\"
-    # combine parallel lines, shift positions
-    new_bra_no = find_paraline(mpc)  
-    ci_shifted = shift_line_position(mpc,new_bra_no, ci)   
-    
-    if os.path.exists(folder+'import_WP3.json'):
-        os.remove(folder+'import_WP3.json')
-    
+def process_flex_result(Pflex, Qflex):
     Pflex_inc = []
     Pflex_dec = []
     Qflex_inc = []
@@ -246,6 +234,29 @@ def output2json(mpc,ci, Pflex, Qflex ):
         else:
             Qflex_inc.append(0)
             Qflex_dec.append(0)
+            
+    return Pflex_inc , Pflex_dec , Qflex_inc ,Qflex_dec 
+
+
+
+# TODO: Update output file for multiple scensrios and years
+def output2json(mpc,ci, Pflex, Qflex ):
+    sbase = 100
+    # os.chdir("WP3_SCOPF_export_to_WP3_R1_1")
+    folder = "WP3_SCOPF_export_to_WP3_R1_1\\"
+    # combine parallel lines, shift positions
+    new_bra_no = find_paraline(mpc)  
+    ci_shifted = shift_line_position(mpc,new_bra_no, ci)   
+    
+    if os.path.exists(folder+'import_WP3.json'):
+        os.remove(folder+'import_WP3.json')
+    
+    Pflex_inc , Pflex_dec , Qflex_inc ,Qflex_dec = process_flex_result(Pflex, Qflex)
+    
+    # TODO: check if needed to change to PU
+    ci_shifted = [i/sbase  for i in ci_shifted]
+    Pflex_inc = [i/sbase  for i in Pflex_inc]
+    Pflex_dec = [i/sbase  for i in Pflex_dec]
     
     ouput = {
              "ci":ci_shifted,

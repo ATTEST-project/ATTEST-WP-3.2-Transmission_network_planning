@@ -25,36 +25,48 @@ from process_data import initial_value, recordValues, replaceGenCost,mult_for_bu
 from investment_model_pt2 import InvPt2_function
 from investment_model_pt1 import InvPt1_function
 from model_preparation import prepare_invest_model
+import cProfile
+import pstats
 
-
+profiler = cProfile.Profile()
+profiler.enable()
 
 #### inputs for the investment model
 print("Gather inputs for the investment model")
 # Select country for case study: "PT", "UK" or "HR"
-country = "HR" 
+country = "UK" 
 
 # Define the case name
-#"HR_2020_Location_1"#'Transmission_Network_UK2' #"Transmission_Network_PT_2030_Active_Economy" # 
-test_case = 'case5' 
+#"HR_Location1"#'Transmission_Network_UK2' #"Transmission_Network_PT_2030_Active_Economy" # 'case5' 
+test_case = "Transmission_Network_UK3"
 
 
 
 ci_catalogue = "Default" # Default ci_catalogue = [10,50,100,200,500,800,1000,2000,5000]
 ci_cost = "Default" # Default ci_cost = 5*MVA
 
-cont_list = []
+
+cont_list =[]
 # read input data outputs mpc and load infor
 mpc, base_time_series_data,  multiplier, NoCon,ci_catalogue,ci_cost= read_input_data( cont_list, country,test_case,ci_catalogue,ci_cost)
 
 # read input data
 # mpc, base_time_series_data,  multiplier = read_input_data( test_case )
-# base_Pd , base_Qd ,peak_Pd ,peak_Qd ,base_Pflex_up, base_Pflex_dn , peak_Pflex_up , peak_Pflex_dn, gen_sta, peak_gen_sta = get_time_series_data(mpc,  base_time_series_data)
+# base_Pd , base_Qd ,peak_Pd ,peak_Qd ,base_Pflex_up, base_Pflex_dn , peak_Pflex_up , peak_Pflex_dn, gen_sta, peak_gen_sta,get_time_series_data = get_time_series_data(mpc,  base_time_series_data)
 
 # ''' Load json file''' 
 # # load json file from file directory
 # mpc = json.load(open(os.path.join(os.path.dirname(__file__), 
 #                                   'tests', 'json', test_case+'.json')))
   
+# cont_list =[[1,1,1,1,1,1], [1,0,1,1,1,1]]
+
+# generate contingency list with two contingencies
+cont_list = [[1]*mpc["NoBranch"]] 
+cont_list.append([1]*mpc["NoBranch"])
+# cont_list.append([1]*mpc["NoBranch"])
+cont_list[1][2] = 0
+# cont_list[2][3] = 0
 
 # #  multiplier = [xy][xsc] 
 # # multiplier = [] 
@@ -70,10 +82,10 @@ busMult_input = []
 multiplier_bus = mult_for_bus(busMult_input, multiplier, mpc)
 
 # Information about year and scenarios
-NoYear = 2
+NoYear = 4
 NoSea = 1 #3 # Season sequence: 0:(summer)	 1:(spring)	2:(winter)
 NoDay = 1 #2
-NoCon = 2
+NoCon = len(cont_list)-1
 # each next year has two possible scenarios, using this to generate a scenario tree
 NoSce = 2
 # Total number of pathways and nodes based on inputs
@@ -102,7 +114,7 @@ while xy < NoYear:
     xy += 1
 
 # scaling factor to translate representative days costs into yearly cost
-SF  = 1
+SF  =  24 * 365* 0.7
 
 # Assume a power factor for initial run, values are updated based on OPF results
 
@@ -117,12 +129,12 @@ sin_pf = initial_value(mpc,NoYear,NoSce, sin_pf_init)
 if os.path.exists('results/screen_result.json'):
    
     S_ci = json.load(open(os.path.join(os.path.dirname(__file__), 
-                                      'results', 'screen_result.json')))
+                                      'results', 'screen_result_UK3.json')))
 else:
     print("screen results not found. Using predefined intervetion lists, this will cause longer computing time. ")
     S_ci = ci_catalogue
     # expand catalogue for each branch
-    S_ci  = {k: ci_catalogue for k in range(mpc["NoBranch"])}
+    S_ci  = {str(k): ci_catalogue for k in range(mpc["NoBranch"])}
     
 # S_ci =  [48, 58, 133] #[52, 131] #
 
@@ -138,8 +150,8 @@ CPflex = 1e3
 CQflex = 1e3
 
 # TODO: update the input_out_function to include flex profile inputs
-Pflex_max = 1000
-Qflex_max = 1000
+Pflex_max = 10000
+Qflex_max = 0
 
 
 
@@ -161,6 +173,9 @@ line_status = False
 outputAll = False
     
 
+OPF_option =  "pp" # "jl" # 
+
+
 '''Main '''
 print("Form optimisation model")
 # prepare the optimisation model with input data
@@ -173,7 +188,7 @@ bra_cap, gen_cost = recordValues(mpc)
 # remove gen cost in mpc
 mpc = replaceGenCost(mpc, gen_cost, 0)
 # SCACOPF for 1 peak hour  (years*scenarios*typical days*1h)
-model, obj_pt1, ci_pt1 , Cflex_pt1 , Pflex_pt1, Qflex_pt1 = InvPt1_function(model,mpc, NoYear, NoSea, NoDay, penalty_cost, NoCon, NoSce,path_sce, S_ci,bra_cap,CPflex, CQflex, noDiff, genCbus,braFbus,braTbus,Pd, Qd)
+model, obj_pt1, ci_pt1 , Cflex_pt1 , Pflex_pt1, Qflex_pt1 = InvPt1_function(OPF_option,test_case,model,mpc, NoYear, NoSea, NoDay, penalty_cost, NoCon, NoSce,path_sce,cont_list, S_ci,bra_cap,CPflex, CQflex, noDiff, genCbus,braFbus,braTbus,Pd, Qd,multiplier_bus)
 
         
 #### Run part 2
@@ -183,7 +198,7 @@ model, obj_pt1, ci_pt1 , Cflex_pt1 , Pflex_pt1, Qflex_pt1 = InvPt1_function(mode
 mpc = replaceGenCost(mpc, gen_cost, 1)
 
 # run part 2 of the investment model
-model, sum_CO, yearly_CO, ci_pt2, sum_ciCost_pt2, yearly_ciCost, Cflex_pt2,Pflex_pt2 = InvPt2_function(model,mpc, penalty_cost, NoCon, prob,DF, CRF, SF, NoSce,path_sce, S_ci,Cflex_pt1,Pflex_pt1,Qflex_pt1, ci_pt1,obj_pt1)
+model, sum_CO, yearly_CO, ci_pt2, sum_ciCost_pt2, yearly_ciCost, Cflex_pt2,Pflex_pt2 = InvPt2_function(OPF_option,test_case,model,mpc, penalty_cost, NoCon, prob,DF, CRF, SF, NoSce,path_sce, S_ci,Cflex_pt1,Pflex_pt1,Qflex_pt1, ci_pt1,obj_pt1,multiplier_bus,)
 
 
 
@@ -197,6 +212,11 @@ output_data2Json(NoPath, NoYear, path_sce, sum_CO, yearly_CO, ci_pt2, sum_ciCost
 # print("Total branch investment coInvestmentst:",sum_ciCost_pt2)
 # print("Total flex investment cost:", Cflex_pt2)
 # print("*********************************************")     
+
+profiler.disable()
+# sort output with total time
+stats = pstats.Stats(profiler).sort_stats('tottime')
+stats.print_stats(1)
 
 print("\n -------------------------")        
 print("Investment model finishes, results output to the folder as 'investment_result.json'.")
