@@ -77,7 +77,7 @@ def read_input_data(cont_list, country = "HR", test_case = "HR_2020_Location_1",
 
 
                      
-def output_data2Json(NoPath, NoYear, path_sce, sum_CO, yearly_CO, ci, sum_ciCost, Cflex, Pflex, outputAll=False,country = "HR", test_case = "HR_2020_Location_1" ):
+def output_data2Json(NoPath, NoYear, path_sce, sum_CO, yearly_CO, ci, sum_ciCost, Cflex, Pflex, outputAll=False,country = "HR", test_case = "HR_2020_Location_1" , pt = "_pt1"):
 
     output_data = {}
     # sce_data = {}
@@ -175,7 +175,7 @@ def output_data2Json(NoPath, NoYear, path_sce, sum_CO, yearly_CO, ci, sum_ciCost
     # data into template
         
     ''' Output json file''' 
-    with open('results/investment_result_'+ test_case +'.json', 'w') as fp:
+    with open('results/investment_result_'+ test_case +pt +'.json', 'w') as fp:
         json.dump(output_data, fp)
     
     return print("Investment result file created")

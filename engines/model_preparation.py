@@ -340,8 +340,9 @@ def prepare_invest_model(mpc, NoPath, prob,NoYear, NoSce,NoSea, NoDay,DF,CRF,SF,
         m.Cgen = Var(m.Set['Gen'],m.Set['YSce'] ,m.Set['Sea'], m.Set['Day'], m.Set['Tim'], domain=NonNegativeReals, initialize=10)
         
         # Flexibility service
-        m.Pflex = Var(m.Set['Bus'], m.Set['YSce'] ,m.Set['Sea'], m.Set['Day'],m.Set['Tim'], domain=Reals, initialize=0)
-        m.Qflex = Var(m.Set['Bus'], m.Set['YSce'] ,m.Set['Sea'], m.Set['Day'],m.Set['Tim'], domain=Reals, initialize=0)
+        # TODO: check if flex_decrease is needed in investment planning
+        m.Pflex = Var(m.Set['Bus'], m.Set['YSce'] ,m.Set['Sea'], m.Set['Day'],m.Set['Tim'], domain=NonNegativeReals, initialize=0)
+        m.Qflex = Var(m.Set['Bus'], m.Set['YSce'] ,m.Set['Sea'], m.Set['Day'],m.Set['Tim'], domain=NonNegativeReals, initialize=0)
         # m.Sflex = Var(m.Set['Bus'], m.Set['YSce'] ,m.Set['Sea'], m.Set['Day'],m.Set['Tim'], domain=Reals, initialize=0)
         m.CflexP = Var(m.Set['Bus'], m.Set['YSce'] ,m.Set['Sea'], m.Set['Day'],m.Set['Tim'], domain=NonNegativeReals, initialize=0)
         m.CflexQ = Var(m.Set['Bus'], m.Set['YSce'] ,m.Set['Sea'], m.Set['Day'],m.Set['Tim'], domain=NonNegativeReals, initialize=0)
@@ -364,6 +365,8 @@ def prepare_invest_model(mpc, NoPath, prob,NoYear, NoSce,NoSea, NoDay,DF,CRF,SF,
         m.Plc = Var(m.Set['Bus'],m.Set['YSce'] ,m.Set['Sea'], m.Set['Day'],m.Set['Tim'], domain=NonNegativeReals, initialize=0)
         m.Qlc = Var(m.Set['Bus'],m.Set['YSce'] ,m.Set['Sea'], m.Set['Day'],m.Set['Tim'], domain=NonNegativeReals, initialize=0)
         
+        # Bus angle
+        m.Ang = Var(m.Set['Bus'],m.Set['YSce'] ,m.Set['Sea'], m.Set['Day'], m.Set['Tim'], bounds=(-2*math.pi, 2*math.pi), initialize=0) # from 0
        
        
         return m
@@ -598,6 +601,31 @@ def prepare_invest_model(mpc, NoPath, prob,NoYear, NoSce,NoSea, NoDay,DF,CRF,SF,
                     + sum( m.Qbra[braTbus[xb][i]-noDiff,xy,xsc, xse, xd,xt]  for i in range(len(braTbus[xb])) )  \
                     == sum( m.Qbra[braFbus[xb][i]-noDiff,xy,xsc, xse, xd,xt]  for i in range(len(braFbus[xb])) ) \
                       + Qd[xb]* multiplier[xy][xsc][xb] - m.Qlc[xb,xy,xsc, xse, xd,xt]
+                      
+        def DCPF_rule(m, xbr,xy,xsc, xse, xd,xt):
+            
+            br_X = mpc['branch']['BR_X'][xbr]/ mpc['baseMVA']
+            fbus_name = mpc['branch']['F_BUS'][xbr]
+            fbus = mpc['bus']['BUS_I'].index(fbus_name)
+            tbus_name = mpc['branch']['T_BUS'][xbr]
+            tbus = mpc['bus']['BUS_I'].index(tbus_name)
+            
+            if line_status == True and mpc["branch"]["BR_STATUS"][xbr] == 0:
+                temp_line_stat = 0
+            else:
+                temp_line_stat = 1
+            
+            if  temp_line_stat == 0:
+                return Constraint.Skip
+            else:             
+                return  m.Pbra[xbr,xy,xsc, xse, xd, xt] == ( m.Ang[fbus,xy,xsc, xse, xd, xt] - m.Ang[tbus,xy,xsc, xse, xd,xt]) / br_X              
+        
+        def slackBus_rule(m,xy,xsc, xse, xd, xt):
+            for i in range(mpc['NoBus']):
+                if mpc['bus']['BUS_TYPE'][i] == 3:
+                    slc_bus = i
+            
+            return m.Ang[slc_bus,xy,xsc, xse, xd,xt] == 0              
           
         def loadcurtail_rule(m, xb,xy,xsc, xse, xd, xt):
             
@@ -635,6 +663,11 @@ def prepare_invest_model(mpc, NoPath, prob,NoYear, NoSce,NoSea, NoDay,DF,CRF,SF,
         # Add nodal balance constraint rules
         m.nodeBalance = Constraint( m.Set['Bus'],m.Set['YSce'] ,m.Set['Sea'], m.Set['Day'], m.Set['Tim'], rule=rules.nodeBalance_rule )  
         m.nodeBalanceQ = Constraint( m.Set['Bus'],m.Set['YSce'] ,m.Set['Sea'], m.Set['Day'], m.Set['Tim'], rule=rules.nodeBalanceQ_rule ) 
+        
+        # Add branch flow DC OPF
+        m.DCPF = Constraint( m.Set['Bra'],m.Set['YSce'] ,m.Set['Sea'], m.Set['Day'],  m.Set['Tim'], rule=rules.DCPF_rule ) 
+        m.slackBus = Constraint( m.Set['YSce'] ,m.Set['Sea'], m.Set['Day'], m.Set['Tim'],  rule=rules.slackBus_rule ) 
+        
         
         # add load curtailment rules
         m.loadcurtail = Constraint( m.Set['Bus'],m.Set['YSce'] ,m.Set['Sea'], m.Set['Day'],m.Set['Tim'], rule=rules.loadcurtail_rule)  

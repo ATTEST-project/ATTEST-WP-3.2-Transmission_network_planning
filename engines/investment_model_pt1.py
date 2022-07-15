@@ -22,6 +22,8 @@ from process_data import record_bra_from_pyo_result, record_bus_from_pyo_result,
 from invest_check import overInvstment_check
 from run_OPF_pp import get_duals
 
+import cProfile
+import pstats
 
 
 
@@ -29,71 +31,7 @@ from run_OPF_pp import get_duals
 def InvPt1_function(OPF_option,test_case,model,mpc, NoYear, NoSea, NoDay, penalty_cost, NoCon, NoSce,path_sce,cont_list, S_ci,bra_cap,CPflex, CQflex, noDiff, genCbus,braFbus,braTbus,Pd, Qd,multiplier_bus):
     
 
-    # def duLine_rule(model,xb, xy,xsc, xse, xd, xt):
-    #     # dual_bra_all = [bus][branch]
-    #     # TODO: update the dual_all, Pbra_result
-    #     if sum( (dual_Pbra_all[xb][xbr] / penalty_cost) for xbr in model.Set['Bra']  ) > 0:
-    #         # print(plc_result[xb], "<=", sum( (dual_Pbra_all[xb][xbr] / penalty_cost) * (model.Pbra[xbr,xy,xsc, xse, xd,xt] - Pbra_result[xbr]) for xbr in model.Set['Bra']  ))
-            
-    #         return plc_result[xb] <= \
-    #             sum( (dual_Pbra_all[xb][xbr] / penalty_cost) * (model.Pbra[xbr,xy,xsc, xse, xd,xt] - Pbra_result[xbr]) 
-    #                   for xbr in model.Set['Bra']  )
-            
-    #     else:
-    #         return model.Plc[xb,xy,xsc, xse, xd, xt] == 0
-    
-    
-        
-    # TODO: Double check the dual rules
-    # dual rules including both line and flex duals
-    # def dualVar_rule(model,xb, xy,xsc, xse, xd, xt):
-    #     # dual_bra_all = [bus][branch]
-    #     # dual_bus_all = [bus]
-     
-    #     if sum( (dual_Pbra_all[xy][xsc][xb][xbr] / penalty_cost) for xbr in model.Set['Bra']  ) > 0 or  dual_Pbus_all[xy][xsc][xb] > 0 :
-    #         print(plc_result[xy][xsc][xb], "<=", sum( (dual_Pbra_all[xy][xsc][xb][xbr] / penalty_cost) * (model.Pbra[xbr,xy,xsc, xse, xd,xt] - Pbra_result[xy][xsc][xbr]) for xbr in model.Set['Bra']  ),
-    #               "+", (dual_Pbus_all[xy][xsc][xb] / (penalty_cost + CPflex)) * (model.Pflex[xb,xy,xsc, xse, xd,xt] - Pflex_result[xy][xsc][xb]))
-            
-    #         return plc_result[xy][xsc][xb] <= \
-    #             sum( (dual_Pbra_all[xy][xsc][xb][xbr] / penalty_cost) * (model.Pbra[xbr,xy,xsc, xse, xd,xt] - Pbra_result[xy][xsc][xbr]) 
-    #                   for xbr in model.Set['Bra']  ) +\
-    #             (dual_Pbus_all[xy][xsc][xb] / (penalty_cost + CPflex)) * (model.Pflex[xb,xy,xsc, xse, xd,xt] - Pflex_result[xy][xsc][xb])    # assume one flex for each bus
-            
-    #     else:
-    #         return Constraint.Skip # model.Plc[xb,xy,xsc, xse, xd,xt] == 0
-    
-    def dualVar_rule(model,xb, xy,xsc, xse, xd, xt):
-        # dual_bra_all = [bus][branch]
-        # dual_bus_all = [bus]
-     
-        if sum( (dual_Pbra_all[xy][xsc][xb][xbr] / penalty_cost) for xbr in model.Set['Bra']  ) > 0 or  dual_Pbus_all[xy][xsc][xb] > 0 :
-            print(plc_result[xy][xsc][xb], "<=", sum( (dual_Pbra_all[xy][xsc][xb][xbr] / penalty_cost) * (model.Pbra[xbr,xy,xsc, xse, xd,xt] - Pbra_result[xy][xsc][xbr]) for xbr in model.Set['Bra']  ),
-                  "+", (dual_Pbus_all[xy][xsc][xb] / (penalty_cost + CPflex)) * (model.Pflex[xb,xy,xsc, xse, xd,xt] ))
-            
-            return plc_result[xy][xsc][xb] <= \
-                sum( (dual_Pbra_all[xy][xsc][xb][xbr] / penalty_cost) * (model.Pbra[xbr,xy,xsc, xse, xd,xt] - Pbra_result[xy][xsc][xbr]) 
-                      for xbr in model.Set['Bra']  ) +\
-                (dual_Pbus_all[xy][xsc][xb] / (penalty_cost + CPflex)) * (model.Pflex[xb,xy,xsc, xse, xd,xt] )    # assume one flex for each bus
-            
-        else:
-            return Constraint.Skip # model.Plc[xb,xy,xsc, xse, xd,xt] == 0
-    
-    def dualVarQ_rule(model,xb, xy,xsc, xse, xd, xt):
-        # dual_bra_all = [bus][branch]
-        # dual_bus_all = [bus]
-     
-        if sum( (dual_Qbra_all[xy][xsc][xb][xbr] / penalty_cost) for xbr in model.Set['Bra']  ) > 0 or  dual_Qbus_all[xy][xsc][xb] > 0 :
-            # print(qlc_result[xy][xsc][xb], "<=", sum( (dual_Qbra_all[xy][xsc][xb][xbr] / penalty_cost) * (model.Qbra[xbr,xt] - Qbra_result[xy][xsc][xbr]) for xbr in model.Set['Bra']  ),
-            #       "+", (dual_Qbus_all[xy][xsc][xb] / (penalty_cost + CQflex)) * (model.Qflex[xb,xy,xsc, xse, xd,xt] - Qflex_result[xy][xsc][xb]))
-            
-            return qlc_result[xy][xsc][xb] <= \
-                sum( (dual_Qbra_all[xy][xsc][xb][xbr] / penalty_cost) * (model.Qbra[xbr,xy,xsc, xse, xd,xt] - Qbra_result[xy][xsc][xbr]) 
-                      for xbr in model.Set['Bra']  ) +\
-                (dual_Qbus_all[xy][xsc][xb] / (penalty_cost + CQflex)) * (model.Qflex[xb,xy,xsc, xse, xd,xt] - Qflex_result[xy][xsc][xb])    # assume one flex for each bus
-            
-        else:
-            return Constraint.Skip # model.Qlc[xb,xy,xsc, xse, xd,xt] == 0
-        
+   
     
     # trace branches that have impacts on the load curtailment
     def trace_pf(plc_result, dual_bra, dual_bus,OPF_Pbra):
@@ -267,8 +205,177 @@ def InvPt1_function(OPF_option,test_case,model,mpc, NoYear, NoSea, NoDay, penalt
               abs(  max_OPF_Qbra /sin_pf[xy][xsc][xbr]  ) 
     
         
+    # def duLine_rule(model,xb, xy,xsc, xse, xd, xt):
+    #     # dual_bra_all = [bus][branch]
+    #     # TODO: update the dual_all, Pbra_result
+    #     if sum( (dual_Pbra_all[xb][xbr] / penalty_cost) for xbr in model.Set['Bra']  ) > 0:
+    #         # print(plc_result[xb], "<=", sum( (dual_Pbra_all[xb][xbr] / penalty_cost) * (model.Pbra[xbr,xy,xsc, xse, xd,xt] - Pbra_result[xbr]) for xbr in model.Set['Bra']  ))
+            
+    #         return plc_result[xb] <= \
+    #             sum( (dual_Pbra_all[xb][xbr] / penalty_cost) * (model.Pbra[xbr,xy,xsc, xse, xd,xt] - Pbra_result[xbr]) 
+    #                   for xbr in model.Set['Bra']  )
+            
+    #     else:
+    #         return model.Plc[xb,xy,xsc, xse, xd, xt] == 0
     
     
+        
+    # TODO: Double check the dual rules
+    # dual rules including both line and flex duals
+    # def dualVar_rule(model,xb, xy,xsc, xse, xd, xt):
+    #     # dual_bra_all = [bus][branch]
+    #     # dual_bus_all = [bus]
+     
+    #     if sum( (dual_Pbra_all[xy][xsc][xb][xbr] / penalty_cost) for xbr in model.Set['Bra']  ) > 0 or  dual_Pbus_all[xy][xsc][xb] > 0 :
+    #         print(plc_result[xy][xsc][xb], "<=", sum( (dual_Pbra_all[xy][xsc][xb][xbr] / penalty_cost) * (model.Pbra[xbr,xy,xsc, xse, xd,xt] - Pbra_result[xy][xsc][xbr]) for xbr in model.Set['Bra']  ),
+    #               "+", (dual_Pbus_all[xy][xsc][xb] / (penalty_cost + CPflex)) * (model.Pflex[xb,xy,xsc, xse, xd,xt] - Pflex_result[xy][xsc][xb]))
+            
+    #         return plc_result[xy][xsc][xb] <= \
+    #             sum( (dual_Pbra_all[xy][xsc][xb][xbr] / penalty_cost) * (model.Pbra[xbr,xy,xsc, xse, xd,xt] - Pbra_result[xy][xsc][xbr]) 
+    #                   for xbr in model.Set['Bra']  ) +\
+    #             (dual_Pbus_all[xy][xsc][xb] / (penalty_cost + CPflex)) * (model.Pflex[xb,xy,xsc, xse, xd,xt] - Pflex_result[xy][xsc][xb])    # assume one flex for each bus
+            
+    #     else:
+    #         return Constraint.Skip # model.Plc[xb,xy,xsc, xse, xd,xt] == 0
+    
+    ###################################
+    def dualVar_rule(model,xb, xy,xsc, xse, xd, xt):
+        # dual_bra_all = [bus][branch]
+        # dual_bus_all = [bus]
+     
+        if sum( (dual_Pbra_all[xy][xsc][xb][xbr] / penalty_cost) for xbr in model.Set['Bra']  ) > 0 :
+                  
+            if Pbra_result[xy][xsc][xbr]>= 0:
+                print(plc_result[xy][xsc][xb], "<=", sum( (dual_Pbra_all[xy][xsc][xb][xbr] / penalty_cost) * (model.Pbra[xbr,xy,xsc, xse, xd,xt] - Pbra_result[xy][xsc][xbr]) for xbr in model.Set['Bra']  ))
+
+                return plc_result[xy][xsc][xb] - model.Plc[xb,xy,xsc, xse, xd,xt]  <= \
+                    sum( (dual_Pbra_all[xy][xsc][xb][xbr] / penalty_cost) * (model.Pbra[xbr,xy,xsc, xse, xd,xt] - Pbra_result[xy][xsc][xbr]) 
+                          for xbr in model.Set['Bra']  )    # assume one flex for each bus
+            else:
+                print(plc_result[xy][xsc][xb], "<= -", sum( (dual_Pbra_all[xy][xsc][xb][xbr] / penalty_cost) * (model.Pbra[xbr,xy,xsc, xse, xd,xt] - Pbra_result[xy][xsc][xbr]) for xbr in model.Set['Bra']  ))
+
+                return plc_result[xy][xsc][xb] - model.Plc[xb,xy,xsc, xse, xd,xt]  <= -1*\
+                    sum( (dual_Pbra_all[xy][xsc][xb][xbr] / penalty_cost) * (model.Pbra[xbr,xy,xsc, xse, xd,xt] - Pbra_result[xy][xsc][xbr]) 
+                          for xbr in model.Set['Bra']  )    # assume one flex for each bus
+            
+        else:
+            return Constraint.Skip # model.Plc[xb,xy,xsc, xse, xd,xt] == 0
+    
+    
+    
+    
+    # def dualVar_rule(model,xb, xy,xsc, xse, xd, xt):
+    #     # dual_bra_all = [bus][branch]
+    #     # dual_bus_all = [bus]
+     
+    #     if sum( (dual_Pbra_all[xy][xsc][xb][xbr] / penalty_cost) for xbr in model.Set['Bra']  ) > 0 :
+            
+    #         print(plc_result[xy][xsc][xb], "<=", sum( (dual_Pbra_all[xy][xsc][xb][xbr] / penalty_cost) * (model.Pbra[xbr,xy,xsc, xse, xd,xt] - Pbra_result[xy][xsc][xbr]) for xbr in model.Set['Bra']  ))
+                  
+            
+    #         return plc_result[xy][xsc][xb] - model.Plc[xb,xy,xsc, xse, xd,xt] <= \
+    #             sum( (dual_Pbra_all[xy][xsc][xb][xbr] / penalty_cost) * (model.Pbra[xbr,xy,xsc, xse, xd,xt] - Pbra_result[xy][xsc][xbr]) 
+    #                   for xbr in model.Set['Bra']  )    # assume one flex for each bus
+            
+    #     else:
+    #         return Constraint.Skip # model.Plc[xb,xy,xsc, xse, xd,xt] == 0
+    
+    def dualVarQ_rule(model,xb, xy,xsc, xse, xd, xt):
+        # dual_bra_all = [bus][branch]
+        # dual_bus_all = [bus]
+     
+        if sum( (dual_Qbra_all[xy][xsc][xb][xbr] / penalty_cost) for xbr in model.Set['Bra']  ) > 0 :
+            
+            print(qlc_result[xy][xsc][xb], "<=", sum( (dual_Qbra_all[xy][xsc][xb][xbr] / penalty_cost) * (model.Qbra[xbr,xy,xsc, xse, xd,xt] - Qbra_result[xy][xsc][xbr]) for xbr in model.Set['Bra']  ))
+            
+            if Qbra_result[xy][xsc][xbr]>= 0:
+                return qlc_result[xy][xsc][xb] - model.Qlc[xb,xy,xsc, xse, xd,xt] <= \
+                    sum( (dual_Qbra_all[xy][xsc][xb][xbr] / penalty_cost) * (model.Qbra[xbr,xy,xsc, xse, xd,xt] - Qbra_result[xy][xsc][xbr]) 
+                          for xbr in model.Set['Bra']  )  # assume one flex for each bus
+                    
+            else:
+                return qlc_result[xy][xsc][xb] - model.Qlc[xb,xy,xsc, xse, xd,xt] <= -1*\
+                    sum( (dual_Qbra_all[xy][xsc][xb][xbr] / penalty_cost) * (model.Qbra[xbr,xy,xsc, xse, xd,xt] - Qbra_result[xy][xsc][xbr]) 
+                          for xbr in model.Set['Bra']  )  # assume one flex for each bus
+                
+            
+        else:
+            return Constraint.Skip # model.Qlc[xb,xy,xsc, xse, xd,xt] == 0
+    
+    
+    # dual constraints for contingency
+    # def dualVarCon_rule(model,xb, xy,xsc, xse, xd, xt):
+    #     # dual_bra_all = [bus][branch]
+    #     # dual_bus_all = [bus]
+     
+    #     if sum( (dual_Pbra_all[xy][xsc][xb][xbr] / penalty_cost) for xbr in model.Set['Bra']  ) > 0 or  dual_Pbus_all[xy][xsc][xb] > 0 :
+    #         print(plc_result[xy][xsc][xb], "<=", sum( (dual_Pbra_all[xy][xsc][xb][xbr] / penalty_cost) * (model.Pbra[xbr,xy,xsc, xse, xd,xt] - Pbra_result[xy][xsc][xbr]) for xbr in model.Set['Bra']  ),
+    #               "+", (dual_Pbus_all[xy][xsc][xb] / (penalty_cost + CPflex)) * (model.Pflex[xb,xy,xsc, xse, xd,xt] ))
+            
+    #         return plc_result[xy][xsc][xb] - model.Plc[xb,xy,xsc, xse, xd,xt] <= \
+    #             sum( (dual_Pbra_all[xy][xsc][xb][xbr] / penalty_cost) * (model.Pbra[xbr,xy,xsc, xse, xd,xt] - Pbra_result[xy][xsc][xbr]) 
+    #                   for xbr in model.Set['Bra']  ) +\
+    #             (dual_Pbus_all[xy][xsc][xb] / (penalty_cost + CPflex)) * (model.Pflex[xb,xy,xsc, xse, xd,xt] )    # assume one flex for each bus
+            
+    #     else:
+    #         return Constraint.Skip # model.Plc[xb,xy,xsc, xse, xd,xt] == 0
+    
+    def dualVarCon_rule(model,xb, xy,xsc, xse, xd, xt):
+        # dual_bra_all = [bus][branch]
+        # dual_bus_all = [bus]
+     
+        if sum( (dual_Pbra_all[xy][xsc][xb][xbr] / penalty_cost) for xbr in model.Set['Bra']  ) > 0 or  dual_Pbus_all[xy][xsc][xb] > 0 :
+            
+            if Pbra_result[xy][xsc][xbr]>= 0:
+                print(plc_result[xy][xsc][xb], "<=", sum( (dual_Pbra_all[xy][xsc][xb][xbr] / penalty_cost) * (model.Pbra[xbr,xy,xsc, xse, xd,xt] - Pbra_result[xy][xsc][xbr]) for xbr in model.Set['Bra']  ),
+                      "+", (dual_Pbus_all[xy][xsc][xb] / (penalty_cost + CPflex)) * (model.Pflex[xb,xy,xsc, xse, xd,xt] ))
+                
+                return plc_result[xy][xsc][xb] - model.Plc[xb,xy,xsc, xse, xd,xt] <= \
+                    sum( (dual_Pbra_all[xy][xsc][xb][xbr] / penalty_cost) * (model.Pbra[xbr,xy,xsc, xse, xd,xt] - Pbra_result[xy][xsc][xbr]) 
+                          for xbr in model.Set['Bra']  ) +\
+                    (dual_Pbus_all[xy][xsc][xb] / (penalty_cost + CPflex)) * (model.Pflex[xb,xy,xsc, xse, xd,xt] )    # assume one flex for each bus
+            
+            else:
+                print(plc_result[xy][xsc][xb], "<= -", sum( (dual_Pbra_all[xy][xsc][xb][xbr] / penalty_cost) * (model.Pbra[xbr,xy,xsc, xse, xd,xt] - Pbra_result[xy][xsc][xbr]) for xbr in model.Set['Bra']  ),
+                      "+", (dual_Pbus_all[xy][xsc][xb] / (penalty_cost + CPflex)) * (model.Pflex[xb,xy,xsc, xse, xd,xt] ))
+                
+                return plc_result[xy][xsc][xb] - model.Plc[xb,xy,xsc, xse, xd,xt] <= -1*\
+                    sum( (dual_Pbra_all[xy][xsc][xb][xbr] / penalty_cost) * (model.Pbra[xbr,xy,xsc, xse, xd,xt] - Pbra_result[xy][xsc][xbr]) 
+                          for xbr in model.Set['Bra']  ) +\
+                    (dual_Pbus_all[xy][xsc][xb] / (penalty_cost + CPflex)) * (model.Pflex[xb,xy,xsc, xse, xd,xt] )    # assume one flex for each bus
+            
+                
+        else:
+            return Constraint.Skip # model.Plc[xb,xy,xsc, xse, xd,xt] == 0
+    
+    
+    def dualVarQCon_rule(model,xb, xy,xsc, xse, xd, xt):
+        # dual_bra_all = [bus][branch]
+        # dual_bus_all = [bus]
+     
+        if sum( (dual_Qbra_all[xy][xsc][xb][xbr] / penalty_cost) for xbr in model.Set['Bra']  ) > 0 or  dual_Qbus_all[xy][xsc][xb] > 0 :
+            if Qbra_result[xy][xsc][xbr]>= 0:
+                print(qlc_result[xy][xsc][xb], "<=", sum( (dual_Qbra_all[xy][xsc][xb][xbr] / penalty_cost) * (model.Qbra[xbr,xy,xsc, xse, xd,xt] - Qbra_result[xy][xsc][xbr]) for xbr in model.Set['Bra']  ),
+                      "+", (dual_Qbus_all[xy][xsc][xb] / (penalty_cost + CQflex)) * (model.Qflex[xb,xy,xsc, xse, xd,xt] - Qflex_result[xy][xsc][xb]))
+                
+                return qlc_result[xy][xsc][xb] - model.Qlc[xb,xy,xsc, xse, xd,xt]<= \
+                    sum( (dual_Qbra_all[xy][xsc][xb][xbr] / penalty_cost) * (model.Qbra[xbr,xy,xsc, xse, xd,xt] - Qbra_result[xy][xsc][xbr]) 
+                          for xbr in model.Set['Bra']  ) +\
+                    (dual_Qbus_all[xy][xsc][xb] / (penalty_cost + CQflex)) * (model.Qflex[xb,xy,xsc, xse, xd,xt] - Qflex_result[xy][xsc][xb])    # assume one flex for each bus
+            
+            else:
+                return qlc_result[xy][xsc][xb] - model.Qlc[xb,xy,xsc, xse, xd,xt]<= -1*\
+                    sum( (dual_Qbra_all[xy][xsc][xb][xbr] / penalty_cost) * (model.Qbra[xbr,xy,xsc, xse, xd,xt] - Qbra_result[xy][xsc][xbr]) 
+                          for xbr in model.Set['Bra']  ) +\
+                    (dual_Qbus_all[xy][xsc][xb] / (penalty_cost + CQflex)) * (model.Qflex[xb,xy,xsc, xse, xd,xt] - Qflex_result[xy][xsc][xb])    # assume one flex for each bus
+            
+                
+        else:
+            return Constraint.Skip # model.Qlc[xb,xy,xsc, xse, xd,xt] == 0    
+    
+ 
+    
+#### Part 1
     print("\n--> Part 1 of the investment model")
     # SCACOPF for the peak hour (years*scenarios*typical days*contingency*1h)
     # only run for the peak time 
@@ -277,15 +384,25 @@ def InvPt1_function(OPF_option,test_case,model,mpc, NoYear, NoSea, NoDay, penalt
     
     sum_plc_result = 0
     sum_qlc_result = 0
+    sum_plc_result_con = 0
     ite_z = 0
     # count_opf = 0
     dual_Pbra_all_con= []
     plc_result_con = []
     
-    # TODO: Change back
-    while ite_z < 2 : #sum_plc_result > 0 or sum_qlc_result > 0 or ite_z == 0 :
+
+    while sum_plc_result > 0  or sum_plc_result_con > 0 or ite_z == 0 :
         
         print("\n---- iteration: ", ite_z)
+        print("sum_plc_result : ", sum_plc_result )
+        print("sum_qlc_result : ", sum_qlc_result )
+        print("sum_plc_result_con : ", sum_plc_result_con )
+        sum_plc_result = 0
+        sum_plc_result_con = 0
+        sum_qlc_result = 0
+        
+        # profiler = cProfile.Profile()
+        # profiler.enable()
         
         
          
@@ -299,6 +416,7 @@ def InvPt1_function(OPF_option,test_case,model,mpc, NoYear, NoSea, NoDay, penalt
             # Remove node balance rule
             model.del_component(model.nodeBalance)
             model.del_component(model.nodeBalanceQ)
+            model.del_component(model.DCPF)
            
             # print('min obj cost:',Val(model.obj))
             print("Branch investment cost:",Val( sum( model.ciCost[xy,xsc] for xy,xsc in model.Set["YSce"] ) ))
@@ -313,30 +431,34 @@ def InvPt1_function(OPF_option,test_case,model,mpc, NoYear, NoSea, NoDay, penalt
             # model.add_component("duLineQ_ite"+str(ite_z), Constraint(model.Set['Bus'],model.Set['YSce'] ,model.Set['Sea'], model.Set['Day'], model.Set['Tim'],rule=duLineQ_rule ))
             
             # TODO: change constraints to include Flex:
-            model.add_component("dualVar_ite"+str(ite_z), Constraint(model.Set['Bus'],model.Set['YSce'] ,model.Set['Sea'], model.Set['Day'],model.Set['Tim'],rule=dualVar_rule ))
-            # model.add_component("dualVarQ_ite"+str(ite_z), Constraint(model.Set['Bus'],model.Set['YSce'] ,model.Set['Sea'], model.Set['Day'],model.Set['Tim'],rule=dualVarQ_rule ))
+            model.add_component("dualVar_ite"+str(ite_z), Constraint(model.Set['Bus'],model.Set['YSce'] ,model.Set['Sea'], model.Set['Day'],model.Set['Tim'],rule=dualVarCon_rule ))
+            model.add_component("dualVarQ_ite"+str(ite_z), Constraint(model.Set['Bus'],model.Set['YSce'] ,model.Set['Sea'], model.Set['Day'],model.Set['Tim'],rule=dualVarQCon_rule ))
             
             # add one constraint for each contingency
             
             if NoCon >= 1:
                 dual_Pbra_all = []
+                dual_Pbus_all = []
                 plc_result = []
                 for xc in range(NoCon):
                     
                     for xy in model.Set["Year"]:
                         dual_Pbra_all.append([])
+                        dual_Pbus_all.append([])
                         plc_result.append([])
                         for xsc in range(NoSce**xy):   
                             dual_Pbra_all[xy].append([])
+                            dual_Pbus_all[xy].append([])
                             plc_result[xy].append([])
                             
                             dual_Pbra_all[xy][xsc] = dual_Pbra_all_con[xy][xsc][xc].copy()
+                            dual_Pbus_all[xy][xsc] = dual_Pbus_all_con[xy][xsc][xc].copy()
                             plc_result[xy][xsc] = plc_result_con[xy][xsc][xc].copy()
                     # dual_Pbra_all = dual_Pbra_all_con[xc]
                     # plc_result = plc_result_con[xc]
                     print("add duLine_ite_con", xc)
-                    model.add_component("dualVar_ite"+str(ite_z)+"_con"+str(xc), Constraint(model.Set['Bus'],model.Set['YSce'] ,model.Set['Sea'], model.Set['Day'],model.Set['Tim'],rule=dualVar_rule ))               
-                    # model.add_component("dualVarQ_ite"+str(ite_z)+"_con"+str(xc), Constraint(model.Set['Bus'],model.Set['YSce'] ,model.Set['Sea'], model.Set['Day'],model.Set['Tim'],rule=dualVarQ_rule ))
+                    model.add_component("dualVar_ite"+str(ite_z)+"_con"+str(xc), Constraint(model.Set['Bus'],model.Set['YSce'] ,model.Set['Sea'], model.Set['Day'],model.Set['Tim'],rule=dualVarCon_rule ))               
+                    model.add_component("dualVarQ_ite"+str(ite_z)+"_con"+str(xc), Constraint(model.Set['Bus'],model.Set['YSce'] ,model.Set['Sea'], model.Set['Day'],model.Set['Tim'],rule=dualVarQCon_rule ))
                  
             
         
@@ -391,6 +513,8 @@ def InvPt1_function(OPF_option,test_case,model,mpc, NoYear, NoSea, NoDay, penalt
         
         
         print("       ci results: ",ci)     
+        
+        print("pyomo pf: ", Pbra_result)
 
     
         # create empty lists for each year               
@@ -414,6 +538,7 @@ def InvPt1_function(OPF_option,test_case,model,mpc, NoYear, NoSea, NoDay, penalt
         
      
         NoTime = 1
+        OPF_opt = 0 # SCACOPF
         
         # run SCACOPF for each year each scenario, Get plc and duals
         for xy in model.Set["Year"]:
@@ -443,7 +568,12 @@ def InvPt1_function(OPF_option,test_case,model,mpc, NoYear, NoSea, NoDay, penalt
                 # output results to json file
                 print('output2json')
                 # output2json(mpc,ci[0][0],Pflex_result[0][0], Qflex_result[0][0] )
-                output2json(mpc,ci[xy][xsc],Pflex_result[xy][xsc], Qflex_result[xy][xsc] )
+                
+                # if ite_z == 0: 
+                #     ci[xy][xsc] = [0,0,0,0,0,0]
+                #     Pflex_result[xy][xsc] = [0,0,23,0,0]
+                    
+                output2json(mpc,ci[xy][xsc],Pflex_result[xy][xsc], Qflex_result[xy][xsc] , mult,OPF_opt )
                 Pflex_up , Pflex_dn , Qflex_up ,Qflex_dn = process_flex_result(Pflex_result[xy][xsc], Qflex_result[xy][xsc])
                 
                 
@@ -452,15 +582,24 @@ def InvPt1_function(OPF_option,test_case,model,mpc, NoYear, NoSea, NoDay, penalt
                 print(Pflex_result[xy][xsc], Qflex_result[xy][xsc])
                 
                 # run scac OPF, Get plc and duals
-                
+               
                 if OPF_option == "jl":
+                    
+                    
                     # run julia model
-                    SCACOPF_result = run_SCACOPF_jl(mpc, NoCon, penalty_cost)
+                    sbase = 100
+                    SCACOPF_result = run_SCACOPF_jl(mpc, penalty_cost, sbase)
+                    
+                    
                 if OPF_option == "pp":
                     
+                   
+
                     # run pandapower model
                     SCACOPF_result = get_duals(test_case,mpc, cont_list,ci[xy][xsc],Pflex_up , Pflex_dn,penalty_cost,mult, NoTime)
                     
+                    
+
 
                 print("Process OPF results")
             
@@ -490,11 +629,19 @@ def InvPt1_function(OPF_option,test_case,model,mpc, NoYear, NoSea, NoDay, penalt
                 
                 
                 print("plc: ", plc_result)
+                print("qlc: ", qlc_result)
+                print("dual_Pbra: ", dual_Pbra)
+                print("dual_Pbra_con: ", dual_Pbra_con)
+                
+                print("OPF_Pbra_con: ", OPF_Pbra_con)
+                print("plc_con: ", plc_result_con)
+                print("dual_Pbus: ", dual_Pbus)
+                print("dual_Pbus_con: ", dual_Pbus_con)
     
                 # get total plcs
                 sum_plc_result += sum(plc_result[xy][xsc])
                 sum_qlc_result += sum(qlc_result[xy][xsc])
-                
+                sum_plc_result_con += sum(sum(plc_result_con[xy][xsc][xc]) for xc in range(NoCon))
                 
                 # get dual for each [bus, branch]
                 temp_dual_Pbra_all, temp_dual_Pbus_all = trace_pf(plc_result[xy][xsc], dual_Pbra[xy][xsc], dual_Pbus[xy][xsc], OPF_Pbra[xy][xsc])
@@ -516,6 +663,11 @@ def InvPt1_function(OPF_option,test_case,model,mpc, NoYear, NoSea, NoDay, penalt
                     
                     dual_Pbra_all_con[xy].append(temp_dual_Pbra_all_con)
                     dual_Pbus_all_con[xy].append(temp_dual_Pbus_all_con)
+                    
+                    
+                print("after tracing")
+                print("dual_Pbra_all_con:", dual_Pbra_all_con)
+                print("dual_Pbus_all_con:", dual_Pbus_all_con)
                         
                        
                                 
@@ -539,6 +691,17 @@ def InvPt1_function(OPF_option,test_case,model,mpc, NoYear, NoSea, NoDay, penalt
                 #                 # model.add_component("updateBindingQ"+str(xy)+str(xsc)+str(ite_z)+str(xbr), rule=updateBinding_rule )
                            
         
+        # from io import StringIO
+        # profiler.disable()
+        # # sort output with total time
+
+        
+        # result = StringIO()
+        # stats = pstats.Stats(profiler, stream = result).sort_stats('tottime')
+        # stats.print_stats()
+        # # Save it into disk
+        # with open('cProfileExport.txt', 'w+') as f:
+        #     f.write(result.getvalue())
         
         
         
@@ -595,11 +758,15 @@ def InvPt1_function(OPF_option,test_case,model,mpc, NoYear, NoSea, NoDay, penalt
     ci_pt1 = overInvstment_check(NoYear, NoSce,S_ci, mpc,model, OPF_Pbra, bra_cap)
     # total investment cost
     obj_pt1 =  Val(model.obj)
+    
+    ciCost_pt1 = Val( sum( model.ciCost[xy,xsc] for xy,xsc in model.Set["YSce"] ) ) 
 
     
     print("Part 1 finished")
     print(ci_pt1)
     
-    return (model, obj_pt1, ci_pt1 , Cflex_pt1 , Pflex_pt1, Qflex_pt1)
+    
+    
+    return (model, obj_pt1, ci_pt1 ,ciCost_pt1,  Cflex_pt1 , Pflex_pt1, Qflex_pt1)
 
 # model, obj_pt1, ci_pt1 , Cflex_pt1 , Pflex_pt1, Qflex_pt1 = InvPt1_function(model,mpc, NoYear, NoSea, NoDay, penalty_cost, NoCon, NoSce,path_sce, S_ci,bra_cap,CPflex, CQflex, noDiff, genCbus,braFbus,braTbus,Pd, Qd)

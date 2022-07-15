@@ -145,7 +145,11 @@ def SCACOPF_function(net_name,cont_list, ci,Pflex_up , Pflex_dn, mult, delta_loa
     # net = pc.from_mpc('tests/json/case5.mat', f_hz=50) 
     # net = pc.from_mpc("tests/json/Transmission_Network_UK3.mat", f_hz=50) 
     # net = pc.from_mpc("tests/json/HR_Location1.mat", f_hz=50) 
-    # net = pn.case14()
+    # net = pn.case9()
+    
+    ## Jacobian in pandapower, only available for power flow not OPF
+    # pp.runpp(net,numba=False)
+    # net._ppc["internal"]["J"].todense()
     
     # remove gen cost
     for xg in range(len(net.poly_cost)):
@@ -162,10 +166,10 @@ def SCACOPF_function(net_name,cont_list, ci,Pflex_up , Pflex_dn, mult, delta_loa
     # update loads by multiplier
     for xb in range(len(net.load)):
         net.load["p_mw"][xb] *= mult
-        net.load["q_mvar"][xb] *= mult
+        # net.load["q_mvar"][xb] *= mult
         
         net.load["p_mw"][xb] += delta_load[xb]
-        net.load["q_mvar"][xb] += delta_load[xb]
+        # net.load["q_mvar"][xb] += delta_load[xb]
 
     
     # update gen by multiplier
@@ -205,8 +209,8 @@ def SCACOPF_function(net_name,cont_list, ci,Pflex_up , Pflex_dn, mult, delta_loa
         try:
            net.load['p_mw'][xb]
            
-           dummy_p = net.load['p_mw'][xb] *100
-           dummy_q = net.load['q_mvar'][xb] *100
+           dummy_p = net.load['p_mw'][xb] *1e10
+           dummy_q = net.load['q_mvar'][xb] *1e10
            
         except KeyError:
             dummy_p = 1e10
@@ -234,6 +238,7 @@ def SCACOPF_function(net_name,cont_list, ci,Pflex_up , Pflex_dn, mult, delta_loa
     
     # run ACOPF
     CO, plc_result, qlc_result, p_line, q_line,  = OPF_result(net,matSGenNum,time_steps)
+    
     
     # line loading percent
     line_loadPercent = net.res_line["loading_percent"].tolist()
@@ -442,6 +447,7 @@ def get_duals(net_name,mpc,con_list, ci, Pflex_up , Pflex_dn,penalty_cost,mult,N
     # CO, plc_result, qlc_result, OPF_Pbra ,OPF_Qbra = ACOPF_function(net_name, ci,NoTime)
     CO, plc_result, qlc_result, OPF_Pbra ,OPF_Qbra,\
         CO_con, plc_result_con, qlc_result_con, OPF_Pbra_con ,OPF_Qbra_con,line_loadPercent = SCACOPF_function(net_name, con_list, ci,Pflex_up, Pflex_dn, mult, delta_load, penalty_cost, NoTime)
+    print("pp pf: ",OPF_Pbra )
     
     # get power factors
     cos_pf =  [abs(a)/((a**2 + b**2)**0.5) for a,b in zip(OPF_Pbra, OPF_Qbra)]

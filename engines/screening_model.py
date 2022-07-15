@@ -808,7 +808,7 @@ busMult_input = []
 # expande multiplier for each bus
 multiplier_bus = mult_for_bus(busMult_input, multiplier, mpc)
 
-# cont_list= [[1,1,1,1,1,1], [1,0,1,1,1,1]]
+cont_list= [[1,1,1,1,1,1], [1,0,1,1,1,1]]
 # generate N-1 contingencies
 if cont_list==[]:
     cont_list = [[1]*mpc["NoBranch"]] 
@@ -871,7 +871,8 @@ print("Reduced intervention dict: ",interv_dict)
 
 
 ''' Output json file for the investment model''' 
-with open('results/screen_result_PT_new.json', 'w') as fp:
+file_name = "screen_result_" +  test_case
+with open("results/"+file_name+".json", 'w') as fp:
     json.dump(interv_dict, fp)
 
 
@@ -881,4 +882,4 @@ profiler.disable()
 stats = pstats.Stats(profiler).sort_stats('tottime')
 stats.print_stats(1)
 
-print("Screening model finishes, results output to the folder as 'screen_result.json'.")
+print("Screening model finishes, results output to the folder as '"+file_name+".json'.")

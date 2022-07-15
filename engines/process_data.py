@@ -137,7 +137,7 @@ def replaceGenCost(mpc, gen_cost, action):
     if action == 0:
         # remove gen cost in mpc
         for xgc in range(mpc["NoGen"]):
-            mpc["gencost"]["COST"][xgc][0] = 0.1*(xgc + 1)
+            mpc["gencost"]["COST"][xgc][0] = 0.1#*(xgc + 1)
     else:
         # recover gen cost
         for xgc in range(mpc["NoGen"]):
