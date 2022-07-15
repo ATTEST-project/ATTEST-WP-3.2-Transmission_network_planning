@@ -35,7 +35,7 @@ def json_directory():
 
 
 
-def read_input_data(cont_list, country = "HR", test_case = "HR_2020_Location_1",ci_catalogue = "Default", ci_cost ='Default' ):
+def read_input_data(cont_list, country = "HR", test_case = "HR_2020_Location_1", ):
     
     file_name  = test_case 
     
@@ -66,14 +66,60 @@ def read_input_data(cont_list, country = "HR", test_case = "HR_2020_Location_1",
     
     NoCon = len( cont_list)
     
-    if ci_catalogue == "Default":
+    if os.path.exists('tests/json/intervention.json'):
+        file = open('tests/json/intervention.json')
+        intv = json.load(file)
+        file.close()
+        
+        print("Reading intervention lists and costs data")
+        
+        ci_catalogue = intv["intev_list"]
+        ci_cost = intv["intev_cost"]
+        
+        # check input data
+        if len(ci_catalogue) != len(ci_cost):
+            print("Sizes of input data don't match, default values are used")
+            
+            ci_catalogue = [10,50,100,200,500,800,1000,2000,5000]
+            ci_cost = [5 * i for i in ci_catalogue]
+        
+    else:
+        print("Using default intervention lists and costs")
+
         ci_catalogue = [10,50,100,200,500,800,1000,2000,5000]
-    
-    if ci_cost == "Default":
         ci_cost = [5 * i for i in ci_catalogue]
 
     return (mpc,  base_time_series_data,  multiplier, NoCon,ci_catalogue,ci_cost)
 
+
+def read_screenModel_output(mpc,test_case, ci_catalogue,intv_cost):
+    # reading outputs from the screening model of the reduced intervention list
+    if os.path.exists('results/screen_result_'+test_case+'.json'):
+       
+        S_ci = json.load(open(os.path.join(os.path.dirname(__file__), 
+                                          'results', 'screen_result_'+test_case+'.json')))
+    else:
+        print("screen results not found. Using predefined intervetion lists, this will cause longer computing time. ")
+        S_ci = ci_catalogue
+        # expand catalogue for each branch
+        S_ci  = {str(k): ci_catalogue for k in range(mpc["NoBranch"])}
+        
+    # S_ci =  [48, 58, 133] #[52, 131] #
+
+    # if not specified, using a linear cost
+    ci_cost = {k: [] for k in range(mpc["NoBranch"])}
+    for xbr in range(mpc["NoBranch"]):
+        if S_ci[str(xbr)] != []:
+            # ci_cost[xbr] = [5*i for i in S_ci[str(xbr)]]  # £/MW
+            
+            # ci_cost[xbr] = [intv_cost[i]  for i in S_ci[str(xbr)]]
+            for xci in range(len(S_ci[str(xbr)])):
+                temp = [i for i,x in enumerate(ci_catalogue) if x==S_ci[str(xbr)][xci]]
+                
+                ci_cost[xbr].append(intv_cost[temp[0]])
+
+
+    return S_ci, ci_cost
 
 
                      
@@ -175,7 +221,7 @@ def output_data2Json(NoPath, NoYear, path_sce, sum_CO, yearly_CO, ci, sum_ciCost
     # data into template
         
     ''' Output json file''' 
-    with open('results/investment_result_'+ test_case +pt +'.json', 'w') as fp:
+    with open('results/investment_result_'+ country + "_"+ test_case + pt +'.json', 'w') as fp:
         json.dump(output_data, fp)
     
     return print("Investment result file created")

@@ -19,7 +19,7 @@ from pyomo.core import ConcreteModel, Constraint, minimize, NonNegativeReals, \
 from pyomo.core import value as Val
 import json
 import os
-from input_output_function import read_input_data, output_data2Json ,get_time_series_data
+from input_output_function import read_input_data, output_data2Json ,get_time_series_data,read_screenModel_output
 from scenarios_multipliers import get_mult
 from process_data import initial_value, recordValues, replaceGenCost,mult_for_bus
 from investment_model_pt2 import InvPt2_function
@@ -41,13 +41,17 @@ test_case = 'case5'
 
 
 
-ci_catalogue = "Default" # Default ci_catalogue = [10,50,100,200,500,800,1000,2000,5000]
-ci_cost = "Default" # Default ci_cost = 5*MVA
+
+# ci_catalogue = "Default" # Default ci_catalogue = [10,50,100,200,500,800,1000,2000,5000]
+# ci_cost = "Default" # Default ci_cost = 5*MVA
 
 
 cont_list =[]
 # read input data outputs mpc and load infor
-mpc, base_time_series_data,  multiplier, NoCon,ci_catalogue,ci_cost= read_input_data( cont_list, country,test_case,ci_catalogue,ci_cost)
+mpc, base_time_series_data,  multiplier, NoCon,ci_catalogue,intv_cost= read_input_data( cont_list, country,test_case)
+
+# read screening model output, if not found, full intervention list is used
+S_ci, ci_cost = read_screenModel_output(mpc,test_case, ci_catalogue,intv_cost)
 
 # read input data
 # mpc, base_time_series_data,  multiplier = read_input_data( test_case )
@@ -124,25 +128,6 @@ cos_pf = initial_value(mpc,NoYear,NoSce, cos_pf_init)
 sin_pf = initial_value(mpc,NoYear,NoSce, sin_pf_init)
 
     
-# reading outputs from the screening model of the reduced intervention list
-if os.path.exists('results/screen_result_'+test_case+'.json'):
-   
-    S_ci = json.load(open(os.path.join(os.path.dirname(__file__), 
-                                      'results', 'screen_result_'+test_case+'.json')))
-else:
-    print("screen results not found. Using predefined intervetion lists, this will cause longer computing time. ")
-    S_ci = ci_catalogue
-    # expand catalogue for each branch
-    S_ci  = {str(k): ci_catalogue for k in range(mpc["NoBranch"])}
-    
-# S_ci =  [48, 58, 133] #[52, 131] #
-
-# if not specified, using a linear cost
-ci_cost = {k: [] for k in range(mpc["NoBranch"])}
-for xbr in range(mpc["NoBranch"]):
-    if S_ci[str(xbr)] != []:
-        ci_cost[xbr] = [5*i for i in S_ci[str(xbr)]]  # £/MW
-
 
 # if not specified, assume flex data to be
 CPflex = 4  # flex: 50 £/MWh  £/MW

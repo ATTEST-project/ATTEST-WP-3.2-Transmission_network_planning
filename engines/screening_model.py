@@ -789,12 +789,12 @@ line_status = False
 ''' Test case '''
 country = "UK"  # Select country for case study: "PT", "UK" or "HR"
 test_case= 'case5' #'Transmission_Network_PT_2020_new'  #'Transmission_Network_UK3' #  "HR_Location1" #"HR_2020_Location_1"#
-ci_catalogue = "Default" # Default ci_catalogue = [10,50,100,200,500,800,1000,2000,5000]
-ci_cost = "Default" # Default ci_cost = 5*MVA
+# ci_catalogue = "Default" # Default ci_catalogue = [10,50,100,200,500,800,1000,2000,5000]
+# ci_cost = "Default" # Default ci_cost = 5*MVA
 
 # read input data outputs mpc and load infor
 # mpc, base_time_series_data, multiplier, NoCon = read_input_data( cont_list, country,test_case)
-mpc, base_time_series_data,  multiplier, NoCon,ci_catalogue,ci_cost= read_input_data( cont_list, country,test_case,ci_catalogue,ci_cost)
+mpc, base_time_series_data,  multiplier, NoCon,ci_catalogue,ci_cost= read_input_data( cont_list, country,test_case)
 
 # # load json file from file directory
 # mpc = json.load(open(os.path.join(os.path.dirname(__file__), 
@@ -831,7 +831,7 @@ peak_Pd = []# get_peak_data(mpc, base_time_series_data, peak_hour)
 
 ''' Cost information'''
 # branch investment cost
-cicost = 5 # £/Mw/km
+cicost = 20 # £/Mw/km
 # curtailment cost
 penalty_cost = 1e4
 
@@ -871,7 +871,7 @@ print("Reduced intervention dict: ",interv_dict)
 
 
 ''' Output json file for the investment model''' 
-file_name = "screen_result_" +  test_case
+file_name = "screen_result_" + country + "_" + test_case
 with open("results/"+file_name+".json", 'w') as fp:
     json.dump(interv_dict, fp)
 
