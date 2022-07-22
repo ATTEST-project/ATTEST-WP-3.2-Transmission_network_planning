@@ -120,22 +120,43 @@ def read_input_data(ods_file_name, country = "HR", test_case = "HR_2020_Location
         file.close()
         
         print("Reading intervention lists and costs data")
+        ci_catalogue = []
+        ci_catalogue.append( intv["line_list"] )
+        ci_catalogue.append( intv["transformer_list"])
         
-        ci_catalogue = intv["intev_list"]
-        ci_cost = intv["intev_cost"]
+        ci_cost = []
+        ci_cost.append( intv["line_cost"] )
+        ci_cost.append( intv["transformer_cost"] )
+        
         
         # check input data
-        if len(ci_catalogue) != len(ci_cost):
-            print("Sizes of input data don't match, default values are used")
+        if len(ci_catalogue[0]) != len(ci_cost[0]):
+            print("Sizes of input line investment data don't match, default values are used")
             
-            ci_catalogue = [10,50,100,200,500,800,1000,2000,5000]
-            ci_cost = [5 * i for i in ci_catalogue]
+            ci_catalogue[0] = [10,50,100,200,500,800]
+            ci_cost[0] = [5 * i for i in ci_catalogue[0]]
+        
+        if len(ci_catalogue[1]) != len(ci_cost[1]):
+            print("Sizes of input transformer investment data don't match, default values are used")
+            
+            ci_catalogue[1] = [560,880,1200,2400,5600]
+            ci_cost[1] = [5 * i for i in ci_catalogue[1]]
+        
         
     else:
         print("Using default intervention lists and costs")
 
-        ci_catalogue = [10,50,100,200,500,800,1000,2000,5000]
-        ci_cost = [5 * i for i in ci_catalogue]
+        # ci_catalogue = [10,50,100,200,500,800,1000,2000,5000]
+        # ci_cost = [5 * i for i in ci_catalogue]
+        
+        # lines
+        ci_catalogue[0] = [10,50,100,200,500,800]
+        ci_cost[0] = [5 * i for i in ci_catalogue[0]]
+        # transformers
+        ci_catalogue[1] = [560,880,1200,2400,5600]
+        ci_cost[1] = [5 * i for i in ci_catalogue[1]]
+        
+        
 
     return (mpc,  base_time_series_data,  multiplier, NoCon,cont_list,ci_catalogue,ci_cost)
 
@@ -154,11 +175,17 @@ def read_screenModel_output(country, mpc,test_case, ci_catalogue,intv_cost):
                                           'results', file_name +'.json')))
     else:
         print("screen results not found. Using predefined intervetion lists, this will cause longer computing time. ")
-        S_ci = ci_catalogue
+        S_ci = ci_catalogue[0]
         # expand catalogue for each branch
-        S_ci  = {str(k): ci_catalogue for k in range(mpc["NoBranch"])}
+        S_ci  = {str(k): ci_catalogue[0] for k in range(mpc["NoBranch"])}
         
-    # S_ci =  [48, 58, 133] #[52, 131] #
+        for xbr in range(mpc["NoBranch"]):
+            if mpc["branch"]["TAP"][xbr] != 0:  # transformer
+                S_ci[str(xbr)] = ci_catalogue[1]
+        
+        
+        
+
 
     # if not specified, using a linear cost
     ci_cost = {k: [] for k in range(mpc["NoBranch"])}
@@ -168,9 +195,17 @@ def read_screenModel_output(country, mpc,test_case, ci_catalogue,intv_cost):
             
             # ci_cost[xbr] = [intv_cost[i]  for i in S_ci[str(xbr)]]
             for xci in range(len(S_ci[str(xbr)])):
-                temp = [i for i,x in enumerate(ci_catalogue) if x==S_ci[str(xbr)][xci]]
                 
-                ci_cost[xbr].append(intv_cost[temp[0]])
+                if mpc["branch"]["TAP"][xbr] == 0:  # line
+                    temp = [i for i,x in enumerate(ci_catalogue[0]) if x==S_ci[str(xbr)][xci]]
+                
+                    ci_cost[xbr].append(intv_cost[0][temp[0]])
+                    
+                else: # transformer
+                    temp = [i for i,x in enumerate(ci_catalogue[1]) if x==S_ci[str(xbr)][xci]]
+                
+                    ci_cost[xbr].append(intv_cost[1][temp[0]])
+                    
 
 
     return S_ci, ci_cost

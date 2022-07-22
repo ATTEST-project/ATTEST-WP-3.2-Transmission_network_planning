@@ -855,8 +855,13 @@ interv_dict = main_screening(mpc, multiplier_bus ,cicost, penalty_cost ,peak_Pd,
 for xbr in range(mpc["NoBranch"]):
     if sum(interv_dict[xbr]) > 0 :
         for xi in range(len(interv_dict[xbr])):
-            interv_dict[xbr][xi] = min([i for i in ci_catalogue if i >= interv_dict[xbr][xi]])
-        
+            
+            if mpc["branch"]["TAP"][xbr] == 0:  # line
+         
+                interv_dict[xbr][xi] = min([i for i in ci_catalogue[0] if i >= interv_dict[xbr][xi]])
+            else: # transformer
+                interv_dict[xbr][xi] = min([i for i in ci_catalogue[1] if i >= interv_dict[xbr][xi]])
+                
         interv_dict[xbr] = list(set(interv_dict[xbr]))
         interv_dict[xbr].sort()  
     else:
