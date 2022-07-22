@@ -17,13 +17,14 @@ import json
 import os
 import math
 import numpy as np
+from process_data import initial_value
 # import copy
 # from input_output_function import read_input_data, output_data ,get_time_series_data
 # from ACOPF import ACOPF_function
 # from scenarios_multipliers import get_mult
 # from SCACOPF import run_SCACOPF_jl
 # from SCACOPF import output2json
-# from process_data import initial_value
+
 # from investment_model_pt2 import InvPt2_function
 # from investment_model_pt1 import InvPt1_function
 
@@ -56,8 +57,17 @@ class nodes_info_network:
 
 # ####################################################################
 # ####################################################################
-def prepare_invest_model(mpc, NoPath, prob,NoYear, NoSce,NoSea, NoDay,DF,CRF,SF,S_ci,ci_cost,Budget_cost,penalty_cost, peak_Pd,peak_Qd, multiplier,cos_pf,sin_pf,CPflex,CQflex,Pflex_up, Pflex_dn,Qflex_up, Qflex_dn,gen_status,line_status):
+def prepare_invest_model(mpc, NoPath, prob,NoYear, NoSce,NoSea, NoDay,DF,CRF,SF,S_ci,ci_cost,Budget_cost,penalty_cost, peak_Pd,peak_Qd, multiplier,CPflex,CQflex,Pflex_up, Pflex_dn,Qflex_up, Qflex_dn,gen_status,line_status):
     NoTime = 1
+    
+    # Assume a power factor for initial run, values are updated based on OPF results
+
+    cos_pf_init = 0.98
+    sin_pf_init = (1-cos_pf_init**2)**0.5
+
+    cos_pf = initial_value(mpc,NoYear,NoSce, cos_pf_init)
+    sin_pf = initial_value(mpc,NoYear,NoSce, sin_pf_init)
+    
     ''''read paras and vars from jason file'''
     def readVarPara():
     

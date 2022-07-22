@@ -162,3 +162,20 @@ def mult_for_bus(busMult_input, multiplier, mpc):
         mult_bus = busMult_input.copy()
         
     return mult_bus
+
+
+
+def get_factors(d, NoYear):
+    DF = [0]*NoYear
+    for y in range(NoYear):
+        DF[y] = 1/ ((1-d)**y)
+    
+    # capaital recovery factor
+    CRF = [1] * NoYear
+    xy = 1
+    while xy < NoYear:
+        N_year = xy *10
+        CRF[xy] = (d * ((1+d)**N_year) ) / ( (1+d)**N_year -1) # d = 0.035 # discount rate <= 30 years: 3.5%
+        xy += 1
+
+    return DF, CRF

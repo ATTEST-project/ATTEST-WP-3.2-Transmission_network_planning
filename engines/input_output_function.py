@@ -128,19 +128,19 @@ def read_input_data(ods_file_name, country = "HR", test_case = "HR_2020_Location
         ci_cost.append( intv["line_cost"] )
         ci_cost.append( intv["transformer_cost"] )
         
-        
+        # TODO: update intervention inputs for different countries?
         # check input data
         if len(ci_catalogue[0]) != len(ci_cost[0]):
             print("Sizes of input line investment data don't match, default values are used")
             
             ci_catalogue[0] = [10,50,100,200,500,800]
-            ci_cost[0] = [5 * i for i in ci_catalogue[0]]
+            ci_cost[0] = [20 * i for i in ci_catalogue[0]]
         
         if len(ci_catalogue[1]) != len(ci_cost[1]):
             print("Sizes of input transformer investment data don't match, default values are used")
             
             ci_catalogue[1] = [560,880,1200,2400,5600]
-            ci_cost[1] = [5 * i for i in ci_catalogue[1]]
+            ci_cost[1] = [20 * i for i in ci_catalogue[1]]
         
         
     else:
@@ -151,10 +151,10 @@ def read_input_data(ods_file_name, country = "HR", test_case = "HR_2020_Location
         
         # lines
         ci_catalogue[0] = [10,50,100,200,500,800]
-        ci_cost[0] = [5 * i for i in ci_catalogue[0]]
+        ci_cost[0] = [20 * i for i in ci_catalogue[0]]
         # transformers
         ci_catalogue[1] = [560,880,1200,2400,5600]
-        ci_cost[1] = [5 * i for i in ci_catalogue[1]]
+        ci_cost[1] = [20 * i for i in ci_catalogue[1]]
         
         
 

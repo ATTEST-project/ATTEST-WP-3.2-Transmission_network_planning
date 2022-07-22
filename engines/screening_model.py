@@ -809,11 +809,6 @@ busMult_input = []
 # expande multiplier for each bus
 multiplier_bus = mult_for_bus(busMult_input, multiplier, mpc)
 
-# cont_list= [[1,1,1,1,1,1], [1,1,1,1,1,0]]
-
-
-
-
 
 
 
@@ -825,8 +820,9 @@ multiplier_bus = mult_for_bus(busMult_input, multiplier, mpc)
 peak_hour = 19
 peak_Pd = []# get_peak_data(mpc, base_time_series_data, peak_hour)
 
+
 ''' Cost information'''
-# branch investment cost
+# linear cost for the screening model
 cicost = 20 # £/Mw/km
 # curtailment cost
 penalty_cost = 1e3
@@ -837,18 +833,7 @@ penalty_cost = 1e3
 interv_dict = main_screening(mpc, multiplier_bus ,cicost, penalty_cost ,peak_Pd, cont_list)
 
 
-# given investment catalogue
-# ci_catalogue = [10,50,100,200,500,800,1000,2000,5000]
-# reduce catalogue
 
-
-# for xi in range(len(interv_list)):
-#     interv_list[xi] = min([i for i in ci_catalogue if i >= interv_list[xi]])
-    
-    
-# interv_list = list(set(interv_list))
-# interv_list.sort()
-# print("Reduced intervention list: ",interv_list)
 
 
 # reduce catalogue in the interv dictionary

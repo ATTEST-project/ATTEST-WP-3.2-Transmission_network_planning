@@ -21,7 +21,7 @@ import json
 import os
 from input_output_function import read_input_data, output_data2Json ,get_time_series_data,read_screenModel_output
 from scenarios_multipliers import get_mult
-from process_data import initial_value, recordValues, replaceGenCost,mult_for_bus
+from process_data import recordValues, replaceGenCost,mult_for_bus,get_factors
 from investment_model_pt2 import InvPt2_function
 from investment_model_pt1 import InvPt1_function
 from model_preparation import prepare_invest_model
@@ -48,7 +48,7 @@ ods_file_name = "case_template_CR_L3"
 mpc, base_time_series_data,  multiplier, NoCon,cont_list, ci_catalogue,intv_cost= read_input_data( ods_file_name, country,test_case)
 
 
-''' Define factors '''
+
 # update peak demand values
 # get peak load for screening model
 peak_hour = 19
@@ -56,14 +56,23 @@ peak_Pd = []# get_peak_data(mpc, base_time_series_data, peak_hour)
 peak_Qd = []
 
 
+
+# TODO: check meaning for flex_up and flex_dn from WP2
+# if None, means no flexibility
+Pflex_up = [100]*mpc["NoBranch"] # peak_Pflex_up
+Pflex_dn = [0]*mpc["NoBranch"] # peak_Pflex_up
+Qflex_up = None
+Qflex_dn = None
+
 # read input data
 # base_Pd , base_Qd ,peak_Pd ,peak_Qd ,base_Pflex_up, base_Pflex_dn , Pflex_up, Pflex_dn,Qflex_up, Qflex_dn, gen_sta, peak_gen_sta,get_time_series_data = get_time_series_data(mpc,  base_time_series_data,peak_hour)
 
-
+''' Define factors '''
 # required inputs of multipliers for each bus, if not specified, all buses have the same multiplier
 busMult_input = []
 # expande multiplier for each bus
 multiplier_bus = mult_for_bus(busMult_input, multiplier, mpc)
+
 
 # Information about year and scenarios
 NoYear = 1 #input numbers between 1 and 4, indicate year 2020 - 2050
@@ -82,28 +91,10 @@ prob = [1/NoPath] * NoPath
 
 # Discount factor
 d = 0.035 # discount rate <= 30 years: 3.5%
-DF = [0]*NoYear
-for y in range(NoYear):
-    DF[y] = 1/ ((1-d)**y)
-
-# capaital recovery factor
-CRF = [1] * NoYear
-xy = 1
-while xy < NoYear:
-    N_year = xy *10
-    CRF[xy] = (d * ((1+d)**N_year) ) / ( (1+d)**N_year -1) # d = 0.035 # discount rate <= 30 years: 3.5%
-    xy += 1
+DF, CRF = get_factors(d, NoYear)
 
 # scaling factor to translate representative days costs into yearly cost
 SF  =  24 * 365* 0.7
-
-# Assume a power factor for initial run, values are updated based on OPF results
-
-cos_pf_init = 0.98
-sin_pf_init = (1-cos_pf_init**2)**0.5
-
-cos_pf = initial_value(mpc,NoYear,NoSce, cos_pf_init)
-sin_pf = initial_value(mpc,NoYear,NoSce, sin_pf_init)
 
     
 ''' costs and interventions'''
@@ -113,22 +104,10 @@ penalty_cost = 1e3
 
 # read screening model output, if not found, full intervention list is used
 S_ci, ci_cost = read_screenModel_output(country, mpc,test_case, ci_catalogue,intv_cost)
-# ci_catalogue = "Default" # Default ci_catalogue = [10,50,100,200,500,800,1000,2000,5000]
-# ci_cost = "Default" # Default ci_cost = 5*MVA
 
 # if not specified, assume flex data to be
-CPflex = 4  # flex: 50 £/MWh  £/MW
-CQflex = 2
-
-# TODO: check meaning for flex_up and flex_dn from WP2
-# if None, means no flexibility
-Pflex_up = [100]*mpc["NoBranch"] # peak_Pflex_up
-Pflex_dn = [0]*mpc["NoBranch"] # peak_Pflex_up
-Qflex_up = None
-Qflex_dn = None
-
-
-
+CPflex = 50  # flex: 50 £/MWh  £/MW
+CQflex = 0
 
 # Define gen and line status, Default to False
 # if True, consider status from .m file; 
@@ -153,7 +132,7 @@ profiler.enable()
 '''Main '''
 print("Form optimisation model")
 # prepare the optimisation model with input data
-mpc,model, no_ysce, tree_ysce,path_sce,noDiff, genCbus,braFbus,braTbus,Pd, Qd = prepare_invest_model(mpc, NoPath,prob, NoYear, NoSce,NoSea, NoDay,DF,CRF,SF,S_ci,ci_cost,Budget_cost,penalty_cost, peak_Pd,peak_Qd,multiplier_bus,cos_pf,sin_pf,CPflex,CQflex,Pflex_up, Pflex_dn,Qflex_up, Qflex_dn,gen_status,line_status)
+mpc,model, no_ysce, tree_ysce,path_sce,noDiff, genCbus,braFbus,braTbus,Pd, Qd = prepare_invest_model(mpc, NoPath,prob, NoYear, NoSce,NoSea, NoDay,DF,CRF,SF,S_ci,ci_cost,Budget_cost,penalty_cost, peak_Pd,peak_Qd,multiplier_bus, CPflex,CQflex,Pflex_up, Pflex_dn,Qflex_up, Qflex_dn,gen_status,line_status)
 
 # record branch capacity and gen cost
 bra_cap, gen_cost = recordValues(mpc)
