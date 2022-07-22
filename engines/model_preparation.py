@@ -56,7 +56,7 @@ class nodes_info_network:
 
 # ####################################################################
 # ####################################################################
-def prepare_invest_model(mpc, NoPath, prob,NoYear, NoSce,NoSea, NoDay,DF,CRF,SF,S_ci,ci_cost,Budget_cost,penalty_cost, peak_Pd,peak_Qd, multiplier,cos_pf,sin_pf,CPflex,CQflex,Pflex_max,Qflex_max,gen_status,line_status):
+def prepare_invest_model(mpc, NoPath, prob,NoYear, NoSce,NoSea, NoDay,DF,CRF,SF,S_ci,ci_cost,Budget_cost,penalty_cost, peak_Pd,peak_Qd, multiplier,cos_pf,sin_pf,CPflex,CQflex,Pflex_up, Pflex_dn,Qflex_up, Qflex_dn,gen_status,line_status):
     NoTime = 1
     ''''read paras and vars from jason file'''
     def readVarPara():
@@ -410,32 +410,31 @@ def prepare_invest_model(mpc, NoPath, prob,NoYear, NoSce,NoSea, NoDay,DF,CRF,SF,
     
              
         # Flexibility service output constraint rules
-        # TODO: update Pflex_max, Qflex_max for each t
-        def flexPMax_rule(m, xb, xy,xsc, xse,xd, xt):
-            if Pflex_max == None:
+        def flexPup_rule(m, xb, xy,xsc, xse,xd, xt):
+            if Pflex_up == None:
                 return m.Pflex[xb, xy,xsc, xse, xd,  xt] == 0
             else: 
-                return  m.Pflex[xb, xy,xsc, xse, xd, xt] <= Pflex_max * multiplier[xy][xsc][xb]
+                return  m.Pflex[xb, xy,xsc, xse, xd, xt] <= Pflex_up[xb] * multiplier[xy][xsc][xb]
         
-        def flexPMin_rule(m, xb, xy,xsc, xse,xd, xt):
-            if Pflex_max == None:
+        def flexPdn_rule(m, xb, xy,xsc, xse,xd, xt):
+            if Pflex_dn == None:
                 return m.Pflex[xb,xy,xsc, xse, xd, xt] == 0
             else: 
-                return  m.Pflex[xb,xy,xsc, xse, xd, xt] >= - Pflex_max* multiplier[xy][xsc][xb]
+                return  m.Pflex[xb,xy,xsc, xse, xd, xt] >= - Pflex_dn[xb]* multiplier[xy][xsc][xb]
         
-        def flexQMax_rule(m, xb, xy,xsc, xse, xd, xt):
+        def flexQup_rule(m, xb, xy,xsc, xse, xd, xt):
             # Qflex_max = None
-            if Qflex_max == None:
+            if Qflex_up == None:
                 return m.Qflex[xb, xy,xsc, xse, xd,  xt] == 0
             else: 
-                return  m.Qflex[xb, xy,xsc, xse, xd,  xt] <= Qflex_max * multiplier[xy][xsc][xb]
+                return  m.Qflex[xb, xy,xsc, xse, xd,  xt] <= Qflex_up[xb] * multiplier[xy][xsc][xb]
         
-        def flexQMin_rule(m, xb, xy,xsc, xse, xd, xt):
+        def flexQdn_rule(m, xb, xy,xsc, xse, xd, xt):
             # Qflex_max = None
-            if Qflex_max == None:
+            if Qflex_dn == None:
                 return m.Qflex[xb,xy,xsc, xse, xd, xt] == 0
             else: 
-                return m.Qflex[xb,xy,xsc, xse, xd, xt] >= -Qflex_max* multiplier[xy][xsc][xb]
+                return m.Qflex[xb,xy,xsc, xse, xd, xt] >= -Qflex_dn[xb]* multiplier[xy][xsc][xb]
             
         # def flexS_rule(m, xb, xt):
         #     cos_pf  = 0.98 #TODO: update power factor
@@ -665,7 +664,7 @@ def prepare_invest_model(mpc, NoPath, prob,NoYear, NoSce,NoSea, NoDay,DF,CRF,SF,
         m.nodeBalanceQ = Constraint( m.Set['Bus'],m.Set['YSce'] ,m.Set['Sea'], m.Set['Day'], m.Set['Tim'], rule=rules.nodeBalanceQ_rule ) 
         
         # Add branch flow DC OPF
-        m.DCPF = Constraint( m.Set['Bra'],m.Set['YSce'] ,m.Set['Sea'], m.Set['Day'],  m.Set['Tim'], rule=rules.DCPF_rule ) 
+        #m.DCPF = Constraint( m.Set['Bra'],m.Set['YSce'] ,m.Set['Sea'], m.Set['Day'],  m.Set['Tim'], rule=rules.DCPF_rule ) 
         m.slackBus = Constraint( m.Set['YSce'] ,m.Set['Sea'], m.Set['Day'], m.Set['Tim'],  rule=rules.slackBus_rule ) 
         
         
@@ -696,19 +695,19 @@ def prepare_invest_model(mpc, NoPath, prob,NoYear, NoSce,NoSea, NoDay,DF,CRF,SF,
         # Add Gen constraint rules
         m.genMax = Constraint( m.Set['Gen'],m.Set['YSce'] ,m.Set['Sea'], m.Set['Day'],  m.Set['Tim'], rule=rules.genMax_rule )
         m.genMin = Constraint( m.Set['Gen'],m.Set['YSce'] ,m.Set['Sea'], m.Set['Day'], m.Set['Tim'], rule=rules.genMin_rule )
-        # m.genQMax = Constraint( m.Set['Gen'],m.Set['YSce'] ,m.Set['Sea'], m.Set['Day'],  m.Set['Tim'], rule=rules.genQMax_rule )
-        # m.genQMin = Constraint( m.Set['Gen'],m.Set['YSce'] ,m.Set['Sea'], m.Set['Day'], m.Set['Tim'],  rule=rules.genQMin_rule )
+        m.genQMax = Constraint( m.Set['Gen'],m.Set['YSce'] ,m.Set['Sea'], m.Set['Day'],  m.Set['Tim'], rule=rules.genQMax_rule )
+        m.genQMin = Constraint( m.Set['Gen'],m.Set['YSce'] ,m.Set['Sea'], m.Set['Day'], m.Set['Tim'],  rule=rules.genQMin_rule )
         
         # piecve wise gen cost
         m.pwcost = Constraint(m.Set['Gen'], m.Set['YSce'] ,m.Set['Sea'], m.Set['Day'],range(NoPieces),  m.Set['Tim'], rule=rules.pwcost_rule )
         
     
         # Add flex constraint rules
-        m.flexPMax = Constraint( m.Set['Bus'],m.Set['YSce'] ,m.Set['Sea'], m.Set['Day'], m.Set['Tim'], rule=rules.flexPMax_rule )
-        m.flexPMin = Constraint( m.Set['Bus'],m.Set['YSce'] ,m.Set['Sea'], m.Set['Day'], m.Set['Tim'], rule=rules.flexPMin_rule )
+        m.flexPup = Constraint( m.Set['Bus'],m.Set['YSce'] ,m.Set['Sea'], m.Set['Day'], m.Set['Tim'], rule=rules.flexPup_rule )
+        m.flexPdn = Constraint( m.Set['Bus'],m.Set['YSce'] ,m.Set['Sea'], m.Set['Day'], m.Set['Tim'], rule=rules.flexPdn_rule )
         
-        m.flexQMax = Constraint( m.Set['Bus'],m.Set['YSce'] ,m.Set['Sea'], m.Set['Day'], m.Set['Tim'], rule=rules.flexQMax_rule )
-        m.flexQMin = Constraint( m.Set['Bus'],m.Set['YSce'] ,m.Set['Sea'], m.Set['Day'], m.Set['Tim'], rule=rules.flexQMin_rule )
+        m.flexQup = Constraint( m.Set['Bus'],m.Set['YSce'] ,m.Set['Sea'], m.Set['Day'], m.Set['Tim'], rule=rules.flexQup_rule )
+        m.flexQdn = Constraint( m.Set['Bus'],m.Set['YSce'] ,m.Set['Sea'], m.Set['Day'], m.Set['Tim'], rule=rules.flexQdn_rule )
         
         #m.flexS = Constraint( m.Set['Bus'],m.Set['Tim'], rule=rules.flexS_rule )
         m.flexCost = Constraint( m.Set['Bus'],m.Set['YSce'] ,m.Set['Sea'], m.Set['Day'], m.Set['Tim'], rule=rules.flexCost_rule )

@@ -26,6 +26,7 @@ import os
 import pandas as pd
 from conversion_model_mat2json import any2json
 from scenarios_multipliers import get_mult
+import numpy as np
 
 
 def json_directory():
@@ -35,7 +36,7 @@ def json_directory():
 
 
 
-def read_input_data(cont_list, country = "HR", test_case = "HR_2020_Location_1", ):
+def read_input_data(ods_file_name, country = "HR", test_case = "HR_2020_Location_1" ):
     
     file_name  = test_case 
     
@@ -63,8 +64,55 @@ def read_input_data(cont_list, country = "HR", test_case = "HR_2020_Location_1",
     base_time_series_data  = pd.read_excel('tests/excel/Transmission_Network_PT_2020_24hGenerationLoadData.xlsx', sheet_name=None)
     print('load xlsx file')
    
+    ''' Load ods for contingencies file''' 
+    # ods_file_name = "case_template_CR_L3"
+    ods_file = 'SCOPF_R5/input_data/'+ ods_file_name + ".ods"
     
-    NoCon = len( cont_list)
+    if os.path.exists(ods_file):
+        cont_ods = pd.read_excel(ods_file,sheet_name = "contingencies")
+    
+        NoCon =  len(cont_ods)
+        con_bra = []
+        
+        for xc in range(NoCon):
+            
+            fbus = cont_ods["From"][xc]
+            tbus = cont_ods["To"][xc]
+            
+            # find all branch fron the bus
+            con_bra_fbus = [index for (index, item) in enumerate(mpc["branch"]["F_BUS"]) if item == fbus]
+            con_bra_tbus = [index for (index, item) in enumerate(mpc["branch"]["T_BUS"]) if item == tbus]
+            con_bra.append( list(set(con_bra_fbus).intersection(set(con_bra_tbus)))[0] )
+        
+        
+        # create contingecy list
+        cont_list = [[1]*mpc["NoBranch"]]     
+        
+        for xc in range(NoCon):
+            
+            temp_list = [[1]*mpc["NoBranch"]]  
+            
+            temp_list[0][con_bra[xc]] = 0
+            
+            cont_list.extend(temp_list)
+        
+        
+    else:
+        print("input data for contiengcy not found. Use N-1 for simulation")
+        # generate N-1 contingencies
+        if cont_list==[]:
+            cont_list = [[1]*mpc["NoBranch"]] 
+
+            temp_list = (cont_list[0]-np.diag(cont_list[0]) ).tolist()
+            
+            # # reduce the size of contingency list
+            # temp_list = temp_list[:len(temp_list)//29]
+
+            cont_list.extend(temp_list)
+    
+    
+    
+    ''' Load intervention infor''' 
     
     if os.path.exists('tests/json/intervention.json'):
         file = open('tests/json/intervention.json')
@@ -89,15 +137,21 @@ def read_input_data(cont_list, country = "HR", test_case = "HR_2020_Location_1",
         ci_catalogue = [10,50,100,200,500,800,1000,2000,5000]
         ci_cost = [5 * i for i in ci_catalogue]
 
-    return (mpc,  base_time_series_data,  multiplier, NoCon,ci_catalogue,ci_cost)
+    return (mpc,  base_time_series_data,  multiplier, NoCon,cont_list,ci_catalogue,ci_cost)
 
 
-def read_screenModel_output(mpc,test_case, ci_catalogue,intv_cost):
+
+
+def read_screenModel_output(country, mpc,test_case, ci_catalogue,intv_cost):
     # reading outputs from the screening model of the reduced intervention list
-    if os.path.exists('results/screen_result_'+test_case+'.json'):
-       
+    file_name = "screen_result_" + country + "_" + test_case
+    
+    
+    if os.path.exists('results/'+ file_name + '.json'):
+        
+               
         S_ci = json.load(open(os.path.join(os.path.dirname(__file__), 
-                                          'results', 'screen_result_'+test_case+'.json')))
+                                          'results', file_name +'.json')))
     else:
         print("screen results not found. Using predefined intervetion lists, this will cause longer computing time. ")
         S_ci = ci_catalogue
@@ -131,97 +185,105 @@ def output_data2Json(NoPath, NoYear, path_sce, sum_CO, yearly_CO, ci, sum_ciCost
     output_data = { "Country": country, 
                     "Case name": test_case}
     
-    # output all the pathways (scenarios)
-    if outputAll == True:      
-        for xp in range(NoPath):
-            sce_data = {}
-            sce_data["Total investment cost (EUR)"] = sum_ciCost +  sum(Cflex[xy][path_sce[xp][xy]] for xy in range(NoYear) )
-            sce_data["Branch investment cost (EUR)"] = sum_ciCost
-            sce_data["Flexibility investment cost (EUR)"] =  sum(Cflex[xy][path_sce[xp][xy]] for xy in range(NoYear) )
-            sce_data["Total Operation Cost (EUR)"] =  sum_CO
-            
-            for xy in range(NoYear):
+    if sum_CO == 0: # part 1 output without operation cost
+    
+        # output all the pathways (scenarios)
+        if outputAll == True:      
+            for xp in range(NoPath):
+                sce_data = {}
+                sce_data["Total investment cost (EUR)"] = sum_ciCost +  sum(Cflex[xy][path_sce[xp][xy]] for xy in range(NoYear) )
+                sce_data["Branch investment cost (EUR)"] = sum_ciCost
+                sce_data["Flexibility investment cost (EUR)"] =  sum(Cflex[xy][path_sce[xp][xy]] for xy in range(NoYear) )
+                sce_data["Total Operation Cost (EUR)"] =  0
                 
-                sce_data[str(year_num[xy])] = {
-                                        "Operation cost (EUR/year)": yearly_CO[xy][path_sce[xp][xy]], 
-                                        "Branch investment (MVA)":  ci[xy][path_sce[xp][xy]], 
-                                        "Flexibility investment (MW)": Pflex[xy][path_sce[xp][xy]], 
-                                     }
-            
-            output_data["Scenario " +str(xp+1)] = sce_data
-            
-    else:
-        # only output two extreme scenarios
-        temp_xp = 0
-        for xp in [0,NoPath-1]:
-            
-            temp_xp += 1
-            sce_data = {}
-            sce_data["Total investment cost (EUR)"] = sum_ciCost +  sum(Cflex[xy][path_sce[xp][xy]] for xy in range(NoYear) )
-            sce_data["Branch investment cost (EUR)"] = sum_ciCost
-            sce_data["Flexibility investment cost (EUR)"] =  sum(Cflex[xy][path_sce[xp][xy]] for xy in range(NoYear) )
-            sce_data["Net Present Operation Cost (EUR)"] =  sum_CO
-            
-            for xy in range(NoYear):
-                 
-                sce_data[str(year_num[xy])] = {
-                                        "Operation cost (EUR/year)": yearly_CO[xy][path_sce[xp][xy]], 
-                                        "Branch investment (MVA)":  ci[xy][path_sce[xp][xy]], 
-                                        "Flexibility investment (MW)": Pflex[xy][path_sce[xp][xy]], 
-                                     }
+                for xy in range(NoYear):
+                    
+                    sce_data[str(year_num[xy])] = {
+                                            "Operation cost (EUR/year)": 0, 
+                                            "Branch investment (MVA)":  ci[xy][path_sce[xp][xy]], 
+                                            "Flexibility investment (MW)": Pflex[xy][path_sce[xp][xy]], 
+                                         }
                 
-                   
+                output_data["Scenario " +str(xp+1)] = sce_data
                 
-         
-            output_data["Scenario " +str(temp_xp)] = sce_data
+        else:
+            # only output two extreme scenarios
+            temp_xp = 0
+            for xp in [0,NoPath-1]:
+                
+                temp_xp += 1
+                sce_data = {}
+                sce_data["Total investment cost (EUR)"] = sum_ciCost +  sum(Cflex[xy][path_sce[xp][xy]] for xy in range(NoYear) )
+                sce_data["Branch investment cost (EUR)"] = sum_ciCost
+                sce_data["Flexibility investment cost (EUR)"] =  sum(Cflex[xy][path_sce[xp][xy]] for xy in range(NoYear) )
+                sce_data["Net Present Operation Cost (EUR)"] =  0
+                
+                for xy in range(NoYear):
+                     
+                    sce_data[str(year_num[xy])] = {
+                                            "Operation cost (EUR/year)": 0, 
+                                            "Branch investment (MVA)":  ci[xy][path_sce[xp][xy]], 
+                                            "Flexibility investment (MW)": Pflex[xy][path_sce[xp][xy]], 
+                                         }
+                    
+                       
+                    
+             
+                output_data["Scenario " +str(temp_xp)] = sce_data
+    
             
+    else: # part 2 output with operation cost
+        
+        # output all the pathways (scenarios)
+        if outputAll == True:      
+            for xp in range(NoPath):
+                sce_data = {}
+                sce_data["Total investment cost (EUR)"] = sum_ciCost +  sum(Cflex[xy][path_sce[xp][xy]] for xy in range(NoYear) )
+                sce_data["Branch investment cost (EUR)"] = sum_ciCost
+                sce_data["Flexibility investment cost (EUR)"] =  sum(Cflex[xy][path_sce[xp][xy]] for xy in range(NoYear) )
+                sce_data["Total Operation Cost (EUR)"] =  sum_CO
+                
+                for xy in range(NoYear):
+                    
+                    sce_data[str(year_num[xy])] = {
+                                            "Operation cost (EUR/year)": yearly_CO[xy][path_sce[xp][xy]], 
+                                            "Branch investment (MVA)":  ci[xy][path_sce[xp][xy]], 
+                                            "Flexibility investment (MW)": Pflex[xy][path_sce[xp][xy]], 
+                                         }
+                
+                output_data["Scenario " +str(xp+1)] = sce_data
+                
+        else:
+            # only output two extreme scenarios
+            temp_xp = 0
+            for xp in [0,NoPath-1]:
+                
+                temp_xp += 1
+                sce_data = {}
+                sce_data["Total investment cost (EUR)"] = sum_ciCost +  sum(Cflex[xy][path_sce[xp][xy]] for xy in range(NoYear) )
+                sce_data["Branch investment cost (EUR)"] = sum_ciCost
+                sce_data["Flexibility investment cost (EUR)"] =  sum(Cflex[xy][path_sce[xp][xy]] for xy in range(NoYear) )
+                sce_data["Net Present Operation Cost (EUR)"] =  sum_CO
+                
+                for xy in range(NoYear):
+                     
+                    sce_data[str(year_num[xy])] = {
+                                            "Operation cost (EUR/year)": yearly_CO[xy][path_sce[xp][xy]], 
+                                            "Branch investment (MVA)":  ci[xy][path_sce[xp][xy]], 
+                                            "Flexibility investment (MW)": Pflex[xy][path_sce[xp][xy]], 
+                                         }
+                    
+                       
+                    
+             
+                output_data["Scenario " +str(temp_xp)] = sce_data
            
         
         
-    
-    # output_data_template = {
-    #                             "Country": country, 
-    #                             "Case name": test_case,
-    #                             "Scenario 1": 
-    #                                 {
-    #                                     "Total investment cost (EUR)": 0, 
-    #                                     "Net Present Cost (EUR)":0,
-    #                                     "2020": {"Operation cost (EUR/year)": 0, 
-    #                                               "Branch investment (MVA)": [], 
-    #                                               "Flexibility investment (MW)": []}, 
-    #                                     "2030": {"Operation cost (EUR/year)": 0, 
-    #                                               "Branch investment (MVA)": [], 
-    #                                               "Flexibility investment (MW)": []}, 
-    #                                     "2040": {"Operation cost (EUR/year)": 0, 
-    #                                               "Branch investment (MVA)": [], 
-    #                                               "Flexibility investment (MW)": []}, 
-    #                                     "2050": {"Operation cost (EUR/year)": 0, 
-    #                                               "Branch investment (MVA)": [], 
-    #                                               "Flexibility investment (MW)": []}, 
-    #                                 },
-    #                             "Scenario 2": 
-    #                                 {
-    #                                     "Total investment cost (EUR)": 0, 
-    #                                     "Net Present Cost (EUR)":0,
-    #                                     "2020": {"Operation cost (EUR/year)": 0, 
-    #                                               "Branch investment (MVA)": [], 
-    #                                               "Flexibility investment (MW)": []}, 
-    #                                     "2030": {"Operation cost (EUR/year)": 0, 
-    #                                               "Branch investment (MVA)": [], 
-    #                                               "Flexibility investment (MW)": []}, 
-    #                                     "2040": {"Operation cost (EUR/year)": 0, 
-    #                                               "Branch investment (MVA)": [], 
-    #                                               "Flexibility investment (MW)": []}, 
-    #                                     "2050": {"Operation cost (EUR/year)": 0, 
-    #                                               "Branch investment (MVA)": [], 
-    #                                               "Flexibility investment (MW)": []}, 
-    #                                 },
-    #                         }
-        
-    # data into template
+    file_name = "investment_result_" + country + "_" + test_case + pt
         
     ''' Output json file''' 
-    with open('results/investment_result_'+ country + "_"+ test_case + pt +'.json', 'w') as fp:
+    with open('results/' + file_name +'.json', 'w') as fp:
         json.dump(output_data, fp)
     
     return print("Investment result file created")
@@ -231,9 +293,9 @@ def output_data2Json(NoPath, NoYear, path_sce, sum_CO, yearly_CO, ci, sum_ciCost
 # mpc, base_time_series_data,  multiplier = read_input_data("case5")
 
 
-def get_time_series_data(mpc,  base_time_series_data):
+def get_time_series_data(mpc,  base_time_series_data, peak_hour = 19):
     # prepare base and peak data for optimisation
-    peak_hour = 19
+    
     
 
     load_bus = base_time_series_data["Load P (MW)"]["Bus \ Hour"].values.tolist()
@@ -252,8 +314,12 @@ def get_time_series_data(mpc,  base_time_series_data):
     base_Pflex_up = []
     base_Pflex_dn = []
     
-    peak_Pflex_up = []
-    peak_Pflex_dn = []
+    peak_Pflex_up = [] # Pflex_max in optimisation
+    peak_Pflex_dn = [] # Pflex_max in optimisation
+    
+    # No input data for Q flex from current data set
+    peak_Qflex_up = None
+    peak_Qflex_dn = None
     
     for ib in range(mpc["NoBus"]):
         
@@ -306,7 +372,7 @@ def get_time_series_data(mpc,  base_time_series_data):
             
            
     print('read laod and flex data')         
-    return (base_Pd , base_Qd ,peak_Pd ,peak_Qd ,base_Pflex_up, base_Pflex_dn , peak_Pflex_up , peak_Pflex_dn,load_bus)
+    return (base_Pd , base_Qd ,peak_Pd ,peak_Qd ,base_Pflex_up, base_Pflex_dn , peak_Pflex_up , peak_Pflex_dn,peak_Qflex_up , peak_Qflex_dn,load_bus)
 
 
 
@@ -374,3 +440,11 @@ def get_peak_data(mpc,  base_time_series_data, peak_hour = 19):
 
 # # save outputs
 # output_data(output_data, country, test_case )
+
+
+# read WP5 outputs of useful life
+def read_asset_life():
+    useful_life = pd.read_csv('tests/csv/mpc_useful_life.csv')
+    
+    
+    return useful_life

@@ -20,7 +20,7 @@ from run_OPF_pp import ACOPF_function
 from process_data import record_bra_from_pyo_result,record_bus_from_pyo_result, record_invest_from_pyo_result,record_investCost_from_pyo_result
 
 
-def InvPt2_function(OPF_option,test_case,model,mpc, penalty_cost, NoCon, prob,DF, CRF, SF, NoSce,path_sce, S_ci, Cflex_pt1, Pflex_pt1,Qflex_pt1, ci_pt1,obj_pt1,multiplier_bus,):
+def InvPt2_function(OPF_option,test_case,model,mpc,ods_file_name, penalty_cost, NoCon, prob,DF, CRF, SF, NoSce,path_sce, S_ci, Cflex_pt1, Pflex_pt1,Qflex_pt1, ci_pt1,obj_pt1,multiplier_bus,):
     
     
     # run for the 24 h
@@ -81,7 +81,7 @@ def InvPt2_function(OPF_option,test_case,model,mpc, penalty_cost, NoCon, prob,DF
         daily_CO = [] #[xy][xsc] 
         daily_dual_Sbra= [] #[xy][xsc][xbr]  
         
-        # TODO:  run 24h ACOPF, remove contingency  
+        
         # run ACOPF to get obj value for part 1
         for xy in model.Set["Year"]:
                        
@@ -96,7 +96,7 @@ def InvPt2_function(OPF_option,test_case,model,mpc, penalty_cost, NoCon, prob,DF
                 
                 # output investment plans for each year each scnenaior
                 
-                output2json(mpc,ci[xy][xsc],Pflex[xy][xsc], Qflex[xy][xsc], mult,OPF_opt )
+                output2json(ods_file_name,mpc,ci[xy][xsc],Pflex[xy][xsc], Qflex[xy][xsc], mult,OPF_opt )
                 Pflex_up , Pflex_dn , Qflex_up ,Qflex_dn = process_flex_result(Pflex[xy][xsc], Qflex[xy][xsc] )
                 
                 # run ACOPF, get CO and duals for each year each scnenaior
@@ -182,9 +182,8 @@ def InvPt2_function(OPF_option,test_case,model,mpc, penalty_cost, NoCon, prob,DF
         else:
             # update obj cost 
             obj_ref = obj_pt2
-            # rerun ACOPF with new investment plans
-            # TODO:  run 24h ACOPF, remove contingency     
             
+            # re-run ACOPF with new investment plans  
             daily_CO, daily_dual_Sbra= runACOPF(mpc, ci_pt2_update,Pflex_pt1,Qflex_pt1,multiplier_bus,penalty_cost,SF)
             
             CO_pt2 = sum(daily_CO[xy][xsc] for xy, xsc in model.Set["YSce"])

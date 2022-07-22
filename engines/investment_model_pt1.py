@@ -28,7 +28,7 @@ import pstats
 
 
 
-def InvPt1_function(OPF_option,test_case,model,mpc, NoYear, NoSea, NoDay, penalty_cost, NoCon, NoSce,path_sce,cont_list, S_ci,bra_cap,CPflex, CQflex, noDiff, genCbus,braFbus,braTbus,Pd, Qd,multiplier_bus):
+def InvPt1_function(OPF_option,test_case,ods_file_name,model,mpc, NoYear, NoSea, NoDay, penalty_cost, NoCon, NoSce,path_sce,cont_list, S_ci,bra_cap,CPflex, CQflex, noDiff, genCbus,braFbus,braTbus,Pd, Qd,multiplier_bus):
     
 
    
@@ -416,7 +416,7 @@ def InvPt1_function(OPF_option,test_case,model,mpc, NoYear, NoSea, NoDay, penalt
             # Remove node balance rule
             model.del_component(model.nodeBalance)
             model.del_component(model.nodeBalanceQ)
-            model.del_component(model.DCPF)
+            # model.del_component(model.DCPF)
            
             # print('min obj cost:',Val(model.obj))
             print("Branch investment cost:",Val( sum( model.ciCost[xy,xsc] for xy,xsc in model.Set["YSce"] ) ))
@@ -430,7 +430,7 @@ def InvPt1_function(OPF_option,test_case,model,mpc, NoYear, NoSea, NoDay, penalt
             # model.add_component("duLine_ite"+str(ite_z), Constraint(model.Set['Bus'],model.Set['YSce'] ,model.Set['Sea'], model.Set['Day'], model.Set['Tim'],rule=duLine_rule ))
             # model.add_component("duLineQ_ite"+str(ite_z), Constraint(model.Set['Bus'],model.Set['YSce'] ,model.Set['Sea'], model.Set['Day'], model.Set['Tim'],rule=duLineQ_rule ))
             
-            # TODO: change constraints to include Flex:
+            
             model.add_component("dualVar_ite"+str(ite_z), Constraint(model.Set['Bus'],model.Set['YSce'] ,model.Set['Sea'], model.Set['Day'],model.Set['Tim'],rule=dualVarCon_rule ))
             model.add_component("dualVarQ_ite"+str(ite_z), Constraint(model.Set['Bus'],model.Set['YSce'] ,model.Set['Sea'], model.Set['Day'],model.Set['Tim'],rule=dualVarQCon_rule ))
             
@@ -573,7 +573,7 @@ def InvPt1_function(OPF_option,test_case,model,mpc, NoYear, NoSea, NoDay, penalt
                 #     ci[xy][xsc] = [0,0,0,0,0,0]
                 #     Pflex_result[xy][xsc] = [0,0,23,0,0]
                     
-                output2json(mpc,ci[xy][xsc],Pflex_result[xy][xsc], Qflex_result[xy][xsc] , mult,OPF_opt )
+                output2json(ods_file_name,mpc,ci[xy][xsc],Pflex_result[xy][xsc], Qflex_result[xy][xsc] , mult,OPF_opt )
                 Pflex_up , Pflex_dn , Qflex_up ,Qflex_dn = process_flex_result(Pflex_result[xy][xsc], Qflex_result[xy][xsc])
                 
                 
@@ -588,7 +588,7 @@ def InvPt1_function(OPF_option,test_case,model,mpc, NoYear, NoSea, NoDay, penalt
                     
                     # run julia model
                     sbase = 100
-                    SCACOPF_result = run_SCACOPF_jl(mpc, penalty_cost, sbase)
+                    SCACOPF_result = run_SCACOPF_jl(mpc, cont_list, penalty_cost, sbase)
                     
                     
                 if OPF_option == "pp":
@@ -630,13 +630,13 @@ def InvPt1_function(OPF_option,test_case,model,mpc, NoYear, NoSea, NoDay, penalt
                 
                 print("plc: ", plc_result)
                 print("qlc: ", qlc_result)
-                print("dual_Pbra: ", dual_Pbra)
-                print("dual_Pbra_con: ", dual_Pbra_con)
+                # print("dual_Pbra: ", dual_Pbra)
+                # print("dual_Pbra_con: ", dual_Pbra_con)
                 
-                print("OPF_Pbra_con: ", OPF_Pbra_con)
+                # print("OPF_Pbra_con: ", OPF_Pbra_con)
                 print("plc_con: ", plc_result_con)
-                print("dual_Pbus: ", dual_Pbus)
-                print("dual_Pbus_con: ", dual_Pbus_con)
+                # print("dual_Pbus: ", dual_Pbus)
+                # print("dual_Pbus_con: ", dual_Pbus_con)
     
                 # get total plcs
                 sum_plc_result += sum(plc_result[xy][xsc])
@@ -665,9 +665,9 @@ def InvPt1_function(OPF_option,test_case,model,mpc, NoYear, NoSea, NoDay, penalt
                     dual_Pbus_all_con[xy].append(temp_dual_Pbus_all_con)
                     
                     
-                print("after tracing")
-                print("dual_Pbra_all_con:", dual_Pbra_all_con)
-                print("dual_Pbus_all_con:", dual_Pbus_all_con)
+                # print("after tracing")
+                # print("dual_Pbra_all_con:", dual_Pbra_all_con)
+                # print("dual_Pbus_all_con:", dual_Pbus_all_con)
                         
                        
                                 
@@ -754,8 +754,10 @@ def InvPt1_function(OPF_option,test_case,model,mpc, NoYear, NoSea, NoDay, penalt
     # total flex cost from part 1
     Cflex_pt1 , Pflex_pt1, Qflex_pt1 =  getFlexFromPT1(model)
     # branch investment in part 1
-    # model.ci.pprint()
+  
     ci_pt1 = overInvstment_check(NoYear, NoSce,S_ci, mpc,model, OPF_Pbra, bra_cap)
+    # ci_pt1 = record_invest_from_pyo_result(model, mpc,NoSce, model.ci, S_ci)   
+    
     # total investment cost
     obj_pt1 =  Val(model.obj)
     

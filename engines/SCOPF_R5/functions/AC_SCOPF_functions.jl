@@ -878,16 +878,19 @@ end
 function objective_SCOPF(model_name,OPF_opt)
      if OPF_opt==0
          cost_mod_fac=new_gen_cost
-        cost_gen=@expression(model_name,
-                    sum(
-                            cost_mod_fac*Pg[t,i]*Pg[t,i]*cost_a_gen[i]*(sbase^2)
-                            +
-                            cost_mod_fac*Pg[t,i]*cost_b_gen[i]*sbase
-                            +
-                            cost_mod_fac*cost_c_gen[i] for t in 1:nTP,i in 1:nGens )
-)
+#         cost_gen=@expression(model_name,
+#                     sum(
+#                             cost_mod_fac*Pg[t,i]*Pg[t,i]*cost_a_gen[i]*(sbase^2)
+#                             +
+#                             cost_mod_fac*Pg[t,i]*cost_b_gen[i]*sbase
+#                             +
+#                             cost_mod_fac*cost_c_gen[i] for t in 1:nTP,i in 1:nGens )
+# )
+
+#### changed the constraint to make gencost a minimal value
+    cost_gen=@expression(model_name, sum( cost_mod_fac*Pg[t,i]*sbase for t in 1:nTP,i in 1:nGens)  )
 # penalty cost
-penalty_cost=1e4
+penalty_cost=1e3 *sbase # update penalty cost with *sbase
 cost_pen_lsh_aux=@expression(model_name,
                     [i=1:nBus ; ~isempty(findall(x->x==i,bus_data_lsheet)) ],
                     sum(cost_mod_fac*penalty_cost*(pen_lsh[t,findall(x->x==i,bus_data_lsheet)]) for t in 1:nTP)
@@ -1058,12 +1061,12 @@ elseif OPF_opt==1
                         cost_c_gen[i] for t in 1:nTP,i in 1:nGens )
 )
 #
-penalty_cost=1e4
+penalty_cost=1e3 *sbase # update penalty cost with *sbase
 cost_pen_lsh_aux=@expression(model_name,
                 [i=1:nBus ; ~isempty(findall(x->x==i,bus_data_lsheet)) ],
                 sum(penalty_cost*(pen_lsh[t,findall(x->x==i,bus_data_lsheet)]) for t in 1:nTP)
                          )
-           cost_pen_lsh=@expression(model_name,sum(cost_pen_lsh_aux))
+           cost_pen_lsh=@expression(model_name,sum(cost_pen_lsh_aux)) # update penalty cost with *sbase
 # # -----Generation curtailment----
 cost_pen_ws_aux=@expression(model_name,
                 [i=1:nBus; ~isempty(findall(x->x==i,RES_bus)) ],

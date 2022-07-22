@@ -64,9 +64,9 @@ def get_branch_pf(mpc, OPF_results, sbase ):
     
     return OPF_Pbra, OPF_Qbra
 
-def get_branch_pf_cont(mpc, OPF_results, sbase ):
+def get_branch_pf_cont(mpc, cont_list, OPF_results, sbase ):
     # get branch power flow with directions for contigency states
-    NoCon = len( OPF_results['cont_list'] )
+    NoCon = len( cont_list) -1
     
     OPF_Pbra_con = []
     OPF_Qbra_con = []
@@ -76,7 +76,7 @@ def get_branch_pf_cont(mpc, OPF_results, sbase ):
         OPF_Pbra_con.append([0]*mpc["NoBranch"])
         OPF_Qbra_con.append([0]*mpc["NoBranch"])
         
-        con_br = [i for i, e in enumerate(OPF_results['cont_list'][xc][0]) if e == 0]
+        con_br = [i for i, e in enumerate(cont_list[xc+1]) if e == 0]
         
         
         for xbr in range(mpc["NoBranch"]):
@@ -143,9 +143,9 @@ def get_branch_dual_normal(mpc, OPF_results, time_point):
 
 
 
-def get_branch_dual_cont(mpc, penalty_cost, OPF_results, OPF_Pbra_con, OPF_Qbra_con):
+def get_branch_dual_cont(mpc,cont_list, penalty_cost, OPF_results, OPF_Pbra_con, OPF_Qbra_con):
     # get line duals for normal state
-    NoCon = len( OPF_results['cont_list'] )
+    NoCon = len( cont_list) -1
     
     dual_bra_con = []
     dual_Pbra_con = []
@@ -160,7 +160,7 @@ def get_branch_dual_cont(mpc, penalty_cost, OPF_results, OPF_Pbra_con, OPF_Qbra_
         cos_pf_con = [0]*mpc["NoBranch"]
         
         
-        con_br = [i for i, e in enumerate(OPF_results['cont_list'][xc][0]) if e == 0]
+        con_br = [i for i, e in enumerate(cont_list[xc+1]) if e == 0]
     
         for xbr in range(mpc["NoBranch"]):
             if xbr != con_br[0]  :
@@ -179,7 +179,7 @@ def get_branch_dual_cont(mpc, penalty_cost, OPF_results, OPF_Pbra_con, OPF_Qbra_
                 temp_p = OPF_Pbra_con[xc][xbr]
                 temp_q = OPF_Qbra_con[xc][xbr]
         
-                cos_pf_con[xbr] = abs(temp_p) /( temp_p**2 + temp_q**2)**0.5
+                cos_pf_con[xbr] = abs(temp_p) /( temp_p**2 + temp_q**2+ 0.000001)**0.5
         
         sin_pf_con = [(1-a**2)**0.5  for a in cos_pf_con]
         
@@ -264,7 +264,7 @@ def process_result_normal(mpc, OPF_results,sbase,penalty_cost):
     
     print("jl pf: ", OPF_Pbra)
     
-    cos_pf = [abs(a)/((a**2 + b**2)**0.5) for a,b in zip(OPF_Pbra, OPF_Qbra)]
+    cos_pf = [abs(a)/((a**2 + b**2 +0.00001)**0.5) for a,b in zip(OPF_Pbra, OPF_Qbra)]
     sin_pf = [(1-a**2)**0.5  for a in cos_pf]
     
     # OPF Flex results
@@ -301,13 +301,13 @@ def process_result_normal(mpc, OPF_results,sbase,penalty_cost):
 
 
 
-def process_result_con(mpc, OPF_results, sbase,penalty_cost):
+def process_result_con(mpc, cont_list, OPF_results, sbase,penalty_cost):
     # OPF power flow results
-    OPF_Pbra_con, OPF_Qbra_con = get_branch_pf_cont(mpc, OPF_results, sbase )
+    OPF_Pbra_con, OPF_Qbra_con = get_branch_pf_cont(mpc,cont_list, OPF_results, sbase )
     
     
     # dual variables for branch
-    dual_Pbra_con, dual_Qbra_con = get_branch_dual_cont(mpc, penalty_cost, OPF_results,OPF_Pbra_con, OPF_Qbra_con)
+    dual_Pbra_con, dual_Qbra_con = get_branch_dual_cont(mpc, cont_list, penalty_cost, OPF_results,OPF_Pbra_con, OPF_Qbra_con)
     
     # dual variables for bus
     dual_Pbus_con, dual_Qbus_con = get_bus_dual_cont(mpc, OPF_results)
@@ -324,7 +324,7 @@ def process_result_con(mpc, OPF_results, sbase,penalty_cost):
     # dual_Pbra_con = []
     # dual_Qbra_con = []
     
-    NoCon = len( OPF_results['cont_list'] )
+    NoCon = len( cont_list ) -1
     # Read contingency data
     for xc in range(NoCon):
      
@@ -409,7 +409,7 @@ def process_result_con(mpc, OPF_results, sbase,penalty_cost):
     return (  OPF_Pbra_con, OPF_Qbra_con,dual_Pbra_con, dual_Qbra_con,
             dual_Pbus_con,dual_Qbus_con,plc_result_con,qlc_result_con, Pflex_con, Qflex_con)
 
-def run_SCACOPF_jl(mpc, penalty_cost, sbase = 100):
+def run_SCACOPF_jl(mpc, cont_list, penalty_cost, sbase = 100):
     
     # profiler = cProfile.Profile()
     # profiler.enable()
@@ -448,7 +448,7 @@ def run_SCACOPF_jl(mpc, penalty_cost, sbase = 100):
     ''' contingency'''
     
     OPF_Pbra_con, OPF_Qbra_con,dual_Pbra_con, dual_Qbra_con,dual_Pbus_con,dual_Qbus_con,\
-        plc_result_con,qlc_result_con, Pflex_con, Qflex_con = process_result_con(mpc, OPF_results, sbase,penalty_cost)
+        plc_result_con,qlc_result_con, Pflex_con, Qflex_con = process_result_con(mpc,cont_list, OPF_results, sbase,penalty_cost)
 
     
     # os.chdir("C:/Users/p96677wk/Dropbox (The University of Manchester)/My PC (E-10LPC1N2L4S)/Desktop/ATTEST/pyATTEST/pyene/engines")
@@ -547,8 +547,8 @@ def process_flex_result(Pflex, Qflex):
 
 
 
-# TODO: Update output file for multiple scensrios and years
-def output2json(mpc,ci, Pflex, Qflex, mult,OPF_opt ):
+
+def output2json(ods_file_name,mpc,ci, Pflex, Qflex, mult,OPF_opt ):
     
     '''
     Data exchange between operation model and investment model:
@@ -570,6 +570,9 @@ def output2json(mpc,ci, Pflex, Qflex, mult,OPF_opt ):
 
     # os.chdir("WP3_SCOPF_export_to_WP3_R1_1")
     folder = "SCOPF_R5\\"
+    
+    
+    filename = "input_data/"+ ods_file_name + ".ods"
     
     # combine parallel lines, shift positions
     # new_bra_no = find_paraline(mpc)  
@@ -604,27 +607,16 @@ def output2json(mpc,ci, Pflex, Qflex, mult,OPF_opt ):
              "gen_multiplier": mult,
              "load_multiplier": mult,
              "OPF_opt":OPF_opt,
+             "filename": filename,
              }
     
     ''' Outpu json file''' 
     with open(folder+'data_preparation\\import_WP3.json', 'w') as fp:
         json.dump(ouput, fp)
         
-    # os.chdir("C:/Users/p96677wk/Dropbox (The University of Manchester)/My PC (E-10LPC1N2L4S)/Desktop/ATTEST/pyATTEST/pyene/engines")
 
 
 
-
-
-
-# sample_output_from_invest_model = {
-    
-#     'flag': [0,0,0],
-#     'multiplier' :[1.2, 1.3] 
-    
-#     }
-# with open('sample_output_from_invest_model.json', 'w') as fp:
-#      json.dump(sample_output_from_invest_model, fp)
 
 
 
@@ -653,9 +645,6 @@ def read_ACOPF_jl_output():
 
 
 
-# # load json file from file directory
-# file = open('tests/json/case5.json')
-# mpc = json.load(file)
 
 
 

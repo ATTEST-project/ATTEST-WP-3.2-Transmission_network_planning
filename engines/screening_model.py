@@ -769,7 +769,7 @@ def main_screening(mpc,multiplier,cicost, penalty_cost, peak_Pd, cont_list):
    
     return interv_dict
 
-
+# TODO: for distribution T3.1, output results for combinations of each node
 
 profiler = cProfile.Profile()
 profiler.enable()
@@ -778,7 +778,8 @@ profiler.enable()
 
 ''' contingency info '''
 # initial contingency list, if no input, generate N-1 contingencies later
-cont_list = []
+# cont_list = []
+ods_file_name = "case_template_CR_L3"
 
 # Define gen and line status, Default to False
 # if True, consider status from .m file; 
@@ -787,14 +788,14 @@ gen_status = False
 line_status = False  
 
 ''' Test case '''
-country = "UK"  # Select country for case study: "PT", "UK" or "HR"
-test_case= 'case5' #'Transmission_Network_PT_2020_new'  #'Transmission_Network_UK3' #  "HR_Location1" #"HR_2020_Location_1"#
-# ci_catalogue = "Default" # Default ci_catalogue = [10,50,100,200,500,800,1000,2000,5000]
-# ci_cost = "Default" # Default ci_cost = 5*MVA
+country = "HR"  # Select country for case study: "PT", "UK" or "HR"
+test_case= "Location_3_ods"
+#'case5' #'Transmission_Network_PT_2020_new'  #'Transmission_Network_UK3' #  "HR_Location1" #"HR_2020_Location_1"#
+
 
 # read input data outputs mpc and load infor
 # mpc, base_time_series_data, multiplier, NoCon = read_input_data( cont_list, country,test_case)
-mpc, base_time_series_data,  multiplier, NoCon,ci_catalogue,ci_cost= read_input_data( cont_list, country,test_case)
+mpc, base_time_series_data,  multiplier, NoCon,cont_list,ci_catalogue,ci_cost= read_input_data( ods_file_name, country,test_case)
 
 # # load json file from file directory
 # mpc = json.load(open(os.path.join(os.path.dirname(__file__), 
@@ -808,17 +809,12 @@ busMult_input = []
 # expande multiplier for each bus
 multiplier_bus = mult_for_bus(busMult_input, multiplier, mpc)
 
-cont_list= [[1,1,1,1,1,1], [1,0,1,1,1,1]]
-# generate N-1 contingencies
-if cont_list==[]:
-    cont_list = [[1]*mpc["NoBranch"]] 
+# cont_list= [[1,1,1,1,1,1], [1,1,1,1,1,0]]
 
-    temp_list = (cont_list[0]-np.diag(cont_list[0]) ).tolist()
-    
-    # # reduce the size of contingency list
-    # temp_list = temp_list[:len(temp_list)//29]
 
-    cont_list.extend(temp_list)
+
+
+
 
 
 
@@ -833,7 +829,7 @@ peak_Pd = []# get_peak_data(mpc, base_time_series_data, peak_hour)
 # branch investment cost
 cicost = 20 # £/Mw/km
 # curtailment cost
-penalty_cost = 1e4
+penalty_cost = 1e3
 
 
 

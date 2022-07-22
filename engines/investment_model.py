@@ -32,52 +32,33 @@ import pstats
 
 #### inputs for the investment model
 print("Gather inputs for the investment model")
+
+''' input file information'''
 # Select country for case study: "PT", "UK" or "HR"
-country = "UK" 
+country = "HR" 
 
-# Define the case name
 #"HR_Location1"#'Transmission_Network_UK3' #"Transmission_Network_PT_2030_Active_Economy" # 'case5' 
-test_case = 'case5' 
+test_case = "Location_3_ods"
+
+# test case in .ods format for the operation model
+ods_file_name = "case_template_CR_L3"
 
 
-
-
-# ci_catalogue = "Default" # Default ci_catalogue = [10,50,100,200,500,800,1000,2000,5000]
-# ci_cost = "Default" # Default ci_cost = 5*MVA
-
-
-cont_list =[]
 # read input data outputs mpc and load infor
-mpc, base_time_series_data,  multiplier, NoCon,ci_catalogue,intv_cost= read_input_data( cont_list, country,test_case)
+mpc, base_time_series_data,  multiplier, NoCon,cont_list, ci_catalogue,intv_cost= read_input_data( ods_file_name, country,test_case)
 
-# read screening model output, if not found, full intervention list is used
-S_ci, ci_cost = read_screenModel_output(mpc,test_case, ci_catalogue,intv_cost)
+
+''' Define factors '''
+# update peak demand values
+# get peak load for screening model
+peak_hour = 19
+peak_Pd = []# get_peak_data(mpc, base_time_series_data, peak_hour)
+peak_Qd = []
+
 
 # read input data
-# mpc, base_time_series_data,  multiplier = read_input_data( test_case )
-# base_Pd , base_Qd ,peak_Pd ,peak_Qd ,base_Pflex_up, base_Pflex_dn , peak_Pflex_up , peak_Pflex_dn, gen_sta, peak_gen_sta,get_time_series_data = get_time_series_data(mpc,  base_time_series_data)
+# base_Pd , base_Qd ,peak_Pd ,peak_Qd ,base_Pflex_up, base_Pflex_dn , Pflex_up, Pflex_dn,Qflex_up, Qflex_dn, gen_sta, peak_gen_sta,get_time_series_data = get_time_series_data(mpc,  base_time_series_data,peak_hour)
 
-# ''' Load json file''' 
-# # load json file from file directory
-# mpc = json.load(open(os.path.join(os.path.dirname(__file__), 
-#                                   'tests', 'json', test_case+'.json')))
-  
-cont_list =[[1,1,1,1,1,1], [1,0,1,1,1,1]]
-
-# # generate contingency list with two contingencies
-# cont_list = [[1]*mpc["NoBranch"]] 
-# cont_list.append([1]*mpc["NoBranch"])
-# # cont_list.append([1]*mpc["NoBranch"])
-# cont_list[1][2] = 0
-# # cont_list[2][3] = 0
-
-# #  multiplier = [xy][xsc] 
-# # multiplier = [] 
-# # for xy in range(NoYear):
-# #     xsc_temp = 2**xy
-# #     multiplier.append([1]*xsc_temp )
-
-# multiplier = get_mult(country) # default to HR
 
 # required inputs of multipliers for each bus, if not specified, all buses have the same multiplier
 busMult_input = []
@@ -85,7 +66,7 @@ busMult_input = []
 multiplier_bus = mult_for_bus(busMult_input, multiplier, mpc)
 
 # Information about year and scenarios
-NoYear = 2
+NoYear = 1 #input numbers between 1 and 4, indicate year 2020 - 2050
 NoSea = 1 #3 # Season sequence: 0:(summer)	 1:(spring)	2:(winter)
 NoDay = 1 #2
 NoCon = len(cont_list)-1
@@ -98,9 +79,6 @@ NoPath = 2**(NoYear-1)
 # Probabiity of each pathway, assumed equal
 prob = [1/NoPath] * NoPath
 
-# define budget cost for each year
-Budget_cost = [1e20]*NoYear
-penalty_cost = 1e4
 
 # Discount factor
 d = 0.035 # discount rate <= 30 years: 3.5%
@@ -128,22 +106,29 @@ cos_pf = initial_value(mpc,NoYear,NoSce, cos_pf_init)
 sin_pf = initial_value(mpc,NoYear,NoSce, sin_pf_init)
 
     
+''' costs and interventions'''
+# define budget cost for each year
+Budget_cost = [1e20]*NoYear
+penalty_cost = 1e3
+
+# read screening model output, if not found, full intervention list is used
+S_ci, ci_cost = read_screenModel_output(country, mpc,test_case, ci_catalogue,intv_cost)
+# ci_catalogue = "Default" # Default ci_catalogue = [10,50,100,200,500,800,1000,2000,5000]
+# ci_cost = "Default" # Default ci_cost = 5*MVA
 
 # if not specified, assume flex data to be
 CPflex = 4  # flex: 50 £/MWh  £/MW
 CQflex = 2
 
-# TODO: update the input_out_function to include flex profile inputs
-Pflex_max = 100
-Qflex_max = 0
+# TODO: check meaning for flex_up and flex_dn from WP2
+# if None, means no flexibility
+Pflex_up = [100]*mpc["NoBranch"] # peak_Pflex_up
+Pflex_dn = [0]*mpc["NoBranch"] # peak_Pflex_up
+Qflex_up = None
+Qflex_dn = None
 
 
 
-# update peak demand values
-# get peak load for screening model
-peak_hour = 19
-peak_Pd = []# get_peak_data(mpc, base_time_series_data, peak_hour)
-peak_Qd = []
 
 # Define gen and line status, Default to False
 # if True, consider status from .m file; 
@@ -157,6 +142,7 @@ line_status = False
 outputAll = False
     
 
+# OPF can be run by Julia model or Pandapower
 OPF_option = "jl" #   "pp" # 
 
 
@@ -167,7 +153,7 @@ profiler.enable()
 '''Main '''
 print("Form optimisation model")
 # prepare the optimisation model with input data
-mpc,model, no_ysce, tree_ysce,path_sce,noDiff, genCbus,braFbus,braTbus,Pd, Qd = prepare_invest_model(mpc, NoPath,prob, NoYear, NoSce,NoSea, NoDay,DF,CRF,SF,S_ci,ci_cost,Budget_cost,penalty_cost, peak_Pd,peak_Qd,multiplier_bus,cos_pf,sin_pf,CPflex,CQflex,Pflex_max,Qflex_max,gen_status,line_status)
+mpc,model, no_ysce, tree_ysce,path_sce,noDiff, genCbus,braFbus,braTbus,Pd, Qd = prepare_invest_model(mpc, NoPath,prob, NoYear, NoSce,NoSea, NoDay,DF,CRF,SF,S_ci,ci_cost,Budget_cost,penalty_cost, peak_Pd,peak_Qd,multiplier_bus,cos_pf,sin_pf,CPflex,CQflex,Pflex_up, Pflex_dn,Qflex_up, Qflex_dn,gen_status,line_status)
 
 # record branch capacity and gen cost
 bra_cap, gen_cost = recordValues(mpc)
@@ -176,13 +162,12 @@ bra_cap, gen_cost = recordValues(mpc)
 # remove gen cost in mpc
 mpc = replaceGenCost(mpc, gen_cost, 0)
 # SCACOPF for 1 peak hour  (years*scenarios*typical days*1h)
-model, obj_pt1, ci_pt1, sum_ciCost_pt1, Cflex_pt1 , Pflex_pt1, Qflex_pt1 = InvPt1_function(OPF_option,test_case,model,mpc, NoYear, NoSea, NoDay, penalty_cost, NoCon, NoSce,path_sce,cont_list, S_ci,bra_cap,CPflex, CQflex, noDiff, genCbus,braFbus,braTbus,Pd, Qd,multiplier_bus)
+model, obj_pt1, ci_pt1, sum_ciCost_pt1, Cflex_pt1 , Pflex_pt1, Qflex_pt1 = InvPt1_function(OPF_option,test_case,ods_file_name,model,mpc, NoYear, NoSea, NoDay, penalty_cost, NoCon, NoSce,path_sce,cont_list, S_ci,bra_cap,CPflex, CQflex, noDiff, genCbus,braFbus,braTbus,Pd, Qd,multiplier_bus)
 
-# output results for part1
-yearly_CO_pt1 = [[0]]*NoNode
-output_data2Json(NoPath, NoYear, path_sce, 0, yearly_CO_pt1, ci_pt1, sum_ciCost_pt1, Cflex_pt1,Pflex_pt1,outputAll, country , test_case, "_pt1" )
+# output results for part1, operation cost are zero
+output_data2Json(NoPath, NoYear, path_sce, 0, 0, ci_pt1, sum_ciCost_pt1, Cflex_pt1,Pflex_pt1,outputAll, country , test_case, "_pt1" )
 
-# TODO: Add a check to find part1 results, if not run both pt1 and pt2
+
 
 
 # profiler.disable()
@@ -195,15 +180,13 @@ output_data2Json(NoPath, NoYear, path_sce, 0, yearly_CO_pt1, ci_pt1, sum_ciCost_
     
 #### Run part 2
 # ACOPF for 24h (years*scenarios*typical days*24h)
-
 # recover gen cost
 mpc = replaceGenCost(mpc, gen_cost, 1)
 
 # run part 2 of the investment model
-model,obj_pt2, sum_CO, yearly_CO, ci_pt2, sum_ciCost_pt2, yearly_ciCost, Cflex_pt2,Pflex_pt2 = InvPt2_function(OPF_option,test_case,model,mpc, penalty_cost, NoCon, prob,DF, CRF, SF, NoSce,path_sce, S_ci,Cflex_pt1,Pflex_pt1,Qflex_pt1, ci_pt1,obj_pt1,multiplier_bus,)
+model,obj_pt2, sum_CO, yearly_CO, ci_pt2, sum_ciCost_pt2, yearly_ciCost, Cflex_pt2,Pflex_pt2 = InvPt2_function(OPF_option,test_case,model,mpc,ods_file_name, penalty_cost, NoCon, prob,DF, CRF, SF, NoSce,path_sce, S_ci,Cflex_pt1,Pflex_pt1,Qflex_pt1, ci_pt1,obj_pt1,multiplier_bus,)
 
-
-
+# output results for part2
 output_data2Json(NoPath, NoYear, path_sce, sum_CO, yearly_CO, ci_pt2, sum_ciCost_pt2, Cflex_pt2,Pflex_pt2,outputAll, country , test_case,"_pt2" )
 
 # #### print final restuls
@@ -222,6 +205,7 @@ print("Investment model finishes, results output to the folder as 'investment_re
 
 
 
+# write cProfile results in .txt file
 from io import StringIO
 profiler.disable()
 # sort output with total time
@@ -229,6 +213,6 @@ profiler.disable()
 result = StringIO()
 stats = pstats.Stats(profiler, stream = result).sort_stats('tottime')
 stats.print_stats()
-with open('cProfileExport_investModel.txt', 'w+') as f:
+with open('cProfileExport_investModel'+ test_case +'.txt', 'w+') as f:
     f.write(result.getvalue())
         

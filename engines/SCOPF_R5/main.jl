@@ -19,9 +19,15 @@ show(pwd());
 # filename = "input_data/case_template_port_modified_R1.ods"
 # filename = "input_data/case60_bus_new_wind.ods"
 # filename = "input_data/case5_bus_new.ods"
-filename = "input_data/case5_bus_python_test.ods"
+# filename = "input_data/case5_bus_python_test.ods"
+# filename = "input_data/case_template_CR_L3.ods"
+
+## read ods file name from json
+
+filename = JSON.parsefile("data_preparation\\import_WP3.json")["filename"] # full path
 
 
+##
 filename_scenario= "input_data/scenario_gen.ods"
 # filename_scenario= "scenario_gen.ods"
 # filename = "case_34_baran_modf.ods"
