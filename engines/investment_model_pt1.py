@@ -506,9 +506,9 @@ def InvPt1_function(OPF_option,test_case,ods_file_name,model,mpc, NoYear, NoSea,
     
             for xb in model.Set["Bus"]:
                 temp_flex =  Val(model.Pflex[xb,xy,xsc,0,0,0])
-                if temp_flex > 0 :
+                if temp_flex > 1e-4 :
                     print('Year:',xy,', Scenario:', xsc,', Bus:', xb, ', upward flex:', temp_flex)
-                elif temp_flex < 0 :
+                elif temp_flex < -1e-4 :
                     print('Year:',xy,', Scenario:', xsc,', Bus:', xb, ', downward flex:', temp_flex)
         
         

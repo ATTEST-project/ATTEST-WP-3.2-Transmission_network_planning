@@ -779,7 +779,11 @@ profiler.enable()
 ''' contingency info '''
 # initial contingency list, if no input, generate N-1 contingencies later
 # cont_list = []
-ods_file_name = "case_template_CR_L3"
+ods_file_name = "case_template_port_modified_R1"
+#"case_template_CR_L3"
+
+# input xlsx file for time-serires data
+xlsx_file_name = "Transmission_Network_PT_2020_24hGenerationLoadData"
 
 # Define gen and line status, Default to False
 # if True, consider status from .m file; 
@@ -788,14 +792,14 @@ gen_status = False
 line_status = False  
 
 ''' Test case '''
-country = "HR"  # Select country for case study: "PT", "UK" or "HR"
-test_case= "Location_3_ods"
-#'case5' #'Transmission_Network_PT_2020_new'  #'Transmission_Network_UK3' #  "HR_Location1" #"HR_2020_Location_1"#
+country = "PT"  # Select country for case study: "PT", "UK" or "HR"
+test_case= 'Transmission_Network_PT_2020_ods'
+#'case5' #'Transmission_Network_PT_2020_ods'  #'Transmission_Network_UK3' #  "HR_Location1" #"HR_2020_Location_1"#"Location_3_ods"
 
 
 # read input data outputs mpc and load infor
 # mpc, base_time_series_data, multiplier, NoCon = read_input_data( cont_list, country,test_case)
-mpc, base_time_series_data,  multiplier, NoCon,cont_list,ci_catalogue,ci_cost= read_input_data( ods_file_name, country,test_case)
+mpc, base_time_series_data,  multiplier, NoCon,cont_list,ci_catalogue,ci_cost= read_input_data( ods_file_name, xlsx_file_name, country,test_case)
 
 # # load json file from file directory
 # mpc = json.load(open(os.path.join(os.path.dirname(__file__), 
@@ -856,7 +860,7 @@ print("Reduced intervention dict: ",interv_dict)
 
 
 
-''' Output json file for the investment model''' 
+''' Output json file for the screening model''' 
 file_name = "screen_result_" + country + "_" + test_case
 with open("results/"+file_name+".json", 'w') as fp:
     json.dump(interv_dict, fp)

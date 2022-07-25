@@ -35,17 +35,21 @@ print("Gather inputs for the investment model")
 
 ''' input file information'''
 # Select country for case study: "PT", "UK" or "HR"
-country = "HR" 
+country = "PT"
 
-#"HR_Location1"#'Transmission_Network_UK3' #"Transmission_Network_PT_2030_Active_Economy" # 'case5' 
-test_case = "Location_3_ods"
+#"HR_Location1"#'Transmission_Network_UK3' #"Transmission_Network_PT_2020_ods" # 'case5' # "Location_3_ods"
+test_case = "Transmission_Network_PT_2020_ods"
 
 # test case in .ods format for the operation model
-ods_file_name = "case_template_CR_L3"
+ods_file_name = "case_template_port_modified_R1"
+#"case_template_CR_L3"
+
+# input xlsx file for time-serires data
+xlsx_file_name = "Transmission_Network_PT_2020_24hGenerationLoadData"
 
 
 # read input data outputs mpc and load infor
-mpc, base_time_series_data,  multiplier, NoCon,cont_list, ci_catalogue,intv_cost= read_input_data( ods_file_name, country,test_case)
+mpc, base_time_series_data,  multiplier, NoCon,cont_list, ci_catalogue,intv_cost= read_input_data( ods_file_name, xlsx_file_name, country,test_case)
 
 
 
@@ -59,13 +63,13 @@ peak_Qd = []
 
 # TODO: check meaning for flex_up and flex_dn from WP2
 # if None, means no flexibility
-Pflex_up = [100]*mpc["NoBranch"] # peak_Pflex_up
-Pflex_dn = [0]*mpc["NoBranch"] # peak_Pflex_up
-Qflex_up = None
-Qflex_dn = None
+# Pflex_up = [10]*mpc["NoBus"] # peak_Pflex_up
+# Pflex_dn = [0]*mpc["NoBus"] # peak_Pflex_up
+# Qflex_up = None
+# Qflex_dn = None
 
 # read input data
-# base_Pd , base_Qd ,peak_Pd ,peak_Qd ,base_Pflex_up, base_Pflex_dn , Pflex_up, Pflex_dn,Qflex_up, Qflex_dn, gen_sta, peak_gen_sta,get_time_series_data = get_time_series_data(mpc,  base_time_series_data,peak_hour)
+base_Pd , base_Qd ,peak_Pd ,peak_Qd ,base_Pflex_up, base_Pflex_dn , Pflex_up, Pflex_dn,Qflex_up, Qflex_dn, load_bus = get_time_series_data(mpc,  base_time_series_data,peak_hour)
 
 ''' Define factors '''
 # required inputs of multipliers for each bus, if not specified, all buses have the same multiplier
@@ -75,7 +79,7 @@ multiplier_bus = mult_for_bus(busMult_input, multiplier, mpc)
 
 
 # Information about year and scenarios
-NoYear = 1 #input numbers between 1 and 4, indicate year 2020 - 2050
+NoYear = 4 #input numbers between 1 and 4, indicate year 2020 - 2050
 NoSea = 1 #3 # Season sequence: 0:(summer)	 1:(spring)	2:(winter)
 NoDay = 1 #2
 NoCon = len(cont_list)-1
@@ -106,7 +110,7 @@ penalty_cost = 1e3
 S_ci, ci_cost = read_screenModel_output(country, mpc,test_case, ci_catalogue,intv_cost)
 
 # if not specified, assume flex data to be
-CPflex = 50  # flex: 50 £/MWh  £/MW
+CPflex = 15  # flex: 50 £/MWh  £/MW
 CQflex = 0
 
 # Define gen and line status, Default to False
@@ -192,6 +196,9 @@ profiler.disable()
 result = StringIO()
 stats = pstats.Stats(profiler, stream = result).sort_stats('tottime')
 stats.print_stats()
-with open('cProfileExport_investModel'+ test_case +'.txt', 'w+') as f:
+
+file_name = "cProfileExport_investModel_" + country + "_" + test_case
+with open(file_name +'.txt', 'w+') as f:
     f.write(result.getvalue())
-        
+
+
