@@ -1,5 +1,7 @@
 # This is a preliminary version of the CLI for ATTEST transmission planning tools
 
+# git synchronization check by Andrey
+
 import click
 import json
 
