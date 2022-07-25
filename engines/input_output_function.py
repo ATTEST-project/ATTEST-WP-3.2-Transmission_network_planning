@@ -36,7 +36,7 @@ def json_directory():
 
 
 
-def read_input_data(ods_file_name, country = "HR", test_case = "HR_2020_Location_1" ):
+def read_input_data(ods_file_name, xlsx_file_name,country = "HR", test_case = "HR_2020_Location_1" ):
     
     file_name  = test_case 
     
@@ -61,7 +61,7 @@ def read_input_data(ods_file_name, country = "HR", test_case = "HR_2020_Location
     
     ''' Load xlsx file'''
     # base_time_series_data = get_data("Transmission_Network_PT_2020_24hGenerationLoadData.ods")
-    base_time_series_data  = pd.read_excel('tests/excel/Transmission_Network_PT_2020_24hGenerationLoadData.xlsx', sheet_name=None)
+    base_time_series_data  = pd.read_excel('tests/excel/'+ xlsx_file_name + ".xlsx", sheet_name=None)
     print('load xlsx file')
    
     ''' Load ods for contingencies file''' 
@@ -148,13 +148,14 @@ def read_input_data(ods_file_name, country = "HR", test_case = "HR_2020_Location
 
         # ci_catalogue = [10,50,100,200,500,800,1000,2000,5000]
         # ci_cost = [5 * i for i in ci_catalogue]
-        
+        ci_catalogue = []
+        ci_cost = []
         # lines
-        ci_catalogue[0] = [10,50,100,200,500,800]
-        ci_cost[0] = [20 * i for i in ci_catalogue[0]]
+        ci_catalogue.append([10,50,100,200,500,800])
+        ci_cost.append( [20 * i for i in ci_catalogue[0]])
         # transformers
-        ci_catalogue[1] = [560,880,1200,2400,5600]
-        ci_cost[1] = [20 * i for i in ci_catalogue[1]]
+        ci_catalogue.append([560,880,1200,2400,5600])
+        ci_cost.append( [20 * i for i in ci_catalogue[1]])
         
         
 
@@ -233,6 +234,8 @@ def output_data2Json(NoPath, NoYear, path_sce, sum_CO, yearly_CO, ci, sum_ciCost
                 
                 for xy in range(NoYear):
                     
+                    Pflex[xy][path_sce[xp][xy]] =  [0 if abs(x)<=1e-4 else x for x in Pflex[xy][path_sce[xp][xy]]]
+                    
                     sce_data[str(year_num[xy])] = {
                                             "Operation cost (EUR/year)": 0, 
                                             "Branch investment (MVA)":  ci[xy][path_sce[xp][xy]], 
@@ -254,7 +257,9 @@ def output_data2Json(NoPath, NoYear, path_sce, sum_CO, yearly_CO, ci, sum_ciCost
                 sce_data["Net Present Operation Cost (EUR)"] =  0
                 
                 for xy in range(NoYear):
-                     
+                    
+                    Pflex[xy][path_sce[xp][xy]] =  [0 if abs(x)<=1e-4 else x for x in Pflex[xy][path_sce[xp][xy]]]
+                        
                     sce_data[str(year_num[xy])] = {
                                             "Operation cost (EUR/year)": 0, 
                                             "Branch investment (MVA)":  ci[xy][path_sce[xp][xy]], 
@@ -280,6 +285,8 @@ def output_data2Json(NoPath, NoYear, path_sce, sum_CO, yearly_CO, ci, sum_ciCost
                 
                 for xy in range(NoYear):
                     
+                    Pflex[xy][path_sce[xp][xy]] =  [0 if abs(x)<=1e-4 else x for x in Pflex[xy][path_sce[xp][xy]]]
+                    
                     sce_data[str(year_num[xy])] = {
                                             "Operation cost (EUR/year)": yearly_CO[xy][path_sce[xp][xy]], 
                                             "Branch investment (MVA)":  ci[xy][path_sce[xp][xy]], 
@@ -301,6 +308,8 @@ def output_data2Json(NoPath, NoYear, path_sce, sum_CO, yearly_CO, ci, sum_ciCost
                 sce_data["Net Present Operation Cost (EUR)"] =  sum_CO
                 
                 for xy in range(NoYear):
+                    
+                    Pflex[xy][path_sce[xp][xy]] =  [0 if abs(x)<=1e-4 else x for x in Pflex[xy][path_sce[xp][xy]]]
                      
                     sce_data[str(year_num[xy])] = {
                                             "Operation cost (EUR/year)": yearly_CO[xy][path_sce[xp][xy]], 
