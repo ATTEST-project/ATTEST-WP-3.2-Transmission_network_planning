@@ -781,7 +781,7 @@ profiler.enable()
 
 ''' contingency info '''
 # initial contingency list, if no input, generate N-1 contingencies later
-# cont_list = []
+# cont_list = [1]*NumerBranches....
 ods_file_name = "case_template_port_modified_R1"
 #"case_template_CR_L3"
 
@@ -796,13 +796,15 @@ line_status = False
 
 ''' Test case '''
 country = "PT"  # Select country for case study: "PT", "UK" or "HR"
-test_case= 'Transmission_Network_PT_2020_ods'
+test_case= 'Transmission_Network_PT_2020_ods' # name of the .m file
 #'case5' #'Transmission_Network_PT_2020_ods'  #'Transmission_Network_UK3' #  "HR_Location1" #"HR_2020_Location_1"#"Location_3_ods"
 
 
 # read input data outputs mpc and load infor
 # mpc, base_time_series_data, multiplier, NoCon = read_input_data( cont_list, country,test_case)
 mpc, base_time_series_data,  multiplier, NoCon,cont_list,ci_catalogue,ci_cost= read_input_data( ods_file_name, xlsx_file_name, country,test_case)
+
+cont_list = [[1]*mpc['NoBranch']] # --> do not consider contingencies
 
 # # load json file from file directory
 # mpc = json.load(open(os.path.join(os.path.dirname(__file__), 
@@ -813,7 +815,7 @@ mpc, base_time_series_data,  multiplier, NoCon,cont_list,ci_catalogue,ci_cost= r
 
 # required inputs of multipliers for each bus, if not specified, all buses have the same multiplier
 busMult_input = []
-# expande multiplier for each bus
+# expand multiplier for each bus
 multiplier_bus = mult_for_bus(busMult_input, multiplier, mpc)
 
 
