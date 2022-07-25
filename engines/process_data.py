@@ -68,7 +68,7 @@ def record_bus_from_pyo_result(model,mpc,NoSce, pyo_var, year_peak):
                 
     return record_pyo_var
 
-def record_invest_from_pyo_result(model,mpc,NoSce, ci_var):
+def record_invest_from_pyo_result(model,mpc,NoSce, ci_var,S_ci):
     
     record_pyo_var = []
 
@@ -78,7 +78,10 @@ def record_invest_from_pyo_result(model,mpc,NoSce, ci_var):
           for xsc in range(NoSce**xy): 
               record_pyo_var[xy].append([])
               for xbr in range(mpc['NoBranch']):
-                  record_pyo_var[xy][xsc].append(Val(sum(ci_var[xint,xbr,xy,xsc] for xint in model.Set["Intv"])))
+                  if S_ci[str(xbr)] != []:
+                      record_pyo_var[xy][xsc].append(Val(sum(S_ci[str(xbr)][xint] * ci_var[xbr,xint,xy,xsc] for xint in model.Set["Intev"][xbr])))
+                  else:
+                      record_pyo_var[xy][xsc].append(0)
     
                 
     return record_pyo_var
@@ -134,10 +137,45 @@ def replaceGenCost(mpc, gen_cost, action):
     if action == 0:
         # remove gen cost in mpc
         for xgc in range(mpc["NoGen"]):
-            mpc["gencost"]["COST"][xgc][0] = 0.1*(xgc + 1)
+            mpc["gencost"]["COST"][xgc][0] = 0.1#*(xgc + 1)
     else:
         # recover gen cost
         for xgc in range(mpc["NoGen"]):
             mpc["gencost"]["COST"][xgc][0] = gen_cost[xgc]
     
     return mpc
+
+
+def mult_for_bus(busMult_input, multiplier, mpc):
+    
+    if busMult_input == []: 
+        mult_bus = []
+        for xy in range(len(multiplier)):
+            mult_bus.append([])
+            for xsc in range(len(multiplier[xy])):
+                mult_bus[xy].append([])
+                
+                temp_mult =  [multiplier[xy][xsc]]*mpc["NoBranch"]
+                mult_bus[xy][xsc]= temp_mult
+    
+    else:
+        mult_bus = busMult_input.copy()
+        
+    return mult_bus
+
+
+
+def get_factors(d, NoYear):
+    DF = [0]*NoYear
+    for y in range(NoYear):
+        DF[y] = 1/ ((1-d)**y)
+    
+    # capaital recovery factor
+    CRF = [1] * NoYear
+    xy = 1
+    while xy < NoYear:
+        N_year = xy *10
+        CRF[xy] = (d * ((1+d)**N_year) ) / ( (1+d)**N_year -1) # d = 0.035 # discount rate <= 30 years: 3.5%
+        xy += 1
+
+    return DF, CRF

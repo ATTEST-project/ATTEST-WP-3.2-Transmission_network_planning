@@ -1,8 +1,7 @@
 {
     "metadata": {
         "title": "HR_Location1",
-        "description": "power system of HR_Location1",
-        "minimum_version": "0.4"
+        "description": "power system of HR_Location1"
     },
     "version": 2,
     "baseMVA": 100.0,

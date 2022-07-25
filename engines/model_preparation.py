@@ -17,13 +17,14 @@ import json
 import os
 import math
 import numpy as np
+from process_data import initial_value
 # import copy
 # from input_output_function import read_input_data, output_data ,get_time_series_data
 # from ACOPF import ACOPF_function
 # from scenarios_multipliers import get_mult
 # from SCACOPF import run_SCACOPF_jl
 # from SCACOPF import output2json
-# from process_data import initial_value
+
 # from investment_model_pt2 import InvPt2_function
 # from investment_model_pt1 import InvPt1_function
 
@@ -56,8 +57,17 @@ class nodes_info_network:
 
 # ####################################################################
 # ####################################################################
-def prepare_invest_model(mpc, NoPath, prob,NoYear, NoSce,NoSea, NoDay,DF,CRF,SF,S_ci,ci_cost,Budget_cost,penalty_cost, peak_Pd,peak_Qd, multiplier,cos_pf,sin_pf,CPflex,CQflex,Pflex_max,Qflex_max,gen_status,line_status):
+def prepare_invest_model(mpc, NoPath, prob,NoYear, NoSce,NoSea, NoDay,DF,CRF,SF,S_ci,ci_cost,Budget_cost,penalty_cost, peak_Pd,peak_Qd, multiplier,CPflex,CQflex,Pflex_up, Pflex_dn,Qflex_up, Qflex_dn,gen_status,line_status):
     NoTime = 1
+    
+    # Assume a power factor for initial run, values are updated based on OPF results
+
+    cos_pf_init = 0.98
+    sin_pf_init = (1-cos_pf_init**2)**0.5
+
+    cos_pf = initial_value(mpc,NoYear,NoSce, cos_pf_init)
+    sin_pf = initial_value(mpc,NoYear,NoSce, sin_pf_init)
+    
     ''''read paras and vars from jason file'''
     def readVarPara():
     
@@ -74,7 +84,7 @@ def prepare_invest_model(mpc, NoPath, prob,NoYear, NoSce,NoSea, NoDay,DF,CRF,SF,
         
         # Input generator parameters   
         nw_parameters=[]
-        auxGen = ['PMAX', 'PMIN', 'QMAX', 'QMIN', 'VG']
+        auxGen = ['PMAX', 'PMIN', 'QMAX', 'QMIN', 'VG','GEN_BUS']
         # gen_para = []
         
         for NoGen in range(mpc['NoGen']):
@@ -281,7 +291,12 @@ def prepare_invest_model(mpc, NoPath, prob,NoYear, NoSce,NoSea, NoDay,DF,CRF,SF,
         m.Set['Day'] = range(NoDay)
         m.Set['Sea'] = range(NoSea)
         
-        m.Set['Intv'] = range(len(S_ci))
+        #m.Set['Intv'] = range(len(S_ci))
+        
+        m.Set['Intev'] = {}
+        for xbr in m.Set["Bra"]:
+            m.Set["Intev"][xbr] = range(len(S_ci[str(xbr)]))
+        m.Set["braIntev"] = Set(initialize=list((i,j) for i in m.Set["Intev"].keys() for j in m.Set["Intev"][i]))
        
         #m.ciset = range(2) # all intervension set
         
@@ -335,8 +350,9 @@ def prepare_invest_model(mpc, NoPath, prob,NoYear, NoSce,NoSea, NoDay,DF,CRF,SF,
         m.Cgen = Var(m.Set['Gen'],m.Set['YSce'] ,m.Set['Sea'], m.Set['Day'], m.Set['Tim'], domain=NonNegativeReals, initialize=10)
         
         # Flexibility service
-        m.Pflex = Var(m.Set['Bus'], m.Set['YSce'] ,m.Set['Sea'], m.Set['Day'],m.Set['Tim'], domain=Reals, initialize=0)
-        m.Qflex = Var(m.Set['Bus'], m.Set['YSce'] ,m.Set['Sea'], m.Set['Day'],m.Set['Tim'], domain=Reals, initialize=0)
+        # TODO: check if flex_decrease is needed in investment planning
+        m.Pflex = Var(m.Set['Bus'], m.Set['YSce'] ,m.Set['Sea'], m.Set['Day'],m.Set['Tim'], domain=NonNegativeReals, initialize=0)
+        m.Qflex = Var(m.Set['Bus'], m.Set['YSce'] ,m.Set['Sea'], m.Set['Day'],m.Set['Tim'], domain=NonNegativeReals, initialize=0)
         # m.Sflex = Var(m.Set['Bus'], m.Set['YSce'] ,m.Set['Sea'], m.Set['Day'],m.Set['Tim'], domain=Reals, initialize=0)
         m.CflexP = Var(m.Set['Bus'], m.Set['YSce'] ,m.Set['Sea'], m.Set['Day'],m.Set['Tim'], domain=NonNegativeReals, initialize=0)
         m.CflexQ = Var(m.Set['Bus'], m.Set['YSce'] ,m.Set['Sea'], m.Set['Day'],m.Set['Tim'], domain=NonNegativeReals, initialize=0)
@@ -347,7 +363,9 @@ def prepare_invest_model(mpc, NoPath, prob,NoYear, NoSce,NoSea, NoDay,DF,CRF,SF,
         m.Sbra = Var(m.Set['Bra'],m.Set['YSce'] ,m.Set['Sea'], m.Set['Day'],m.Set['Tim'], domain=Reals, initialize=0)
         
         # Investment decisions 
-        m.ci = Var(m.Set["Intv"], m.Set['Bra'],m.Set['YSce'] , initialize=0, domain=Binary, bounds=(0,1))
+        #m.ci = Var(m.Set["Intv"], m.Set['Bra'],m.Set['YSce'] , initialize=0, domain=Binary, bounds=(0,1))
+        m.ci = Var(m.Set["braIntev"],m.Set['YSce'] , initialize=0, domain=Binary, bounds=(0,1))
+        
         m.ciCost = Var(m.Set['YSce'] , domain=NonNegativeReals, initialize=0)
         
         # cost for pathways
@@ -357,6 +375,8 @@ def prepare_invest_model(mpc, NoPath, prob,NoYear, NoSce,NoSea, NoDay,DF,CRF,SF,
         m.Plc = Var(m.Set['Bus'],m.Set['YSce'] ,m.Set['Sea'], m.Set['Day'],m.Set['Tim'], domain=NonNegativeReals, initialize=0)
         m.Qlc = Var(m.Set['Bus'],m.Set['YSce'] ,m.Set['Sea'], m.Set['Day'],m.Set['Tim'], domain=NonNegativeReals, initialize=0)
         
+        # Bus angle
+        m.Ang = Var(m.Set['Bus'],m.Set['YSce'] ,m.Set['Sea'], m.Set['Day'], m.Set['Tim'], bounds=(-2*math.pi, 2*math.pi), initialize=0) # from 0
        
        
         return m
@@ -370,7 +390,9 @@ def prepare_invest_model(mpc, NoPath, prob,NoYear, NoSce,NoSea, NoDay,DF,CRF,SF,
             if gen_status == True and mpc["gen"]["GEN"][xg] == 0 :
                 return m.Pgen[xg,  xy,xsc, xse, xd, xt] == 0 
             else:
-                return m.Pgen[xg, xy,xsc, xse, xd, xt] <= m.para["Gen"+str(xg)+"_PMAX"] * multiplier[xy][xsc] 
+                gen_bus = m.para["Gen"+str(xg)+"_GEN_BUS"]
+                bus_number = [i for i,x in enumerate(mpc["bus"]["BUS_I"]) if x==gen_bus]
+                return m.Pgen[xg, xy,xsc, xse, xd, xt] <= m.para["Gen"+str(xg)+"_PMAX"] * multiplier[xy][xsc][bus_number[0]] 
        
             
         
@@ -385,7 +407,8 @@ def prepare_invest_model(mpc, NoPath, prob,NoYear, NoSce,NoSea, NoDay,DF,CRF,SF,
             if gen_status == True and mpc["gen"]["GEN"][xg] == 0 :
                 return m.Qgen[xg, xy,xsc, xse, xd, xt] == 0 
             else:
-                return m.Qgen[xg, xy,xsc, xse, xd, xt] <=  m.para["Gen"+str(xg)+"_QMAX"] * multiplier[xy][xsc]
+                gen_bus = m.para["Gen"+str(xg)+"_GEN_BUS"] -1
+                return m.Qgen[xg, xy,xsc, xse, xd, xt] <=  m.para["Gen"+str(xg)+"_QMAX"] * multiplier[xy][xsc][gen_bus] 
             
         
         def genQMin_rule(m, xg, xy,xsc, xse, xd, xt):
@@ -397,32 +420,31 @@ def prepare_invest_model(mpc, NoPath, prob,NoYear, NoSce,NoSea, NoDay,DF,CRF,SF,
     
              
         # Flexibility service output constraint rules
-        # TODO: update Pflex_max, Qflex_max for each t
-        def flexPMax_rule(m, xb, xy,xsc, xse,xd, xt):
-            if Pflex_max == None:
+        def flexPup_rule(m, xb, xy,xsc, xse,xd, xt):
+            if Pflex_up == None:
                 return m.Pflex[xb, xy,xsc, xse, xd,  xt] == 0
             else: 
-                return  m.Pflex[xb, xy,xsc, xse, xd, xt] <= Pflex_max * multiplier[xy][xsc]
+                return  m.Pflex[xb, xy,xsc, xse, xd, xt] <= Pflex_up[xb] * multiplier[xy][xsc][xb]
         
-        def flexPMin_rule(m, xb, xy,xsc, xse,xd, xt):
-            if Pflex_max == None:
+        def flexPdn_rule(m, xb, xy,xsc, xse,xd, xt):
+            if Pflex_dn == None:
                 return m.Pflex[xb,xy,xsc, xse, xd, xt] == 0
             else: 
-                return  m.Pflex[xb,xy,xsc, xse, xd, xt] >= - Pflex_max* multiplier[xy][xsc]
+                return  m.Pflex[xb,xy,xsc, xse, xd, xt] >= - Pflex_dn[xb]* multiplier[xy][xsc][xb]
         
-        def flexQMax_rule(m, xb, xy,xsc, xse, xd, xt):
+        def flexQup_rule(m, xb, xy,xsc, xse, xd, xt):
             # Qflex_max = None
-            if Qflex_max == None:
+            if Qflex_up == None:
                 return m.Qflex[xb, xy,xsc, xse, xd,  xt] == 0
             else: 
-                return  m.Qflex[xb, xy,xsc, xse, xd,  xt] <= Qflex_max * multiplier[xy][xsc]
+                return  m.Qflex[xb, xy,xsc, xse, xd,  xt] <= Qflex_up[xb] * multiplier[xy][xsc][xb]
         
-        def flexQMin_rule(m, xb, xy,xsc, xse, xd, xt):
+        def flexQdn_rule(m, xb, xy,xsc, xse, xd, xt):
             # Qflex_max = None
-            if Qflex_max == None:
+            if Qflex_dn == None:
                 return m.Qflex[xb,xy,xsc, xse, xd, xt] == 0
             else: 
-                return m.Qflex[xb,xy,xsc, xse, xd, xt] >= -Qflex_max* multiplier[xy][xsc]
+                return m.Qflex[xb,xy,xsc, xse, xd, xt] >= -Qflex_dn[xb]* multiplier[xy][xsc][xb]
             
         # def flexS_rule(m, xb, xt):
         #     cos_pf  = 0.98 #TODO: update power factor
@@ -446,10 +468,16 @@ def prepare_invest_model(mpc, NoPath, prob,NoYear, NoSce,NoSea, NoDay,DF,CRF,SF,
                 return Constraint.Skip
             else:
                 if m.para["Branch"+str(xbr)+"_RATE_A"] != 0:
+                    # return m.Sbra[xbr,xy,xsc, xse,  xd, xt] <= \
+                    #     m.para["Branch"+str(xbr)+"_RATE_A"] + sum(S_ci[i]* m.ci[i,xbr, xy,xsc] for i in m.Set["Intv"]) 
                     return m.Sbra[xbr,xy,xsc, xse,  xd, xt] <= \
-                        m.para["Branch"+str(xbr)+"_RATE_A"] + sum(S_ci[i]* m.ci[i,xbr, xy,xsc] for i in m.Set["Intv"])  
+                        m.para["Branch"+str(xbr)+"_RATE_A"] + sum(S_ci[str(xbr)][i]* m.ci[xbr,i, xy,xsc] for i in m.Set["Intev"][xbr])  
+                
+                
                 else:
                     return  m.Sbra[xbr, xy,xsc, xse, xd, xt]  <= float('inf') 
+            
+
             
             # Scap_rate = []
             # # find Scap_rate for the season, # Season sequence: 0:RATE_A(summer)	 1:RATE_B(spring)	2:RATE_C(winter)
@@ -474,8 +502,11 @@ def prepare_invest_model(mpc, NoPath, prob,NoYear, NoSce,NoSea, NoDay,DF,CRF,SF,
                 return Constraint.Skip
             else:
                 if m.para["Branch"+str(xbr)+"_RATE_A"] != 0:
+                    # return - m.Sbra[xbr, xy,xsc, xse,  xd, xt] <= \
+                    #    m.para["Branch"+str(xbr)+"_RATE_A"] + sum(S_ci[i]* m.ci[i,xbr,xy,xsc] for i in m.Set["Intv"])  
                     return - m.Sbra[xbr, xy,xsc, xse,  xd, xt] <= \
-                       m.para["Branch"+str(xbr)+"_RATE_A"] + sum(S_ci[i]* m.ci[i,xbr,xy,xsc] for i in m.Set["Intv"])  
+                       m.para["Branch"+str(xbr)+"_RATE_A"] + sum(S_ci[str(xbr)][i]* m.ci[xbr,i, xy,xsc] for i in m.Set["Intev"][xbr])
+                
                 else:
                     return  - m.Sbra[xbr,xy,xsc, xse, xd,  xt]  <= float('inf') 
               
@@ -517,16 +548,24 @@ def prepare_invest_model(mpc, NoPath, prob,NoYear, NoSce,NoSea, NoDay,DF,CRF,SF,
             if line_status == True and mpc["branch"]["BR_STATUS"][xbr] == 0:
                 return Constraint.Skip
             else:
-                # only one option from the list of intervesion can be adopted
-                return sum(m.ci[xintv,xbr,xy,xsc]  for xintv in m.Set["Intv"]) <= 1
+                if m.Set["Intev"][xbr] == range(0, 0):
+                    return Constraint.Skip
+                else:    
+                    # only one option from the list of intervesion can be adopted
+                    return sum(m.ci[xbr,xintv,xy,xsc]  for xintv in m.Set["Intev"][xbr]) <= 1
+                
+
+                    
+           
+            
         
         def investCost_rule(m,xy,xsc):
            
             if xy== 0:    
-                return m.ciCost[xy,xsc] == sum( ci_cost[xintv]*  m.ci[xintv,xbr,xy,xsc ]  for xintv in m.Set["Intv"] for xbr in m.Set['Bra'] )
+                return m.ciCost[xy,xsc] == sum( ci_cost[xbr][xintv]*  m.ci[xbr,xintv,xy,xsc ]  for xbr, xintv in m.Set["braIntev"])
             
             else:
-                return m.ciCost[xy,xsc] == sum( (m.ci[xintv,xbr,xy,xsc ] - m.ci[xintv,xbr,xy-1,math.floor(xsc/2) ])* ci_cost[xintv]  for xintv in m.Set["Intv"] for xbr in m.Set['Bra'] )
+                return m.ciCost[xy,xsc] == sum( (m.ci[xbr,xintv,xy,xsc ] - m.ci[xbr,xintv,xy-1,math.floor(xsc/2) ])* ci_cost[xbr][xintv]  for xbr, xintv in m.Set["braIntev"])
                                                
            
          
@@ -537,10 +576,10 @@ def prepare_invest_model(mpc, NoPath, prob,NoYear, NoSce,NoSea, NoDay,DF,CRF,SF,
           
             return m.Cpath[xp] == \
                 sum( DF[xy] * m.ciCost[xy,path_sce[xp][xy]] for xy in m.Set['Year']) \
-                    +  sum( DF[xy] *  sum( m.CflexP[xb,xy,path_sce[xp][xy],xse,xd,xt]*CPflex  \
+                    +  sum( DF[xy] *  sum( m.CflexP[xb,xy,path_sce[xp][xy],xse,xd,xt] \
                             for xb in m.Set['Bus'] for xsc in path_sce[xp] for xse in m.Set['Sea'] for xd in m.Set['Day'] \
                                 for xt in m.Set['Tim'] ) for xy in m.Set['Year'] ) \
-                        +  sum( DF[xy] * sum( m.CflexQ[xb,xy,path_sce[xp][xy],xse,xd,xt]*CQflex  \
+                        +  sum( DF[xy] * sum( m.CflexQ[xb,xy,path_sce[xp][xy],xse,xd,xt] \
                             for xb in m.Set['Bus'] for xsc in path_sce[xp] for xse in m.Set['Sea'] for xd in m.Set['Day'] \
                                 for xt in m.Set['Tim'])  for xy in m.Set['Year'] ) 
                     
@@ -548,9 +587,9 @@ def prepare_invest_model(mpc, NoPath, prob,NoYear, NoSce,NoSea, NoDay,DF,CRF,SF,
         
         # each node has two nodes connections
         # investment of each node should include invests from previous nodes
-        def nonAntipa_rule(m,xintv, xbr,xn):       
+        def nonAntipa_rule(m,xbr,xintv, xn):       
     
-            return m.ci[xintv,xbr,tree_ysce[xn][0],tree_ysce[xn][1]] <= m.ci[xintv,xbr,tree_ysce[xn][2],tree_ysce[xn][3]] 
+            return m.ci[xbr,xintv,tree_ysce[xn][0],tree_ysce[xn][1]] <= m.ci[xbr,xintv,tree_ysce[xn][2],tree_ysce[xn][3]] 
             
     
                         
@@ -561,7 +600,7 @@ def prepare_invest_model(mpc, NoPath, prob,NoYear, NoSce,NoSea, NoDay,DF,CRF,SF,
             return sum( m.Pgen[genCbus[xb][i],xy,xsc, xse, xd, xt]  for i in range(len(genCbus[xb])) ) + m.Pflex[xb,xy,xsc, xse, xd,xt]   \
                     + sum( m.Pbra[braTbus[xb][i]- noDiff,xy,xsc, xse, xd,xt]  for i in range(len(braTbus[xb])) )  \
                     == sum( m.Pbra[braFbus[xb][i]- noDiff,xy,xsc, xse, xd,xt]  for i in range(len(braFbus[xb])) ) \
-                      + Pd[xb]* multiplier[xy][xsc] - m.Plc[xb,xy,xsc, xse, xd,xt]
+                      + Pd[xb]* multiplier[xy][xsc][xb] - m.Plc[xb,xy,xsc, xse, xd,xt]
     
     
         # Nodal power balance Q
@@ -570,15 +609,40 @@ def prepare_invest_model(mpc, NoPath, prob,NoYear, NoSce,NoSea, NoDay,DF,CRF,SF,
             return sum( m.Qgen[genCbus[xb][i],xy,xsc, xse, xd,xt]  for i in range(len(genCbus[xb])) ) + m.Qflex[xb,xy,xsc, xse, xd,xt]   \
                     + sum( m.Qbra[braTbus[xb][i]-noDiff,xy,xsc, xse, xd,xt]  for i in range(len(braTbus[xb])) )  \
                     == sum( m.Qbra[braFbus[xb][i]-noDiff,xy,xsc, xse, xd,xt]  for i in range(len(braFbus[xb])) ) \
-                      + Qd[xb]* multiplier[xy][xsc] - m.Qlc[xb,xy,xsc, xse, xd,xt]
+                      + Qd[xb]* multiplier[xy][xsc][xb] - m.Qlc[xb,xy,xsc, xse, xd,xt]
+                      
+        def DCPF_rule(m, xbr,xy,xsc, xse, xd,xt):
+            
+            br_X = mpc['branch']['BR_X'][xbr]/ mpc['baseMVA']
+            fbus_name = mpc['branch']['F_BUS'][xbr]
+            fbus = mpc['bus']['BUS_I'].index(fbus_name)
+            tbus_name = mpc['branch']['T_BUS'][xbr]
+            tbus = mpc['bus']['BUS_I'].index(tbus_name)
+            
+            if line_status == True and mpc["branch"]["BR_STATUS"][xbr] == 0:
+                temp_line_stat = 0
+            else:
+                temp_line_stat = 1
+            
+            if  temp_line_stat == 0:
+                return Constraint.Skip
+            else:             
+                return  m.Pbra[xbr,xy,xsc, xse, xd, xt] == ( m.Ang[fbus,xy,xsc, xse, xd, xt] - m.Ang[tbus,xy,xsc, xse, xd,xt]) / br_X              
+        
+        def slackBus_rule(m,xy,xsc, xse, xd, xt):
+            for i in range(mpc['NoBus']):
+                if mpc['bus']['BUS_TYPE'][i] == 3:
+                    slc_bus = i
+            
+            return m.Ang[slc_bus,xy,xsc, xse, xd,xt] == 0              
           
         def loadcurtail_rule(m, xb,xy,xsc, xse, xd, xt):
             
-            return  multiplier[xy][xsc] *abs(Pd[xb]) >= m.Plc[xb,xy,xsc, xse, xd,xt]
+            return  multiplier[xy][xsc][xb] *abs(Pd[xb]) >= m.Plc[xb,xy,xsc, xse, xd,xt]
         
         def loadcurtailQ_rule(m, xb, xy,xsc, xse, xd, xt):
             
-            return  multiplier[xy][xsc] *abs(Qd[xb]) >= m.Qlc[xb,xy,xsc, xse, xd,xt]
+            return  multiplier[xy][xsc][xb] *abs(Qd[xb]) >= m.Qlc[xb,xy,xsc, xse, xd,xt]
     
         # # Cost Constraints
         # Piece wise gen cost: Number of piece = 3
@@ -609,6 +673,11 @@ def prepare_invest_model(mpc, NoPath, prob,NoYear, NoSce,NoSea, NoDay,DF,CRF,SF,
         m.nodeBalance = Constraint( m.Set['Bus'],m.Set['YSce'] ,m.Set['Sea'], m.Set['Day'], m.Set['Tim'], rule=rules.nodeBalance_rule )  
         m.nodeBalanceQ = Constraint( m.Set['Bus'],m.Set['YSce'] ,m.Set['Sea'], m.Set['Day'], m.Set['Tim'], rule=rules.nodeBalanceQ_rule ) 
         
+        # Add branch flow DC OPF
+        #m.DCPF = Constraint( m.Set['Bra'],m.Set['YSce'] ,m.Set['Sea'], m.Set['Day'],  m.Set['Tim'], rule=rules.DCPF_rule ) 
+        m.slackBus = Constraint( m.Set['YSce'] ,m.Set['Sea'], m.Set['Day'], m.Set['Tim'],  rule=rules.slackBus_rule ) 
+        
+        
         # add load curtailment rules
         m.loadcurtail = Constraint( m.Set['Bus'],m.Set['YSce'] ,m.Set['Sea'], m.Set['Day'],m.Set['Tim'], rule=rules.loadcurtail_rule)  
         m.loadcurtailQ = Constraint( m.Set['Bus'],m.Set['YSce'] ,m.Set['Sea'], m.Set['Day'],m.Set['Tim'], rule=rules.loadcurtailQ_rule)  
@@ -629,7 +698,9 @@ def prepare_invest_model(mpc, NoPath, prob,NoYear, NoSce,NoSea, NoDay,DF,CRF,SF,
         m.pathwayCost = Constraint( m.Set['Path'], rule=rules.pathwayCost_rule )
         
         # nonAntipa_rule
-        m.nonAntipa = Constraint( m.Set['Intv'], m.Set['Bra'], range(no_ysce), rule=rules.nonAntipa_rule )
+        # m.nonAntipa = Constraint( m.Set['Intv'], m.Set['Bra'], range(no_ysce), rule=rules.nonAntipa_rule )
+        m.nonAntipa = Constraint( m.Set['braIntev'],  range(no_ysce), rule=rules.nonAntipa_rule )
+
         
         # Add Gen constraint rules
         m.genMax = Constraint( m.Set['Gen'],m.Set['YSce'] ,m.Set['Sea'], m.Set['Day'],  m.Set['Tim'], rule=rules.genMax_rule )
@@ -642,11 +713,11 @@ def prepare_invest_model(mpc, NoPath, prob,NoYear, NoSce,NoSea, NoDay,DF,CRF,SF,
         
     
         # Add flex constraint rules
-        m.flexPMax = Constraint( m.Set['Bus'],m.Set['YSce'] ,m.Set['Sea'], m.Set['Day'], m.Set['Tim'], rule=rules.flexPMax_rule )
-        m.flexPMin = Constraint( m.Set['Bus'],m.Set['YSce'] ,m.Set['Sea'], m.Set['Day'], m.Set['Tim'], rule=rules.flexPMin_rule )
+        m.flexPup = Constraint( m.Set['Bus'],m.Set['YSce'] ,m.Set['Sea'], m.Set['Day'], m.Set['Tim'], rule=rules.flexPup_rule )
+        m.flexPdn = Constraint( m.Set['Bus'],m.Set['YSce'] ,m.Set['Sea'], m.Set['Day'], m.Set['Tim'], rule=rules.flexPdn_rule )
         
-        m.flexQMax = Constraint( m.Set['Bus'],m.Set['YSce'] ,m.Set['Sea'], m.Set['Day'], m.Set['Tim'], rule=rules.flexQMax_rule )
-        m.flexQMin = Constraint( m.Set['Bus'],m.Set['YSce'] ,m.Set['Sea'], m.Set['Day'], m.Set['Tim'], rule=rules.flexQMin_rule )
+        m.flexQup = Constraint( m.Set['Bus'],m.Set['YSce'] ,m.Set['Sea'], m.Set['Day'], m.Set['Tim'], rule=rules.flexQup_rule )
+        m.flexQdn = Constraint( m.Set['Bus'],m.Set['YSce'] ,m.Set['Sea'], m.Set['Day'], m.Set['Tim'], rule=rules.flexQdn_rule )
         
         #m.flexS = Constraint( m.Set['Bus'],m.Set['Tim'], rule=rules.flexS_rule )
         m.flexCost = Constraint( m.Set['Bus'],m.Set['YSce'] ,m.Set['Sea'], m.Set['Day'], m.Set['Tim'], rule=rules.flexCost_rule )
@@ -924,7 +995,7 @@ def prepare_invest_model(mpc, NoPath, prob,NoYear, NoSce,NoSea, NoDay,DF,CRF,SF,
 
 
     print("Investment model starts")
-    print("Generate scneario tree based on input information")
+    print("Generate scenario tree based on input information")
     # get total number of nodes and edges of the scenario tree       
     no_ysce , tree_ysce = form_tree(NoYear, NoSce) 
     path_sce = form_path_sce_tree(NoPath, NoYear, NoSce)
@@ -936,7 +1007,7 @@ def prepare_invest_model(mpc, NoPath, prob,NoYear, NoSce,NoSea, NoDay,DF,CRF,SF,
     noDiff, genCbus,braFbus,braTbus,Pd, Qd = nodeConnections_rule()
     NoPieces, lcost, min_y = genCost_rule(mpc)
     
-    print("Form optimisation model")
+    # print("Form optimisation model")
     # build a pyomo model
     model, solver = prepare_model(mpc,NetworkModel)
     

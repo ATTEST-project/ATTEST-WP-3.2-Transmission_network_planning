@@ -1,1 +1,46 @@
-{"Country": "UK", "Case name": "case5", "Scenario 1": {"Total investment cost (EUR)": [212360.9303755848], "Net Present Cost (EUR)": [70.85620945137137], "2020": {"Operation cost (EUR/year)": 70.85620945137137, "Branch investment (MVA)": [1.0, 1.0, 1.0, 0.0, 0.0, 0.0], "Flexibility investment (MW)": [0.0, 38.8464778033104, 17.9916730541144, 0.0, 0.0]}}, "Scenario 2": {"Total investment cost (EUR)": [212360.9303755848], "Net Present Cost (EUR)": [70.85620945137137], "2020": {"Operation cost (EUR/year)": 70.85620945137137, "Branch investment (MVA)": [1.0, 1.0, 1.0, 0.0, 0.0, 0.0], "Flexibility investment (MW)": [0.0, 38.8464778033104, 17.9916730541144, 0.0, 0.0]}}}
+{
+"Country": "UK", 
+"Case name": "case5", 
+"Scenario 1": {
+    "Total investment cost (EUR)": 326647.9999999993, 
+    "Branch investment cost (EUR)": 1800.0, 
+    "Flexibility investment cost (EUR)": 324847.9999999993,
+    "Net Present Operation Cost (EUR)": 56739770669.71118, 
+    "2020": {
+        "Operation cost (EUR/year)": 10063404312.15842, 
+        "Branch investment (MVA)": [100.0, 0.0, 0, 0, 50.0, 0], 
+        "Flexibility investment (MW)": [0.0, 0.0, 0.0, 0.0, 0.0]}, 
+    "2030": {
+        "Operation cost (EUR/year)": 4390854654.020257, 
+        "Branch investment (MVA)": [200.0, 50.0, 0, 0, 50.0, 0], 
+        "Flexibility investment (MW)": [0.0, -10.0799999999999, 0.0, 0.0, 0.0]}, 
+    "2040": {
+        "Operation cost (EUR/year)": 6671118480.614012, 
+        "Branch investment (MVA)": [200.0, 50.0, 0, 0, 50.0, 0], 
+        "Flexibility investment (MW)": [0.0, 15.14, 74.6559999999999, 0.0, 0.0]},
+    "2050": {
+        "Operation cost (EUR/year)": 6671118480.614012, 
+        "Branch investment (MVA)": [200.0, 50.0, 0, 0, 50.0, 0], 
+        "Flexibility investment (MW)": [0.0, 15.14, 74.6559999999999, 0.0, 0.0]}}, 
+ 
+"Scenario 2": {
+    "Total investment cost (EUR)": 413679.9999999999, 
+    "Branch investment cost (EUR)": 1800.0, 
+    "Flexibility investment cost (EUR)": 411879.9999999999, 
+    "Net Present Operation Cost (EUR)": 56739770669.71118, 
+    "2020": {
+        "Operation cost (EUR/year)": 10063404312.15842, 
+        "Branch investment (MVA)": [100.0, 0.0, 0, 0, 50.0, 0], 
+        "Flexibility investment (MW)": [0.0, 0.0, 0.0, 0.0, 0.0]},
+    "2030": {
+        "Operation cost (EUR/year)": 12289425598.34566, 
+        "Branch investment (MVA)": [100.0, 0.0, 0, 0, 50.0, 0], 
+        "Flexibility investment (MW)": [0.0, -32.2, 0.0, 0.0, 0.0]}, 
+    "2040": {
+        "Operation cost (EUR/year)": 11741997399.058096, 
+        "Branch investment (MVA)": [100.0, 10.0, 0, 0, 50.0, 0], 
+        "Flexibility investment (MW)": [0.0, -27.5999999999999, 57.5600000000001, 0.0, 0.0]}},
+    "2050": {
+        "Operation cost (EUR/year)": 11741997399.058096, 
+        "Branch investment (MVA)": [100.0, 10.0, 0, 0, 50.0, 0], 
+        "Flexibility investment (MW)": [0.0, -27.5999999999999, 57.5600000000001, 0.0, 0.0]}}}
