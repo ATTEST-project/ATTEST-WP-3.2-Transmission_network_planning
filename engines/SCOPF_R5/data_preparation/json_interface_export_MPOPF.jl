@@ -405,9 +405,9 @@ s=Dict(:OPF_bra_active_normal => active_line_flow_normal,
        # :OPF_Pgen_con=>pgen_c,
        :OPF_Qgen=>qgen,
        # :OPF_Qgen_con=>qgen_c,
-       :OPF_Pgen_neg=>pgen_neg,
+       # :OPF_Pgen_neg=>pgen_neg,
        # :OPF_Pgen_neg_con=>pgen_neg_c,
-       :OPF_Qgen_neg=>qgen_neg,
+       # :OPF_Qgen_neg=>qgen_neg,
        # :OPF_Qgen_neg_con=>qgen_neg_c
        )
  stringdata = JSON.json(s)

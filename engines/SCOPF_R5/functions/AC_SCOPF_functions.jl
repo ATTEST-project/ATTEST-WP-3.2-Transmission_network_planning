@@ -1239,7 +1239,7 @@ function objective_OPF(model_name)
                             cost_c_gen[i] for t in 1:nTP,i in 1:nGens )
 )
 #
-penalty_cost=1e4
+penalty_cost=1e3 *sbase
 cost_pen_lsh_aux=@expression(model_name,
                     [i=1:nBus ; ~isempty(findall(x->x==i,bus_data_lsheet)) ],
                     sum(penalty_cost*(pen_lsh[t,findall(x->x==i,bus_data_lsheet)]) for t in 1:nTP)

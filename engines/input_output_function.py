@@ -352,14 +352,21 @@ def get_time_series_data(mpc,  base_time_series_data, peak_hour = 19):
     peak_Pd = []
     peak_Qd = []
     
-    all_Pflex_up = base_time_series_data["Upward flexibility"].values.tolist()
-    all_Pflex_dn = base_time_series_data["Downward flexibility"].values.tolist()
+    try:
+        all_Pflex_up = base_time_series_data["Upward flexibility"].values.tolist()
+        all_Pflex_dn = base_time_series_data["Downward flexibility"].values.tolist()
+        
+    except KeyError:
+        print("No flexibiltiy data found in the input file, using default data: 10MW flexibility upwarad and 10MW donwward to each load bus")
+        default_flex = 10
+        all_Pflex_up = []
+        all_Pflex_dn = []
 
     base_Pflex_up = []
     base_Pflex_dn = []
     
     peak_Pflex_up = [] # Pflex_max in optimisation
-    peak_Pflex_dn = [] # Pflex_max in optimisation
+    peak_Pflex_dn = [] # -Pflex_max in optimisation
     
     # No input data for Q flex from current data set
     peak_Qflex_up = None
@@ -387,17 +394,28 @@ def get_time_series_data(mpc,  base_time_series_data, peak_hour = 19):
             
             # flex has the same connection of load
             # PFlex up and down ward
-            temp = all_Pflex_up[load_bus_i[0]].copy()
-            temp.pop(0)
-            base_Pflex_up.append(temp)
-            
-            temp = all_Pflex_dn[load_bus_i[0]].copy()
-            temp.pop(0)
-            base_Pflex_dn.append(temp)
-            
-            # Peak Pflex up and down
-            peak_Pflex_up.append(base_Pflex_up[ib][peak_hour])
-            peak_Pflex_dn.append(base_Pflex_dn[ib][peak_hour])
+            if all_Pflex_up == [] or all_Pflex_dn == [] :
+               
+                # use default data 10MW to each load bus
+                base_Pflex_up.append(default_flex)
+                base_Pflex_dn.append(default_flex)
+                
+                peak_Pflex_up.append(default_flex)
+                peak_Pflex_dn.append(default_flex)
+                
+                
+            else:
+                temp = all_Pflex_up[load_bus_i[0]].copy()
+                temp.pop(0)
+                base_Pflex_up.append(temp)
+                
+                temp = all_Pflex_dn[load_bus_i[0]].copy()
+                temp.pop(0)
+                base_Pflex_dn.append(temp)
+                
+                # Peak Pflex up and down
+                peak_Pflex_up.append(base_Pflex_up[ib][peak_hour])
+                peak_Pflex_dn.append(base_Pflex_dn[ib][peak_hour])
                       
         # record 0 load
         else:

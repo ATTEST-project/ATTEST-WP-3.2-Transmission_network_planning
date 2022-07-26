@@ -63,6 +63,15 @@ include("functions/AC_SCOPF_functions.jl")
 include("data_preparation/contin_scen_arrays.jl")
 include("data_preparation/node_data_func.jl")
 
+
+#---------------- re-include load/gen multipliers
+prof_ploads=load_multiplier*prof_ploads
+prof_qloads=load_multiplier*prof_qloads
+
+
+pg_max=gen_multiplier*pg_max
+qg_max=gen_multiplier*qg_max
+
 #------------
 show("Initial functions are compiled. ")
 
