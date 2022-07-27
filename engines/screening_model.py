@@ -309,8 +309,8 @@ def model_screening(mpc,cont_list , prev_invest, peak_Pd, mult,NoTime = 1):
     def addVar(m):
       
         # Gen
-        m.Pgen = Var(m.Set['Gen'],m.Set['Cont'], m.Set['Tim'], domain=NonNegativeReals, initialize=10)
-        m.Cgen = Var(m.Set['Gen'],m.Set['Cont'], m.Set['Tim'], domain=NonNegativeReals, initialize=10)
+        m.Pgen = Var(m.Set['Gen'],m.Set['Cont'], m.Set['Tim'], domain=NonNegativeReals, initialize=0)
+        m.Cgen = Var(m.Set['Gen'],m.Set['Cont'], m.Set['Tim'], domain=NonNegativeReals, initialize=0)
     
         # Branch
         m.Pbra = Var(m.Set['Bra'], m.Set['Cont'], m.Set['Tim'], domain=Reals, initialize=0) # Branch power flow
@@ -402,7 +402,8 @@ def model_screening(mpc,cont_list , prev_invest, peak_Pd, mult,NoTime = 1):
                 temp_line_stat = 1
             
             if cont_list[xk][xbr] == 0 or temp_line_stat == 0:
-                return Constraint.Skip
+                return m.Pbra[xbr, xk, xt]  == 0 #Constraint.Skip #
+            
             else:             
                 if m.para["Branch"+str(xbr)+"_RATE_A"] != 0:                  
                     return m.Pbra[xbr, xk, xt] <=   m.ICbra[xbr, xt] + prev_invest[xbr] + m.para["Branch"+str(xbr)+"_RATE_A"] 
@@ -421,7 +422,7 @@ def model_screening(mpc,cont_list , prev_invest, peak_Pd, mult,NoTime = 1):
             
             
             if cont_list[xk][xbr] == 0 or temp_line_stat == 0:
-                return  Constraint.Skip
+                return  m.Pbra[xbr, xk, xt]  == 0 #Constraint.Skip #
             else:             
                 if m.para["Branch"+str(xbr)+"_RATE_A"] != 0:
                     return  - m.Pbra[xbr,xk,  xt] <=  m.ICbra[xbr, xt] + prev_invest[xbr] + m.para["Branch"+str(xbr)+"_RATE_A"] 
@@ -769,10 +770,13 @@ def main_screening(mpc,multiplier,cicost, penalty_cost, peak_Pd, cont_list):
    
     return interv_dict
 
-# TODO: for distribution T3.1, output results for combinations of each node
+
 
 profiler = cProfile.Profile()
 profiler.enable()
+
+
+
 
 ####  inputs
 
@@ -780,7 +784,7 @@ profiler.enable()
 # initial contingency list, if no input, generate N-1 contingencies later
 # cont_list = []
 ods_file_name = "case_template_port_modified_R1"
-#"case_template_CR_L3"
+#"case_template_CR_L3" #"case_template_port_modified_R1"
 
 # input xlsx file for time-serires data
 xlsx_file_name = "Transmission_Network_PT_2020_24hGenerationLoadData"
@@ -789,7 +793,7 @@ xlsx_file_name = "Transmission_Network_PT_2020_24hGenerationLoadData"
 # if True, consider status from .m file; 
 # if False, all gen and lines are on
 gen_status = False 
-line_status = False  
+line_status = False
 
 ''' Test case '''
 country = "PT"  # Select country for case study: "PT", "UK" or "HR"
@@ -800,6 +804,7 @@ test_case= 'Transmission_Network_PT_2020_ods'
 # read input data outputs mpc and load infor
 # mpc, base_time_series_data, multiplier, NoCon = read_input_data( cont_list, country,test_case)
 mpc, base_time_series_data,  multiplier, NoCon,cont_list,ci_catalogue,ci_cost= read_input_data( ods_file_name, xlsx_file_name, country,test_case)
+# cont_list = [[1]*mpc["NoBranch"]]
 
 # # load json file from file directory
 # mpc = json.load(open(os.path.join(os.path.dirname(__file__), 

@@ -345,9 +345,9 @@ def prepare_invest_model(mpc, NoPath, prob,NoYear, NoSce,NoSea, NoDay,DF,CRF,SF,
     
         # Create a var for each year each scenarios    
         # Gen
-        m.Pgen = Var(m.Set['Gen'],m.Set['YSce'] ,m.Set['Sea'], m.Set['Day'], m.Set['Tim'], domain=NonNegativeReals, initialize=10)
-        m.Qgen = Var(m.Set['Gen'],m.Set['YSce'] ,m.Set['Sea'], m.Set['Day'], m.Set['Tim'], domain=NonNegativeReals, initialize=10)
-        m.Cgen = Var(m.Set['Gen'],m.Set['YSce'] ,m.Set['Sea'], m.Set['Day'], m.Set['Tim'], domain=NonNegativeReals, initialize=10)
+        m.Pgen = Var(m.Set['Gen'],m.Set['YSce'] ,m.Set['Sea'], m.Set['Day'], m.Set['Tim'], domain=NonNegativeReals, initialize=0)
+        m.Qgen = Var(m.Set['Gen'],m.Set['YSce'] ,m.Set['Sea'], m.Set['Day'], m.Set['Tim'], domain=NonNegativeReals, initialize=0)
+        m.Cgen = Var(m.Set['Gen'],m.Set['YSce'] ,m.Set['Sea'], m.Set['Day'], m.Set['Tim'], domain=NonNegativeReals, initialize=0)
         
         # Flexibility service
         # TODO: check if flex_decrease is needed in investment planning

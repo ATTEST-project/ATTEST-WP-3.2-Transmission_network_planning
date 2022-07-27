@@ -100,15 +100,17 @@ def read_input_data(ods_file_name, xlsx_file_name,country = "HR", test_case = "H
     else:
         print("input data for contiengcy not found. Use N-1 for simulation")
         # generate N-1 contingencies
-        if cont_list==[]:
-            cont_list = [[1]*mpc["NoBranch"]] 
+        
+        cont_list = [[1]*mpc["NoBranch"]] 
 
-            temp_list = (cont_list[0]-np.diag(cont_list[0]) ).tolist()
-            
-            # # reduce the size of contingency list
-            # temp_list = temp_list[:len(temp_list)//29]
+        temp_list = (cont_list[0]-np.diag(cont_list[0]) ).tolist()
+        
+        # # reduce the size of contingency list
+        # temp_list = temp_list[:len(temp_list)//29]
 
-            cont_list.extend(temp_list)
+        cont_list.extend(temp_list)
+        
+        NoCon =  len(cont_list)
     
     
     
