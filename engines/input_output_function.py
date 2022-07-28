@@ -60,9 +60,15 @@ def read_input_data(ods_file_name, xlsx_file_name,country = "HR", test_case = "H
     multiplier = get_mult(country) # default to HR
     
     ''' Load xlsx file'''
-    # base_time_series_data = get_data("Transmission_Network_PT_2020_24hGenerationLoadData.ods")
-    base_time_series_data  = pd.read_excel('tests/excel/'+ xlsx_file_name + ".xlsx", sheet_name=None)
-    print('load xlsx file')
+    xlsx_file = 'tests/excel/'+ xlsx_file_name + ".xlsx"
+    if os.path.exists(xlsx_file):
+        # base_time_series_data = get_data("Transmission_Network_PT_2020_24hGenerationLoadData.ods")
+        base_time_series_data  = pd.read_excel(xlsx_file, sheet_name=None)
+        print('load xlsx file')
+    else:
+        print(" * xlsx file not found, using .m file data as peak load")
+        base_time_series_data = []
+        
    
     ''' Load ods for contingencies file''' 
     # ods_file_name = "case_template_CR_L3"
@@ -98,7 +104,7 @@ def read_input_data(ods_file_name, xlsx_file_name,country = "HR", test_case = "H
         
         
     else:
-        print("input data for contiengcy not found. Use N-1 for simulation")
+        print(" * input data for contiengcy not found, using N-1 for simulation")
         # generate N-1 contingencies
         
         cont_list = [[1]*mpc["NoBranch"]] 
@@ -146,7 +152,7 @@ def read_input_data(ods_file_name, xlsx_file_name,country = "HR", test_case = "H
         
         
     else:
-        print("Using default intervention lists and costs")
+        print(" * json file not found, using default intervention lists and costs")
 
         # ci_catalogue = [10,50,100,200,500,800,1000,2000,5000]
         # ci_cost = [5 * i for i in ci_catalogue]
@@ -177,7 +183,7 @@ def read_screenModel_output(country, mpc,test_case, ci_catalogue,intv_cost):
         S_ci = json.load(open(os.path.join(os.path.dirname(__file__), 
                                           'results', file_name +'.json')))
     else:
-        print("screen results not found. Using predefined intervetion lists, this will cause longer computing time. ")
+        print(" * screen results not found. Using predefined intervetion lists, this will cause longer computing time. ")
         S_ci = ci_catalogue[0]
         # expand catalogue for each branch
         S_ci  = {str(k): ci_catalogue[0] for k in range(mpc["NoBranch"])}
@@ -341,101 +347,141 @@ def output_data2Json(NoPath, NoYear, path_sce, sum_CO, yearly_CO, ci, sum_ciCost
 
 def get_time_series_data(mpc,  base_time_series_data, peak_hour = 19):
     # prepare base and peak data for optimisation
+    default_flex = 10
     
-    
+    if base_time_series_data != []:
 
-    load_bus = base_time_series_data["Load P (MW)"]["Bus \ Hour"].values.tolist()
-    all_Pd = base_time_series_data["Load P (MW)"].values.tolist()
-    all_Qd = base_time_series_data["Load Q (Mvar)"].values.tolist()
-    
-    base_Pd = [] #24h data
-    base_Qd = []
-    
-    peak_Pd = []
-    peak_Qd = []
-    
-    try:
-        all_Pflex_up = base_time_series_data["Upward flexibility"].values.tolist()
-        all_Pflex_dn = base_time_series_data["Downward flexibility"].values.tolist()
+        load_bus = base_time_series_data["Load P (MW)"]["Bus \ Hour"].values.tolist()
+        all_Pd = base_time_series_data["Load P (MW)"].values.tolist()
+        all_Qd = base_time_series_data["Load Q (Mvar)"].values.tolist()
         
-    except KeyError:
-        print("No flexibiltiy data found in the input file, using default data: 10MW flexibility upwarad and 10MW donwward to each load bus")
-        default_flex = 10
-        all_Pflex_up = []
-        all_Pflex_dn = []
-
-    base_Pflex_up = []
-    base_Pflex_dn = []
-    
-    peak_Pflex_up = [] # Pflex_max in optimisation
-    peak_Pflex_dn = [] # -Pflex_max in optimisation
-    
-    # No input data for Q flex from current data set
-    peak_Qflex_up = None
-    peak_Qflex_dn = None
-    
-    for ib in range(mpc["NoBus"]):
+        base_Pd = [] #24h data
+        base_Qd = []
         
-        bus_i = mpc['bus']['BUS_I'][ib]
-        # find if the bus has load
-        load_bus_i = [i for i,x in enumerate(load_bus) if x == bus_i] 
-        # record the load        
-        if load_bus_i != []:
-            # Load P and Q
-            temp = all_Pd[load_bus_i[0]].copy()
-            temp.pop(0)
-            base_Pd.append(temp)
+        peak_Pd = []
+        peak_Qd = []
+        
+        try:
+            all_Pflex_up = base_time_series_data["Upward flexibility"].values.tolist()
+            all_Pflex_dn = base_time_series_data["Downward flexibility"].values.tolist()
             
-            temp = all_Qd[load_bus_i[0]].copy()
-            temp.pop(0)
-            base_Qd.append(temp)
+        except KeyError:
+            print(" * flexibiltiy data not found in the input file, using default data: 10MW flexibility upwarad and 10MW donwward to each load bus")
             
-            # Peak load P and Q
-            peak_Pd.append(base_Pd[ib][peak_hour])
-            peak_Qd.append(base_Pd[ib][peak_hour])
+            all_Pflex_up = []
+            all_Pflex_dn = []
+    
+        base_Pflex_up = []
+        base_Pflex_dn = []
+        
+        peak_Pflex_up = [] # Pflex_max in optimisation
+        peak_Pflex_dn = [] # -Pflex_max in optimisation
+        
+        # No input data for Q flex from current data set
+        peak_Qflex_up = None
+        peak_Qflex_dn = None
+        
+        for ib in range(mpc["NoBus"]):
             
-            # flex has the same connection of load
-            # PFlex up and down ward
-            if all_Pflex_up == [] or all_Pflex_dn == [] :
-               
-                # use default data 10MW to each load bus
-                base_Pflex_up.append(default_flex)
-                base_Pflex_dn.append(default_flex)
+            bus_i = mpc['bus']['BUS_I'][ib]
+            # find if the bus has load
+            load_bus_i = [i for i,x in enumerate(load_bus) if x == bus_i] 
+            # record the load        
+            if load_bus_i != []:
+                # Load P and Q
+                temp = all_Pd[load_bus_i[0]].copy()
+                temp.pop(0)
+                base_Pd.append(temp)
                 
-                peak_Pflex_up.append(default_flex)
-                peak_Pflex_dn.append(default_flex)
+                temp = all_Qd[load_bus_i[0]].copy()
+                temp.pop(0)
+                base_Qd.append(temp)
                 
+                # Peak load P and Q
+                peak_Pd.append(base_Pd[ib][peak_hour])
+                peak_Qd.append(base_Pd[ib][peak_hour])
                 
+                # flex has the same connection of load
+                # PFlex up and down ward
+                if all_Pflex_up == [] or all_Pflex_dn == [] :
+                   
+                    # use default data 10MW to each load bus
+                    base_Pflex_up.append(default_flex)
+                    base_Pflex_dn.append(default_flex)
+                    
+                    peak_Pflex_up.append(default_flex)
+                    peak_Pflex_dn.append(default_flex)
+                    
+                    
+                else:
+                    temp = all_Pflex_up[load_bus_i[0]].copy()
+                    temp.pop(0)
+                    base_Pflex_up.append(temp)
+                    
+                    temp = all_Pflex_dn[load_bus_i[0]].copy()
+                    temp.pop(0)
+                    base_Pflex_dn.append(temp)
+                    
+                    # Peak Pflex up and down
+                    peak_Pflex_up.append(base_Pflex_up[ib][peak_hour])
+                    peak_Pflex_dn.append(base_Pflex_dn[ib][peak_hour])
+                          
+            # record 0 load
             else:
-                temp = all_Pflex_up[load_bus_i[0]].copy()
-                temp.pop(0)
+                temp = [0]*24
+                base_Pd.append(temp)
+                base_Qd.append(temp)
                 base_Pflex_up.append(temp)
-                
-                temp = all_Pflex_dn[load_bus_i[0]].copy()
-                temp.pop(0)
                 base_Pflex_dn.append(temp)
                 
-                # Peak Pflex up and down
-                peak_Pflex_up.append(base_Pflex_up[ib][peak_hour])
-                peak_Pflex_dn.append(base_Pflex_dn[ib][peak_hour])
-                      
-        # record 0 load
-        else:
-            temp = [0]*24
-            base_Pd.append(temp)
-            base_Qd.append(temp)
-            base_Pflex_up.append(temp)
-            base_Pflex_dn.append(temp)
+                
+                peak_Pd.append(0)
+                peak_Qd.append(0)
+                
+                peak_Pflex_up.append(0)
+                peak_Pflex_dn.append(0)
+    
+    else:
+        # assume mpc data are peak data
+        
+        base_Pd, base_Qd ,peak_Pd ,peak_Qd, base_Pflex_up, base_Pflex_dn = ([] for i in range(6))
+
+        load_bus = [i for i, e in enumerate(mpc["bus"]["PD"]) if e != 0]
+        
+        peak_Pflex_up = [] # Pflex_max in optimisation
+        peak_Pflex_dn = [] # -Pflex_max in optimisation
+        
+        # No input data for Q flex from current data set
+        peak_Qflex_up = None
+        peak_Qflex_dn = None
+        
+        print(" * flexibiltiy data not found in the input file, using default data: 10MW flexibility upwarad and 10MW donwward to each load bus")
+        
+        for ib in range(mpc["NoBus"]):
             
-            
-            peak_Pd.append(0)
-            peak_Qd.append(0)
-            
-            peak_Pflex_up.append(0)
-            peak_Pflex_dn.append(0)
+        
+            # record the load        
+            if mpc["bus"]["PD"][ib] != 0:
+                
+                # Peak load P and Q
+                peak_Pd.append(mpc["bus"]["PD"][ib])
+                peak_Qd.append(mpc["bus"]["QD"][ib])
+                                   
+                peak_Pflex_up.append(default_flex)
+                peak_Pflex_dn.append(default_flex)
+                    
+                          
+            # record 0 load
+            else:
+                       
+                peak_Pd.append(0)
+                peak_Qd.append(0)
+                
+                peak_Pflex_up.append(0)
+                peak_Pflex_dn.append(0)
             
            
-    print('read laod and flex data')         
+    print('read load and flex data')         
     return (base_Pd , base_Qd ,peak_Pd ,peak_Qd ,base_Pflex_up, base_Pflex_dn , peak_Pflex_up , peak_Pflex_dn,peak_Qflex_up , peak_Qflex_dn,load_bus)
 
 
@@ -444,42 +490,46 @@ def get_time_series_data(mpc,  base_time_series_data, peak_hour = 19):
 
 # peak load P for screening model
 def get_peak_data(mpc,  base_time_series_data, peak_hour = 19):
+    
+    if base_time_series_data != []:
        
 
-    load_bus = base_time_series_data["Load P (MW)"]["Bus \ Hour"].values.tolist()
-    all_Pd = base_time_series_data["Load P (MW)"].values.tolist()
-    
-    base_Pd = [] #24h data
-    
-    peak_Pd = []
-    
-   
-    
-    for ib in range(mpc["NoBus"]):
+        load_bus = base_time_series_data["Load P (MW)"]["Bus \ Hour"].values.tolist()
+        all_Pd = base_time_series_data["Load P (MW)"].values.tolist()
         
-        bus_i = mpc['bus']['BUS_I'][ib]
-        # find if the bus has load
-        load_bus_i = [i for i,x in enumerate(load_bus) if x == bus_i] 
-        # record the load        
-        if load_bus_i != []:
-            # Load P and Q
-            temp = all_Pd[load_bus_i[0]].copy()
-            temp.pop(0)
-            base_Pd.append(temp)
-            
-           
-            # Peak load P and Q
-            peak_Pd.append(base_Pd[ib][peak_hour])
-            
-                      
-        # record 0 load
-        else:
-            temp = [0]*24
-            base_Pd.append(temp)
-           
-            peak_Pd.append(0)
-            
+        base_Pd = [] #24h data
         
+        peak_Pd = []
+        
+       
+        
+        for ib in range(mpc["NoBus"]):
+            
+            bus_i = mpc['bus']['BUS_I'][ib]
+            # find if the bus has load
+            load_bus_i = [i for i,x in enumerate(load_bus) if x == bus_i] 
+            # record the load        
+            if load_bus_i != []:
+                # Load P and Q
+                temp = all_Pd[load_bus_i[0]].copy()
+                temp.pop(0)
+                base_Pd.append(temp)
+                
+               
+                # Peak load P and Q
+                peak_Pd.append(base_Pd[ib][peak_hour])
+                
+                          
+            # record 0 load
+            else:
+                temp = [0]*24
+                base_Pd.append(temp)
+               
+                peak_Pd.append(0)
+    
+    else:
+        
+        peak_Pd = []
         
     return peak_Pd
 
@@ -512,3 +562,8 @@ def read_asset_life():
     
     
     return useful_life
+
+
+
+
+    

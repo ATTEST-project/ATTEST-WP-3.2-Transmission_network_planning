@@ -43,11 +43,11 @@ country = "PT"
 test_case = "Transmission_Network_PT_2020_ods"
 
 # test case in .ods format for the operation model
-ods_file_name = "case_template_port_modified_R1"
+ods_file_name = "case_template_port_modified_R1 "
 #"case_template_CR_L3"
 
 # input xlsx file for time-serires data
-xlsx_file_name = "Transmission_Network_PT_2020_24hGenerationLoadData"
+xlsx_file_name = "Transmission_Network_PT_2020_24hGenerationLoadData "
 
 
 # read input data outputs mpc and load infor
@@ -58,8 +58,8 @@ mpc, base_time_series_data,  multiplier, NoCon,cont_list, ci_catalogue,intv_cost
 # update peak demand values
 # get peak load for screening model
 peak_hour = 19
-peak_Pd = []# get_peak_data(mpc, base_time_series_data, peak_hour)
-peak_Qd = []
+# peak_Pd = []# get_peak_data(mpc, base_time_series_data, peak_hour)
+# peak_Qd = []
 
 
 

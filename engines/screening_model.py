@@ -796,7 +796,7 @@ gen_status = False
 line_status = False
 
 ''' Test case '''
-country = "PT"  # Select country for case study: "PT", "UK" or "HR"
+country = "PT "  # Select country for case study: "PT", "UK" or "HR"
 test_case= 'Transmission_Network_PT_2020_ods'
 #'case5' #'Transmission_Network_PT_2020_ods'  #'Transmission_Network_UK3' #  "HR_Location1" #"HR_2020_Location_1"#"Location_3_ods"
 
@@ -827,7 +827,8 @@ multiplier_bus = mult_for_bus(busMult_input, multiplier, mpc)
 # update peak demand values
 # get peak load for screening model
 peak_hour = 19
-peak_Pd = []# get_peak_data(mpc, base_time_series_data, peak_hour)
+# peak_Pd = []
+peak_Pd = get_peak_data(mpc, base_time_series_data, peak_hour)
 
 
 ''' Cost information'''

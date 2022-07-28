@@ -4,6 +4,8 @@ import json
 
 
 def get_mult(country_selected= "HR"):
+    
+    
     # abspath = os.path.abspath(__file__)
     # dname = os.path.dirname(abspath)
     # os.chdir(dname)
@@ -68,6 +70,21 @@ def get_mult(country_selected= "HR"):
                 "2050":0.7
             }
         }
+        
+    else:
+        print(" * country info not found, using UK's data for simulation")
+        
+        mean_annual_growth = {
+                                "Active":{
+                                            "2030":1.89,
+                                            "2040":3.0,
+                                            "2050":2.5,  },
+                                "Slow":{
+                                            "2030":1.1,
+                                            "2040":2.0,
+                                            "2050":1.0   }
+                            }
+            
     
     # Output data: defining the demand multipliers for years and scenarios (relative values compared to the year 2020)
     mult = {"2020":[1],
