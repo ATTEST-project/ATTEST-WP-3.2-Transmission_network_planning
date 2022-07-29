@@ -15,7 +15,7 @@ import json
 from julia import Julia
 from julia import Main
 
-from arrange_line_order_function import find_paraline, shift_line_position,  recover_line_position
+from engines.arrange_line_order_function import find_paraline, shift_line_position,  recover_line_position
 
 import os.path
 import cProfile
@@ -75,6 +75,7 @@ def get_branch_pf_cont(mpc, cont_list, OPF_results, sbase ):
         
         OPF_Pbra_con.append([0]*mpc["NoBranch"])
         OPF_Qbra_con.append([0]*mpc["NoBranch"])
+        
         
         con_br = [i for i, e in enumerate(cont_list[xc+1]) if e == 0]
         
@@ -409,14 +410,14 @@ def process_result_con(mpc, cont_list, OPF_results, sbase,penalty_cost):
     return (  OPF_Pbra_con, OPF_Qbra_con,dual_Pbra_con, dual_Qbra_con,
             dual_Pbus_con,dual_Qbus_con,plc_result_con,qlc_result_con, Pflex_con, Qflex_con)
 
-def run_SCACOPF_jl(mpc, cont_list, penalty_cost, sbase = 100):
+def run_SCACOPF_jl(input_dir,mpc, cont_list, penalty_cost, sbase = 100):
     
     # profiler = cProfile.Profile()
     # profiler.enable()
     
     # os.chdir("WP3_SCOPF_export_to_WP3_R1_1")
     # folder = "WP3_SCOPF_export_to_WP3_R1_1\\"
-    folder = "SCOPF_R5\\"
+    folder = input_dir + "\\SCOPF_R5\\"
 
     if os.path.exists(folder+'data_preparation\\export_WP3.json'):
         os.remove(folder+'data_preparation\\export_WP3.json')
@@ -428,8 +429,8 @@ def run_SCACOPF_jl(mpc, cont_list, penalty_cost, sbase = 100):
     
     # os.chdir(os.path.dirname(sys.argv[0]))
     run_jl(folder)
-    os.chdir(os.path.dirname(sys.argv[0]))
-        
+    # os.chdir(os.path.dirname(sys.argv[0]))
+    # os.chdir(input_dir)
     # open output json file from acopf
     file = open(folder+'data_preparation\\export_WP3.json')
     OPF_results = json.load(file)
@@ -476,10 +477,10 @@ def run_SCACOPF_jl(mpc, cont_list, penalty_cost, sbase = 100):
             dual_Qbra, 
             dual_Pbus, dual_Pbus_con, dual_Qbus,dual_Qbus_con)
 
-def run_ACOPF_jl(mpc, penalty_cost, sbase = 100):
+def run_ACOPF_jl(input_dir,mpc, penalty_cost, sbase = 100):
     
  
-    folder = "SCOPF_R5\\"
+    folder = input_dir + "\\SCOPF_R5\\"
 
     if os.path.exists(folder+'data_preparation\\export_WP3.json'):
         os.remove(folder+'data_preparation\\export_WP3.json')
@@ -487,7 +488,7 @@ def run_ACOPF_jl(mpc, penalty_cost, sbase = 100):
     print("Run ACOPF")
     
     run_jl(folder)
-    os.chdir(os.path.dirname(sys.argv[0]))
+    # os.chdir(os.path.dirname(sys.argv[0]))
         
     # open output json file from acopf
     file = open(folder+'data_preparation\\export_WP3.json')
@@ -548,7 +549,7 @@ def process_flex_result(Pflex, Qflex):
 
 
 
-def output2json(ods_file_name,mpc,ci, Pflex, Qflex, mult,OPF_opt ):
+def output2json(input_dir,ods_file_name,mpc,ci, Pflex, Qflex, mult,OPF_opt ):
     
     '''
     Data exchange between operation model and investment model:
@@ -569,7 +570,7 @@ def output2json(ods_file_name,mpc,ci, Pflex, Qflex, mult,OPF_opt ):
     
 
     # os.chdir("WP3_SCOPF_export_to_WP3_R1_1")
-    folder = "SCOPF_R5\\"
+    folder = input_dir + "\\SCOPF_R5\\"
     
     
     filename = "input_data/"+ ods_file_name + ".ods"

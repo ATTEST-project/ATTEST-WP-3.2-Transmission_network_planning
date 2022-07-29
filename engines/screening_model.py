@@ -37,9 +37,9 @@ import json
 import os
 import math
 import numpy as np
-from scenarios_multipliers import get_mult
-from input_output_function import  get_peak_data, read_input_data
-from process_data import mult_for_bus
+# from scenarios_multipliers import get_mult
+from engines.input_output_function import  get_peak_data, read_input_data
+from engines.process_data import mult_for_bus
 import cProfile
 import pstats
 
@@ -72,7 +72,8 @@ class nodes_info_network:
 
 # ####################################################################
 # ####################################################################
-def model_screening(mpc,cont_list , prev_invest, peak_Pd, mult,NoTime = 1):
+def model_screening(mpc,cont_list , prev_invest, peak_Pd, mult,cicost, penalty_cost,gen_status, line_status,NoTime = 1):
+
     ''''read paras and vars from jason file'''
     def readVarPara():
     
@@ -329,6 +330,7 @@ def model_screening(mpc,cont_list , prev_invest, peak_Pd, mult,NoTime = 1):
     
        # Gen output constraint rules
         def genMax_rule(m, xg,xk, xt):
+
             if gen_status == True and mpc["gen"]["GEN"][xg] == 0 :
                 return m.Pgen[xg,  xk, xt] == 0 
             else:
@@ -338,6 +340,7 @@ def model_screening(mpc,cont_list , prev_invest, peak_Pd, mult,NoTime = 1):
             
         
         def genMin_rule(m,xg, xk, xt):
+          
             if gen_status == True and mpc["gen"]["GEN"][xg] == 0 :
                 return m.Pgen[xg,  xk, xt] == 0 
             else:   
@@ -728,7 +731,7 @@ def model_screening(mpc,cont_list , prev_invest, peak_Pd, mult,NoTime = 1):
     return interv, maxICbra
 
 
-def main_screening(mpc,multiplier,cicost, penalty_cost, peak_Pd, cont_list):
+def main_screening(mpc,multiplier,cicost, penalty_cost, peak_Pd, cont_list,NoYear,gen_status, line_status):
     ''' Time point '''
     # Number of time points
     NoTime = 1
@@ -738,16 +741,16 @@ def main_screening(mpc,multiplier,cicost, penalty_cost, peak_Pd, cont_list):
     interv_list = []
     
     interv_dict = {k: [] for k in range(mpc["NoBranch"])}
-    
-    for xy in range(len(multiplier)):
-        print('\n----------- YEAR ', xy, ' ----------- ')
+    year_name = [2020, 2030, 2040, 2050]
+    for xy in range(NoYear):
+        print('\n----------- YEAR ', year_name[xy], ' ----------- ')
         
         for xsc in range(len(multiplier[xy])):
             print('--> Scenario ', xsc)
             mult = multiplier[xy][xsc]
             
             # each run will take preveious years last scenraio investment as the previous investment
-            temp_interv_list, temp_prev_invest = model_screening(mpc,  cont_list , prev_invest, peak_Pd, mult, NoTime)
+            temp_interv_list, temp_prev_invest = model_screening(mpc,  cont_list , prev_invest, peak_Pd, mult, cicost,penalty_cost,gen_status, line_status,NoTime)
             # interv_list.append(temp_interv_list)
             interv_list.extend(temp_interv_list)
                         
@@ -772,110 +775,193 @@ def main_screening(mpc,multiplier,cicost, penalty_cost, peak_Pd, cont_list):
 
 
 
-profiler = cProfile.Profile()
-profiler.enable()
+# profiler = cProfile.Profile()
+# profiler.enable()
 
 
 
 
-####  inputs
+# ####  inputs
 
-''' contingency info '''
-# initial contingency list, if no input, generate N-1 contingencies later
-# cont_list = []
-ods_file_name = "case_template_port_modified_R1"
-#"case_template_CR_L3" #"case_template_port_modified_R1"
+# ''' contingency info '''
+# # initial contingency list, if no input, generate N-1 contingencies later
+# # cont_list = []
+# ods_file_name = "case_template_port_modified_R1"
+# #"case_template_CR_L3" #"case_template_port_modified_R1"
 
-# input xlsx file for time-serires data
-xlsx_file_name = "Transmission_Network_PT_2020_24hGenerationLoadData"
+# # input xlsx file for time-serires data
+# xlsx_file_name = "Transmission_Network_PT_2020_24hGenerationLoadData"
 
-# Define gen and line status, Default to False
-# if True, consider status from .m file; 
-# if False, all gen and lines are on
-gen_status = False 
-line_status = False
+# # Define gen and line status, Default to False
+# # if True, consider status from .m file; 
+# # if False, all gen and lines are on
+# gen_status = False 
+# line_status = False
 
-''' Test case '''
-country = "PT "  # Select country for case study: "PT", "UK" or "HR"
-test_case= 'Transmission_Network_PT_2020_ods'
-#'case5' #'Transmission_Network_PT_2020_ods'  #'Transmission_Network_UK3' #  "HR_Location1" #"HR_2020_Location_1"#"Location_3_ods"
-
-
-# read input data outputs mpc and load infor
-# mpc, base_time_series_data, multiplier, NoCon = read_input_data( cont_list, country,test_case)
-mpc, base_time_series_data,  multiplier, NoCon,cont_list,ci_catalogue,ci_cost= read_input_data( ods_file_name, xlsx_file_name, country,test_case)
-# cont_list = [[1]*mpc["NoBranch"]]
-
-# # load json file from file directory
-# mpc = json.load(open(os.path.join(os.path.dirname(__file__), 
-#                                   'tests', 'json', test_case+'.json')))
-
-# # get multipliers for different years and scenarios
-# multiplier = get_mult(country) 
-
-# required inputs of multipliers for each bus, if not specified, all buses have the same multiplier
-busMult_input = []
-# expande multiplier for each bus
-multiplier_bus = mult_for_bus(busMult_input, multiplier, mpc)
+# ''' Test case '''
+# country = "PT "  # Select country for case study: "PT", "UK" or "HR"
+# test_case= 'Transmission_Network_PT_2020_ods'
+# #'case5' #'Transmission_Network_PT_2020_ods'  #'Transmission_Network_UK3' #  "HR_Location1" #"HR_2020_Location_1"#"Location_3_ods"
 
 
+# # read input data outputs mpc and load infor
+# # mpc, base_time_series_data, multiplier, NoCon = read_input_data( cont_list, country,test_case)
+# mpc, base_time_series_data,  multiplier, NoCon,cont_list,ci_catalogue,ci_cost= read_input_data( ods_file_name, xlsx_file_name, country,test_case)
+# # cont_list = [[1]*mpc["NoBranch"]]
 
+# # # load json file from file directory
+# # mpc = json.load(open(os.path.join(os.path.dirname(__file__), 
+# #                                   'tests', 'json', test_case+'.json')))
 
+# # # get multipliers for different years and scenarios
+# # multiplier = get_mult(country) 
 
-
-''' Load information '''
-# update peak demand values
-# get peak load for screening model
-peak_hour = 19
-# peak_Pd = []
-peak_Pd = get_peak_data(mpc, base_time_series_data, peak_hour)
-
-
-''' Cost information'''
-# linear cost for the screening model
-cicost = 20 # £/Mw/km
-# curtailment cost
-penalty_cost = 1e3
-
-
-
-''' Outputs '''
-interv_dict = main_screening(mpc, multiplier_bus ,cicost, penalty_cost ,peak_Pd, cont_list)
+# # required inputs of multipliers for each bus, if not specified, all buses have the same multiplier
+# busMult_input = []
+# # expande multiplier for each bus
+# multiplier_bus = mult_for_bus(busMult_input, multiplier, mpc)
 
 
 
 
 
-# reduce catalogue in the interv dictionary
-for xbr in range(mpc["NoBranch"]):
-    if sum(interv_dict[xbr]) > 0 :
-        for xi in range(len(interv_dict[xbr])):
+
+# ''' Load information '''
+# # update peak demand values
+# # get peak load for screening model
+# peak_hour = 19
+# # peak_Pd = []
+# peak_Pd = get_peak_data(mpc, base_time_series_data, peak_hour)
+
+
+# ''' Cost information'''
+# # linear cost for the screening model
+# cicost = 20 # £/Mw/km
+# # curtailment cost
+# penalty_cost = 1e3
+
+
+
+# ''' Outputs '''
+# interv_dict = main_screening(mpc, multiplier_bus ,cicost, penalty_cost ,peak_Pd, cont_list)
+
+
+
+
+
+# # reduce catalogue in the interv dictionary
+# for xbr in range(mpc["NoBranch"]):
+#     if sum(interv_dict[xbr]) > 0 :
+#         for xi in range(len(interv_dict[xbr])):
             
-            if mpc["branch"]["TAP"][xbr] == 0:  # line
+#             if mpc["branch"]["TAP"][xbr] == 0:  # line
          
-                interv_dict[xbr][xi] = min([i for i in ci_catalogue[0] if i >= interv_dict[xbr][xi]])
-            else: # transformer
-                interv_dict[xbr][xi] = min([i for i in ci_catalogue[1] if i >= interv_dict[xbr][xi]])
+#                 interv_dict[xbr][xi] = min([i for i in ci_catalogue[0] if i >= interv_dict[xbr][xi]])
+#             else: # transformer
+#                 interv_dict[xbr][xi] = min([i for i in ci_catalogue[1] if i >= interv_dict[xbr][xi]])
                 
-        interv_dict[xbr] = list(set(interv_dict[xbr]))
-        interv_dict[xbr].sort()  
-    else:
-        interv_dict[xbr] = []
-print("\n -------------------------")        
-print("Reduced intervention dict: ",interv_dict)
+#         interv_dict[xbr] = list(set(interv_dict[xbr]))
+#         interv_dict[xbr].sort()  
+#     else:
+#         interv_dict[xbr] = []
+# print("\n -------------------------")        
+# print("Reduced intervention dict: ",interv_dict)
 
 
 
-''' Output json file for the screening model''' 
-file_name = "screen_result_" + country + "_" + test_case
-with open("results/"+file_name+".json", 'w') as fp:
-    json.dump(interv_dict, fp)
+# ''' Output json file for the screening model''' 
+# file_name = "screen_result_" + country + "_" + test_case
+# with open("results/"+file_name+".json", 'w') as fp:
+#     json.dump(interv_dict, fp)
 
 
 
-profiler.disable()
-# sort output with total time
-stats = pstats.Stats(profiler).sort_stats('tottime')
-stats.print_stats(1)
+# profiler.disable()
+# # sort output with total time
+# stats = pstats.Stats(profiler).sort_stats('tottime')
+# stats.print_stats(1)
 
-print("Screening model finishes, results output to the folder as '"+file_name+".json'.")
+# print("Screening model finishes, results output to the folder as '"+file_name+".json'.")
+
+def run_main_screening(input_dir, output_dir,ods_file_name, xlsx_file_name, country, test_case, peak_hour, NoYear):
+    
+   
+    
+    profiler = cProfile.Profile()
+    profiler.enable()
+    
+         
+    # Define gen and line status, Default to False
+    # if True, consider status from .m file; 
+    # if False, all gen and lines are on
+    gen_status = False 
+    line_status = False
+    
+    
+    
+        
+    # read input data outputs mpc and load infor
+    mpc, base_time_series_data,  multiplier, NoCon,cont_list,ci_catalogue,ci_cost= read_input_data( input_dir,ods_file_name, xlsx_file_name, country,test_case)
+ 
+    
+    # required inputs of multipliers for each bus, if not specified, all buses have the same multiplier
+    busMult_input = []
+    # expande multiplier for each bus
+    multiplier_bus = mult_for_bus(busMult_input, multiplier, mpc)
+    
+    
+    
+    ''' Load information '''
+    # update peak demand values
+    # get peak load for screening model
+    peak_Pd = get_peak_data(mpc, base_time_series_data, peak_hour)
+    
+    
+    ''' Cost information'''
+    # linear cost for the screening model
+    cicost = 20 # £/Mw/km
+    # curtailment cost
+    penalty_cost = 1e3
+    
+    
+    
+    ''' Outputs '''
+    interv_dict = main_screening(mpc, multiplier_bus ,cicost, penalty_cost ,peak_Pd, cont_list,NoYear,gen_status, line_status)
+    
+    
+    
+    
+    
+    # reduce catalogue in the interv dictionary
+    for xbr in range(mpc["NoBranch"]):
+        if sum(interv_dict[xbr]) > 0 :
+            for xi in range(len(interv_dict[xbr])):
+                
+                if mpc["branch"]["TAP"][xbr] == 0:  # line
+             
+                    interv_dict[xbr][xi] = min([i for i in ci_catalogue[0] if i >= interv_dict[xbr][xi]])
+                else: # transformer
+                    interv_dict[xbr][xi] = min([i for i in ci_catalogue[1] if i >= interv_dict[xbr][xi]])
+                    
+            interv_dict[xbr] = list(set(interv_dict[xbr]))
+            interv_dict[xbr].sort()  
+        else:
+            interv_dict[xbr] = []
+    print("\n -------------------------")        
+    print("Reduced intervention dict: ",interv_dict)
+    
+    
+    
+    ''' Output json file for the screening model''' 
+    file_name = "screen_result_" + country + "_" + test_case
+    with open(output_dir+file_name+".json", 'w') as fp:
+        json.dump(interv_dict, fp)
+    
+    
+    
+    profiler.disable()
+    # sort output with total time
+    stats = pstats.Stats(profiler).sort_stats('tottime')
+    stats.print_stats(1)
+    
+    print("Screening model finishes, results output to the folder as '"+file_name+".json'.")

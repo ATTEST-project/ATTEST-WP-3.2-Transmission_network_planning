@@ -17,7 +17,7 @@ import json
 import os
 import math
 import numpy as np
-from process_data import initial_value
+from engines.process_data import initial_value
 # import copy
 # from input_output_function import read_input_data, output_data ,get_time_series_data
 # from ACOPF import ACOPF_function
@@ -674,7 +674,7 @@ def prepare_invest_model(mpc, NoPath, prob,NoYear, NoSce,NoSea, NoDay,DF,CRF,SF,
         m.nodeBalanceQ = Constraint( m.Set['Bus'],m.Set['YSce'] ,m.Set['Sea'], m.Set['Day'], m.Set['Tim'], rule=rules.nodeBalanceQ_rule ) 
         
         # Add branch flow DC OPF
-        #m.DCPF = Constraint( m.Set['Bra'],m.Set['YSce'] ,m.Set['Sea'], m.Set['Day'],  m.Set['Tim'], rule=rules.DCPF_rule ) 
+        m.DCPF = Constraint( m.Set['Bra'],m.Set['YSce'] ,m.Set['Sea'], m.Set['Day'],  m.Set['Tim'], rule=rules.DCPF_rule ) 
         m.slackBus = Constraint( m.Set['YSce'] ,m.Set['Sea'], m.Set['Day'], m.Set['Tim'],  rule=rules.slackBus_rule ) 
         
         

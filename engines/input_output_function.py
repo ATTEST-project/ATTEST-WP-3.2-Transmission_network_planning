@@ -24,8 +24,8 @@ Input and output functions
 import json
 import os
 import pandas as pd
-from conversion_model_mat2json import any2json
-from scenarios_multipliers import get_mult
+from engines.conversion_model_mat2json import any2json
+from engines.scenarios_multipliers import get_mult
 import numpy as np
 
 
@@ -36,7 +36,7 @@ def json_directory():
 
 
 
-def read_input_data(ods_file_name, xlsx_file_name,country = "HR", test_case = "HR_2020_Location_1" ):
+def read_input_data(input_dir, ods_file_name, xlsx_file_name,country = "HR", test_case = "HR_2020_Location_1" ):
     
     file_name  = test_case 
     
@@ -60,7 +60,7 @@ def read_input_data(ods_file_name, xlsx_file_name,country = "HR", test_case = "H
     multiplier = get_mult(country) # default to HR
     
     ''' Load xlsx file'''
-    xlsx_file = 'tests/excel/'+ xlsx_file_name + ".xlsx"
+    xlsx_file = input_dir + '/tests/excel/'+ xlsx_file_name + ".xlsx"
     if os.path.exists(xlsx_file):
         # base_time_series_data = get_data("Transmission_Network_PT_2020_24hGenerationLoadData.ods")
         base_time_series_data  = pd.read_excel(xlsx_file, sheet_name=None)
@@ -72,7 +72,7 @@ def read_input_data(ods_file_name, xlsx_file_name,country = "HR", test_case = "H
    
     ''' Load ods for contingencies file''' 
     # ods_file_name = "case_template_CR_L3"
-    ods_file = 'SCOPF_R5/input_data/'+ ods_file_name + ".ods"
+    ods_file = input_dir + '/SCOPF_R5/input_data/'+ ods_file_name + ".ods"
     
     if os.path.exists(ods_file):
         cont_ods = pd.read_excel(ods_file,sheet_name = "contingencies")
@@ -104,7 +104,7 @@ def read_input_data(ods_file_name, xlsx_file_name,country = "HR", test_case = "H
         
         
     else:
-        print(" * input data for contiengcy not found, using N-1 for simulation")
+        print(" * input data for contingency not found, using N-1 for simulation")
         # generate N-1 contingencies
         
         cont_list = [[1]*mpc["NoBranch"]] 
@@ -122,7 +122,7 @@ def read_input_data(ods_file_name, xlsx_file_name,country = "HR", test_case = "H
     
     ''' Load intervention infor''' 
     
-    if os.path.exists('tests/json/intervention.json'):
+    if os.path.exists(input_dir + '/tests/json/intervention.json'):
         file = open('tests/json/intervention.json')
         intv = json.load(file)
         file.close()
@@ -172,16 +172,16 @@ def read_input_data(ods_file_name, xlsx_file_name,country = "HR", test_case = "H
 
 
 
-def read_screenModel_output(country, mpc,test_case, ci_catalogue,intv_cost):
+def read_screenModel_output(input_dir,country, mpc,test_case, ci_catalogue,intv_cost):
     # reading outputs from the screening model of the reduced intervention list
     file_name = "screen_result_" + country + "_" + test_case
     
     
-    if os.path.exists('results/'+ file_name + '.json'):
+    if os.path.exists(input_dir+'/results/'+ file_name + '.json'):
         
                
         S_ci = json.load(open(os.path.join(os.path.dirname(__file__), 
-                                          'results', file_name +'.json')))
+                                          input_dir,'results', file_name +'.json')))
     else:
         print(" * screen results not found. Using predefined intervetion lists, this will cause longer computing time. ")
         S_ci = ci_catalogue[0]
@@ -221,7 +221,7 @@ def read_screenModel_output(country, mpc,test_case, ci_catalogue,intv_cost):
 
 
                      
-def output_data2Json(NoPath, NoYear, path_sce, sum_CO, yearly_CO, ci, sum_ciCost, Cflex, Pflex, outputAll=False,country = "HR", test_case = "HR_2020_Location_1" , pt = "_pt1"):
+def output_data2Json(output_dir, NoPath, NoYear, path_sce, sum_CO, yearly_CO, ci, sum_ciCost, Cflex, Pflex, outputAll=False,country = "HR", test_case = "HR_2020_Location_1" , pt = "_pt1"):
 
     output_data = {}
     # sce_data = {}
@@ -335,7 +335,7 @@ def output_data2Json(NoPath, NoYear, path_sce, sum_CO, yearly_CO, ci, sum_ciCost
     file_name = "investment_result_" + country + "_" + test_case + pt
         
     ''' Output json file''' 
-    with open('results/' + file_name +'.json', 'w') as fp:
+    with open(output_dir+"//" + file_name +'.json', 'w') as fp:
         json.dump(output_data, fp)
     
     return print("Investment result file created")

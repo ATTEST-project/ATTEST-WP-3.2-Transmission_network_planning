@@ -16,11 +16,11 @@ import os
 import math
 import numpy as np
 import copy
-from scenarios_multipliers import get_mult
-from SCACOPF import run_SCACOPF_jl, output2json, process_flex_result
-from process_data import record_bra_from_pyo_result, record_bus_from_pyo_result, record_invest_from_pyo_result
-from invest_check import overInvstment_check
-from run_OPF_pp import get_duals
+from engines.scenarios_multipliers import get_mult
+from engines.SCACOPF import run_SCACOPF_jl, output2json, process_flex_result
+from engines.process_data import record_bra_from_pyo_result, record_bus_from_pyo_result, record_invest_from_pyo_result
+from engines.invest_check import overInvstment_check
+from engines.run_OPF_pp import get_duals
 
 import cProfile
 import pstats
@@ -28,7 +28,7 @@ import pstats
 
 
 
-def InvPt1_function(OPF_option,test_case,ods_file_name,model,mpc, NoYear, NoSea, NoDay, penalty_cost, NoCon, NoSce,path_sce,cont_list, S_ci,bra_cap,CPflex, CQflex, noDiff, genCbus,braFbus,braTbus,Pd, Qd,multiplier_bus):
+def InvPt1_function(input_dir,OPF_option,test_case,ods_file_name,model,mpc, NoYear, NoSea, NoDay, penalty_cost, NoCon, NoSce,path_sce,cont_list, S_ci,bra_cap,CPflex, CQflex, noDiff, genCbus,braFbus,braTbus,Pd, Qd,multiplier_bus):
     
 
    
@@ -416,7 +416,7 @@ def InvPt1_function(OPF_option,test_case,ods_file_name,model,mpc, NoYear, NoSea,
             # Remove node balance rule
             model.del_component(model.nodeBalance)
             model.del_component(model.nodeBalanceQ)
-            # model.del_component(model.DCPF)
+            model.del_component(model.DCPF)
            
             # print('min obj cost:',Val(model.obj))
             print("Branch investment cost:",Val( sum( model.ciCost[xy,xsc] for xy,xsc in model.Set["YSce"] ) ))
@@ -489,7 +489,7 @@ def InvPt1_function(OPF_option,test_case,ods_file_name,model,mpc, NoYear, NoSea,
         
     
 
-        
+        year_name = [2020, 2030, 2040, 2050]
         
         # Print investment decisions
         
@@ -502,14 +502,14 @@ def InvPt1_function(OPF_option,test_case,ods_file_name,model,mpc, NoYear, NoSea,
                         temp_ci = Val(sum( (model.ci[xbr,xintv,xy,xsc ] - model.ci[xbr,xintv,xy-1,math.floor(xsc/2) ])* S_ci[str(xbr)][xintv]   for xintv in model.Set["Intev"][xbr] ) )
                     if  temp_ci > 0:
                     
-                        print('Year:',xy,', Scenario:', xsc,', Branch:', xbr, ', increase cap:',temp_ci)
+                        print('Year:',year_name[xy],', Scenario:', xsc,', Branch:', xbr, ', increase cap:',temp_ci)
     
             for xb in model.Set["Bus"]:
                 temp_flex =  Val(model.Pflex[xb,xy,xsc,0,0,0])
                 if temp_flex > 1e-4 :
-                    print('Year:',xy,', Scenario:', xsc,', Bus:', xb, ', upward flex:', temp_flex)
+                    print('Year:',year_name[xy],', Scenario:', xsc,', Bus:', xb, ', upward flex:', temp_flex)
                 elif temp_flex < -1e-4 :
-                    print('Year:',xy,', Scenario:', xsc,', Bus:', xb, ', downward flex:', temp_flex)
+                    print('Year:',year_name[xy],', Scenario:', xsc,', Bus:', xb, ', downward flex:', temp_flex)
         
         
         print("       ci results: ",ci)     
@@ -573,7 +573,7 @@ def InvPt1_function(OPF_option,test_case,ods_file_name,model,mpc, NoYear, NoSea,
                 #     ci[xy][xsc] = [0,0,0,0,0,0]
                 #     Pflex_result[xy][xsc] = [0,0,23,0,0]
                     
-                output2json(ods_file_name,mpc,ci[xy][xsc],Pflex_result[xy][xsc], Qflex_result[xy][xsc] , mult,OPF_opt )
+                output2json(input_dir,ods_file_name,mpc,ci[xy][xsc],Pflex_result[xy][xsc], Qflex_result[xy][xsc] , mult,OPF_opt )
                 Pflex_up , Pflex_dn , Qflex_up ,Qflex_dn = process_flex_result(Pflex_result[xy][xsc], Qflex_result[xy][xsc])
                 
                 
@@ -588,7 +588,7 @@ def InvPt1_function(OPF_option,test_case,ods_file_name,model,mpc, NoYear, NoSea,
                     
                     # run julia model
                     sbase = 100
-                    SCACOPF_result = run_SCACOPF_jl(mpc, cont_list, penalty_cost, sbase)
+                    SCACOPF_result = run_SCACOPF_jl(input_dir, mpc, cont_list, penalty_cost, sbase)
                     
                     
                 if OPF_option == "pp":

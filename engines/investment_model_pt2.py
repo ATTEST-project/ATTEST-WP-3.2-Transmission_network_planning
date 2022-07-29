@@ -14,13 +14,13 @@ import os
 import math
 import numpy as np
 import copy
-from SCACOPF import run_ACOPF_jl, output2json, process_flex_result
-from run_OPF_pp import ACOPF_function
+from engines.SCACOPF import run_ACOPF_jl, output2json, process_flex_result
+from engines.run_OPF_pp import ACOPF_function
 
-from process_data import record_bra_from_pyo_result,record_bus_from_pyo_result, record_invest_from_pyo_result,record_investCost_from_pyo_result
+from engines.process_data import record_bra_from_pyo_result,record_bus_from_pyo_result, record_invest_from_pyo_result,record_investCost_from_pyo_result
 
 
-def InvPt2_function(OPF_option,test_case,model,mpc,ods_file_name, penalty_cost, NoCon, prob,DF, CRF, SF, NoSce,path_sce, S_ci, Cflex_pt1, Pflex_pt1,Qflex_pt1, ci_pt1,obj_pt1,multiplier_bus,):
+def InvPt2_function(input_dir,OPF_option,test_case,model,mpc,ods_file_name, penalty_cost, NoCon, prob,DF, CRF, SF, NoSce,path_sce, S_ci, Cflex_pt1, Pflex_pt1,Qflex_pt1, ci_pt1,obj_pt1,multiplier_bus,):
     
     
     # run for the 24 h
@@ -96,7 +96,7 @@ def InvPt2_function(OPF_option,test_case,model,mpc,ods_file_name, penalty_cost, 
                 
                 # output investment plans for each year each scnenaior
                 
-                output2json(ods_file_name,mpc,ci[xy][xsc],Pflex[xy][xsc], Qflex[xy][xsc], mult,OPF_opt )
+                output2json(input_dir,ods_file_name,mpc,ci[xy][xsc],Pflex[xy][xsc], Qflex[xy][xsc], mult,OPF_opt )
                 Pflex_up , Pflex_dn , Qflex_up ,Qflex_dn = process_flex_result(Pflex[xy][xsc], Qflex[xy][xsc] )
                 
                 # run ACOPF, get CO and duals for each year each scnenaior
@@ -104,7 +104,7 @@ def InvPt2_function(OPF_option,test_case,model,mpc,ods_file_name, penalty_cost, 
                 if OPF_option == "jl":
                     # run julia model
                     sbase = 100
-                    CO, dual_Sbra = run_ACOPF_jl(mpc, penalty_cost, sbase)
+                    CO, dual_Sbra = run_ACOPF_jl(input_dir,mpc, penalty_cost, sbase)
                     
               
                     
