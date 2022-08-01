@@ -75,10 +75,12 @@ def InvPt2_function(input_dir,OPF_option,test_case,model,mpc,ods_file_name, pena
                          
     def runACOPF(mpc, ci,Pflex,Qflex, multiplier_bus,penalty_cost,SF):
         # print("Run OPF ") 
+        year_name = [2020, 2030, 2040, 2050]
        
         OPF_opt = 1 # run ACOPF for 24h
         
         daily_CO = [] #[xy][xsc] 
+        yearly_CO = []
         daily_dual_Sbra= [] #[xy][xsc][xbr]  
         
         
@@ -86,12 +88,14 @@ def InvPt2_function(input_dir,OPF_option,test_case,model,mpc,ods_file_name, pena
         for xy in model.Set["Year"]:
                        
             daily_CO.append([])
+            yearly_CO.append([])
             daily_dual_Sbra.append([])
             
             for xsc in range(NoSce**xy):   
                 mult = multiplier_bus[xy][xsc][0]
                 
                 daily_CO[xy].append([])
+                yearly_CO[xy].append([])
                 daily_dual_Sbra[xy].append([])
                 
                 # output investment plans for each year each scnenaior
@@ -114,14 +118,15 @@ def InvPt2_function(input_dir,OPF_option,test_case,model,mpc,ods_file_name, pena
                     
 
                 
-                print('Year:',xy,', Scenario:', xsc,', CO:', CO)
+                print('Year:',year_name[xy],', Scenario:', xsc,', CO:', CO)
                 
                 # TODO: update the scaling factor
                 
                 daily_CO[xy][xsc] = CO 
                 daily_dual_Sbra[xy][xsc] = dual_Sbra
+                yearly_CO[xy][xsc] = SF * CO 
                 
-        return (daily_CO, daily_dual_Sbra)
+        return (daily_CO, yearly_CO, daily_dual_Sbra)
     
 
     
@@ -134,10 +139,16 @@ def InvPt2_function(input_dir,OPF_option,test_case,model,mpc,ods_file_name, pena
     
     
             
-    daily_CO, daily_dual_Sbra = runACOPF(mpc, ci_pt1,Pflex_pt1,Qflex_pt1, multiplier_bus, penalty_cost,SF)
+    daily_CO, yearly_CO, daily_dual_Sbra = runACOPF(mpc, ci_pt1,Pflex_pt1,Qflex_pt1, multiplier_bus, penalty_cost,SF)
      
-    obj_pt1 += sum(daily_CO[xy][xsc] for xy, xsc in model.Set["YSce"])
+    obj_pt1 += sum( DF[xy] * SF * daily_CO[xy][xsc] for xy, xsc in model.Set["YSce"]) 
     
+    CO_pt2 = sum( DF[xy] * SF * daily_CO[xy][xsc] for xy, xsc in model.Set["YSce"])
+    ciCost_pt2 = Val( sum( model.ciCost[xy,xsc] for xy,xsc in model.Set["YSce"] ) )       
+    yearly_ciCost = record_investCost_from_pyo_result(model,mpc,NoSce, model.ciCost)
+    ci_pt2_ref = record_invest_from_pyo_result(model, mpc,NoSce, model.ci, S_ci) 
+    
+    print("Total operation and investment cost using Part 1 results: ", obj_pt1)
     
     # iteration
     obj_ref = obj_pt1
@@ -157,7 +168,7 @@ def InvPt2_function(input_dir,OPF_option,test_case,model,mpc,ods_file_name, pena
         results = solver.solve(model)
         
         print ('solver termination condition: ', results.solver.termination_condition)
-        print('min obj cost:',Val(model.obj))
+        print('Total operation and investment cost of Part 2:',Val(model.obj))
         
         # new obj cost includes operation cost
         obj_pt2 =  Val(model.obj)
@@ -165,17 +176,17 @@ def InvPt2_function(input_dir,OPF_option,test_case,model,mpc,ods_file_name, pena
     
         # record new ci
         ci_pt2_update = record_invest_from_pyo_result(model, mpc,NoSce, model.ci, S_ci)   
-        print( ci_pt2_update )
+
         
-        # print( ci_pt2_update)
+        
      
         # find the min obj cost
         if obj_pt2 >= obj_ref:
             
             obj_change = False
             
-            CO_pt2 = sum(daily_CO[xy][xsc] for xy, xsc in model.Set["YSce"])
-            print(CO_pt2)
+            # CO_pt2 = sum( DF[xy] * SF * daily_CO[xy][xsc] for xy, xsc in model.Set["YSce"])
+            # print(CO_pt2)
             
             
             
@@ -184,15 +195,16 @@ def InvPt2_function(input_dir,OPF_option,test_case,model,mpc,ods_file_name, pena
             obj_ref = obj_pt2
             
             # re-run ACOPF with new investment plans  
-            daily_CO, daily_dual_Sbra= runACOPF(mpc, ci_pt2_update,Pflex_pt1,Qflex_pt1,multiplier_bus,penalty_cost,SF)
+            daily_CO, yearly_CO, daily_dual_Sbra= runACOPF(mpc, ci_pt2_update,Pflex_pt1,Qflex_pt1,multiplier_bus,penalty_cost,SF)
             
-            CO_pt2 = sum(daily_CO[xy][xsc] for xy, xsc in model.Set["YSce"])
-            
-            ite_z += 1 
+            CO_pt2 = sum( DF[xy] * SF * daily_CO[xy][xsc] for xy, xsc in model.Set["YSce"])
             
 
-    ciCost_pt2 = Val( sum( model.ciCost[xy,xsc] for xy,xsc in model.Set["YSce"] ) )       
-    yearly_ciCost = record_investCost_from_pyo_result(model,mpc,NoSce, model.ciCost)
+            ciCost_pt2 = Val( sum( model.ciCost[xy,xsc] for xy,xsc in model.Set["YSce"] ) )       
+            yearly_ciCost = record_investCost_from_pyo_result(model,mpc,NoSce, model.ciCost)
+            
+            ci_pt2_ref = copy.deepcopy(ci_pt2_update) 
+            ite_z += 1 
     
     # TODO: Check if still need 
     # flex invest check
@@ -200,7 +212,11 @@ def InvPt2_function(input_dir,OPF_option,test_case,model,mpc,ods_file_name, pena
     Pflex_pt2 = Pflex_pt1
     
     print("Part 2 finished")
-    print( ci_pt2_update )
-    
-    return (model, obj_pt2, CO_pt2, daily_CO, ci_pt2_update, ciCost_pt2, yearly_ciCost, Cflex_pt2,Pflex_pt2)
+    print('Final cost of Part 2:',obj_ref)
+
+
+
+    return (model, obj_ref, CO_pt2, yearly_CO, ci_pt2_ref, ciCost_pt2, yearly_ciCost, Cflex_pt2,Pflex_pt2)
+
+
 

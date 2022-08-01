@@ -48,7 +48,7 @@ def read_input_data(input_dir, ods_file_name, xlsx_file_name,country, test_case 
     #                         name_matpower=file_name, name_json=file_name)
    
     #  option 2: using abs input directory 
-    input_file_folder = input_dir + "\\tests\\json"
+    input_file_folder = os.path.join(input_dir, 'tests','json') # 
     converter.matpower2json(folder_path= input_file_folder, \
                             name_matpower=file_name, name_json=file_name)
     print('.m file converted to json')
@@ -67,22 +67,25 @@ def read_input_data(input_dir, ods_file_name, xlsx_file_name,country, test_case 
     multiplier = get_mult(country) # default to HR
     
     ''' Load xlsx file'''
-    xlsx_file = input_dir + '/tests/excel/'+ xlsx_file_name + ".xlsx"
-    if os.path.exists(xlsx_file):
+    xlsx_file =  xlsx_file_name + ".xlsx"
+    xlsx_file_path = os.path.join(input_dir, 'tests', 'excel',xlsx_file)
+    
+    if os.path.exists(xlsx_file_path):
         # base_time_series_data = get_data("Transmission_Network_PT_2020_24hGenerationLoadData.ods")
-        base_time_series_data  = pd.read_excel(xlsx_file, sheet_name=None)
+        base_time_series_data  = pd.read_excel(xlsx_file_path, sheet_name=None)
         print('load xlsx file')
     else:
-        print(" * xlsx file not found, using .m file data as peak load")
+        print(" * Time-series data in .xlsx file not found, using .m file data as peak load")
         base_time_series_data = []
         
    
     ''' Load ods for contingencies file''' 
     # ods_file_name = "case_template_CR_L3"
-    ods_file = input_dir + '/SCOPF_R5/input_data/'+ ods_file_name + ".ods"
-    
-    if os.path.exists(ods_file):
-        cont_ods = pd.read_excel(ods_file,sheet_name = "contingencies")
+    ods_file = ods_file_name + ".ods"
+    ods_file_path = os.path.join(input_dir, 'SCOPF_R5', 'input_data',ods_file)
+
+    if os.path.exists(ods_file_path):
+        cont_ods = pd.read_excel(ods_file_path,sheet_name = "contingencies")
     
         NoCon =  len(cont_ods)
         con_bra = []
@@ -111,7 +114,7 @@ def read_input_data(input_dir, ods_file_name, xlsx_file_name,country, test_case 
         
         
     else:
-        print(" * input data for contingency not found, using N-1 for simulation")
+        print(" * Contingency data not found, using N-1 for simulation")
         # generate N-1 contingencies
         
         cont_list = [[1]*mpc["NoBranch"]] 
@@ -128,9 +131,10 @@ def read_input_data(input_dir, ods_file_name, xlsx_file_name,country, test_case 
     
     
     ''' Load intervention infor''' 
-    
-    if os.path.exists(input_dir + '/tests/json/intervention.json'):
-        file = open('tests/json/intervention.json')
+    intv_file = "intervention.json.ods"
+    ods_file_path = os.path.join(input_dir, 'tests', 'json',intv_file)
+    if os.path.exists(ods_file_path):
+        file = open(ods_file_path)
         intv = json.load(file)
         file.close()
         
@@ -159,7 +163,7 @@ def read_input_data(input_dir, ods_file_name, xlsx_file_name,country, test_case 
         
         
     else:
-        print(" * json file not found, using default intervention lists and costs")
+        print(" * Intervention data in .json file not found, using default data")
 
         # ci_catalogue = [10,50,100,200,500,800,1000,2000,5000]
         # ci_cost = [5 * i for i in ci_catalogue]
@@ -179,18 +183,22 @@ def read_input_data(input_dir, ods_file_name, xlsx_file_name,country, test_case 
 
 
 
-def read_screenModel_output(input_dir,country, mpc,test_case, ci_catalogue,intv_cost):
+def read_screenModel_output(output_dir,country, mpc,test_case, ci_catalogue,intv_cost):
     # reading outputs from the screening model of the reduced intervention list
-    file_name = "screen_result_" + country + "_" + test_case
+    screen_file_name = "screen_result_" + country + "_" + test_case + ".json"
     
+    screen_file_path = os.path.join(output_dir, screen_file_name)
     
-    if os.path.exists(input_dir+'/results/'+ file_name + '.json'):
-        
+
+    
+    if os.path.exists(screen_file_path ):
+
                
-        S_ci = json.load(open(os.path.join(os.path.dirname(__file__), 
-                                          input_dir,'results', file_name +'.json')))
+        S_ci = json.load(open(screen_file_path))
+        
+        print("Load screening results")
     else:
-        print(" * screen results not found. Using predefined intervetion lists, this will cause longer computing time. ")
+        print(" * screening results not found. Using predefined intervetion lists, this will cause longer computing time. ")
         S_ci = ci_catalogue[0]
         # expand catalogue for each branch
         S_ci  = {str(k): ci_catalogue[0] for k in range(mpc["NoBranch"])}
@@ -339,10 +347,11 @@ def output_data2Json(output_dir, NoPath, NoYear, path_sce, sum_CO, yearly_CO, ci
            
         
         
-    file_name = "investment_result_" + country + "_" + test_case + pt
+    file_name = "investment_result_" + country + "_" + test_case + pt +'.json'
+    file_path = os.path.join(output_dir, file_name)
         
     ''' Output json file''' 
-    with open(output_dir+"//" + file_name +'.json', 'w') as fp:
+    with open(file_path , 'w') as fp:
         json.dump(output_data, fp)
     
     return print("Investment result file created")

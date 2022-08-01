@@ -259,7 +259,7 @@ def run_main_investment(input_dir, output_dir, ods_file_name, xlsx_file_name, co
     penalty_cost = 1e3
     
     # read screening model output, if not found, full intervention list is used
-    S_ci, ci_cost = read_screenModel_output(input_dir,country, mpc,test_case, ci_catalogue,intv_cost)
+    S_ci, ci_cost = read_screenModel_output(output_dir,country, mpc,test_case, ci_catalogue,intv_cost)
     
     # if not specified, assume flex data to be
     CPflex = 15  # flex: 50 £/MWh  £/MW

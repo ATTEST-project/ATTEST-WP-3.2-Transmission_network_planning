@@ -13,9 +13,10 @@ from engines.investment_model import run_main_investment
 def cli():
     pass
 
+
 cli_file_path = os.path.abspath(os.path.dirname(__file__))
-inputDir = cli_file_path + '\\engines'
-outputDir = cli_file_path + '\\engines\\results'
+inputDir = os.path.join(cli_file_path, 'engines') # cli_file_path + '\\engines'
+outputDir = os.path.join(cli_file_path, 'engines', 'results') # cli_file_path + '\\engines\\results'
 
 
 # TODO: Add default files names

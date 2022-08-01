@@ -953,8 +953,9 @@ def run_main_screening(input_dir, output_dir,ods_file_name, xlsx_file_name, coun
     
     
     ''' Output json file for the screening model''' 
-    file_name = "\\screen_result_" + country + "_" + test_case
-    with open(output_dir+file_name+".json", 'w') as fp:
+    file_name = "screen_result_" + country + "_" + test_case + ".json"
+    file_path = os.path.join(output_dir, file_name)
+    with open(file_path, 'w') as fp:
         json.dump(interv_dict, fp)
     
     
@@ -964,4 +965,4 @@ def run_main_screening(input_dir, output_dir,ods_file_name, xlsx_file_name, coun
     stats = pstats.Stats(profiler).sort_stats('tottime')
     stats.print_stats(1)
     
-    print("Screening model finishes, results output to the folder as '"+file_name+".json'.")
+    print("Screening model finishes, results output to the folder as '"+file_name)
