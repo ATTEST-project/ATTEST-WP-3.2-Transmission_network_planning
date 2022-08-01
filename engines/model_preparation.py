@@ -575,7 +575,7 @@ def prepare_invest_model(mpc, NoPath, prob,NoYear, NoSce,NoSea, NoDay,DF,CRF,SF,
             #             path7 [ y0_sce, y1_sce, y2_sce, y3_sce ]
           
             return m.Cpath[xp] == \
-                sum( DF[xy] * m.ciCost[xy,path_sce[xp][xy]] for xy in m.Set['Year']) \
+                sum( m.ciCost[xy,path_sce[xp][xy]] for xy in m.Set['Year']) \
                     +  sum( DF[xy] *  sum( m.CflexP[xb,xy,path_sce[xp][xy],xse,xd,xt] \
                             for xb in m.Set['Bus'] for xsc in path_sce[xp] for xse in m.Set['Sea'] for xd in m.Set['Day'] \
                                 for xt in m.Set['Tim'] ) for xy in m.Set['Year'] ) \

@@ -29,6 +29,7 @@ import cProfile
 import pstats
 
 
+''' functions without cli '''
 
 # #### inputs for the investment model
 # print("Gather inputs for the investment model")
@@ -280,10 +281,7 @@ def run_main_investment(input_dir, output_dir, ods_file_name, xlsx_file_name, co
     OPF_option = "jl" #   "pp" # 
     
     
-    
-    profiler = cProfile.Profile()
-    profiler.enable()
-    
+
     '''Main '''
     print("Form optimisation model")
     # prepare the optimisation model with input data
@@ -323,18 +321,6 @@ def run_main_investment(input_dir, output_dir, ods_file_name, xlsx_file_name, co
     
     
     
-    # write cProfile results in .txt file
-    from io import StringIO
-    profiler.disable()
-    # sort output with total time
-    
-    result = StringIO()
-    stats = pstats.Stats(profiler, stream = result).sort_stats('tottime')
-    stats.print_stats()
-    
-    file_name = "cProfileExport_investModel_" + country + "_" + test_case
-    with open(file_name +'.txt', 'w+') as f:
-        f.write(result.getvalue())
 
 
 

@@ -14,7 +14,7 @@ import os
 import math
 import numpy as np
 import copy
-from engines.SCACOPF import run_ACOPF_jl, output2json, process_flex_result
+from engines.run_OPF_jl import run_ACOPF_jl, output2json, process_flex_result
 from engines.run_OPF_pp import ACOPF_function
 
 from engines.process_data import record_bra_from_pyo_result,record_bus_from_pyo_result, record_invest_from_pyo_result,record_investCost_from_pyo_result
@@ -57,7 +57,7 @@ def InvPt2_function(input_dir,OPF_option,test_case,model,mpc,ods_file_name, pena
            
                         
                         # CO change
-                        sum( CRF[xy] * DF[xy] * SF *
+                        sum( DF[xy] * SF *
                                  (daily_CO[xy][xsc] -
                                   
                                       sum( daily_dual_Sbra[xy][xsc][xbr] *

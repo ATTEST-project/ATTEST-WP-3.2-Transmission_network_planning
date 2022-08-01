@@ -36,19 +36,26 @@ def json_directory():
 
 
 
-def read_input_data(input_dir, ods_file_name, xlsx_file_name,country = "HR", test_case = "HR_2020_Location_1" ):
+def read_input_data(input_dir, ods_file_name, xlsx_file_name,country, test_case ):
     
     file_name  = test_case 
     
     # todo: update json input to exclude dummy generators?
     '''load m file'''
     converter = any2json()
-    converter.matpower2json(folder_path=json_directory(), \
+    # # option 1: using file path
+    # converter.matpower2json(folder_path=json_directory(), \
+    #                         name_matpower=file_name, name_json=file_name)
+   
+    #  option 2: using abs input directory 
+    input_file_folder = input_dir + "\\tests\\json"
+    converter.matpower2json(folder_path= input_file_folder, \
                             name_matpower=file_name, name_json=file_name)
-    print('m file converted to json')
+    print('.m file converted to json')
 
     
-    filepath = os.path.join(json_directory(), file_name+'.json')
+    # filepath = os.path.join(json_directory(), file_name+'.json')
+    filepath = os.path.join(input_file_folder, file_name+'.json')
 
     ''' Load json file''' 
     # load json file from file directory
@@ -535,33 +542,15 @@ def get_peak_data(mpc,  base_time_series_data, peak_hour = 19):
 
 
 
-# ''' Main '''
-# cont_list = []
-# country = "PT" # Select country for case study: "PT", "UK" or "HR"
-# test_case = 'Transmission_Network_PT_2020' 
-# peak_hour = 19
-# ci_catalogue = "Default"
-# ci_cost = "Default"
-# output_data = 0
-# # read input data outputs mpc and load infor
-# mpc, base_time_series_data,  multiplier, NoCon,ci_catalogue,ci_cost= read_input_data( cont_list, country,test_case,ci_catalogue,ci_cost)
-
-# # get peak load for screening model
-# peak_Pd = get_peak_data(mpc, base_time_series_data, peak_hour)
-
-# # get all load, flex infor for investment model
-# base_Pd , base_Qd ,peak_Pd ,peak_Qd ,base_Pflex_up, base_Pflex_dn , peak_Pflex_up , peak_Pflex_dn = get_time_series_data(mpc,  base_time_series_data)
-
-# # save outputs
-# output_data(output_data, country, test_case )
 
 
-# read WP5 outputs of useful life
-def read_asset_life():
-    useful_life = pd.read_csv('tests/csv/mpc_useful_life.csv')
+
+# # read WP5 outputs of useful life
+# def read_asset_life():
+#     useful_life = pd.read_csv('tests/csv/mpc_useful_life.csv')
     
     
-    return useful_life
+#     return useful_life
 
 
 
