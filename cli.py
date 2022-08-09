@@ -49,7 +49,7 @@ def run_screening(input_dir, output_dir,ods_file_name, xlsx_file_name, country, 
 @click.option('--no_year',                   prompt='Number of years:',   default= 4,                           help='Specify the number of years: 1 - [2020], 2 - [2020,2030], 3 - [2020,2030,2040], 4 - [2020,2030,2040,2050]')
 @click.option('--run_both',                   prompt='Run both parts:',    default= True,                        help='Define investment setting, True = [considering both investment cost and operation cost], False = [considering investment cost only]')
 
-def run_investment(input_dir, output_dir, ods_file_name, xlsx_file_name, country, test_case, peak_hour, no_year,run_all):
+def run_investment(input_dir, output_dir, ods_file_name, xlsx_file_name, country, test_case, peak_hour, no_year,run_both):
     print(" --------- Running the investment model --------- ")
     
     run_main_investment(input_dir, output_dir, ods_file_name, xlsx_file_name, country, test_case, peak_hour, no_year,run_all) 
@@ -68,7 +68,7 @@ def run_investment(input_dir, output_dir, ods_file_name, xlsx_file_name, country
 @click.option('--no_year',                   prompt='Number of years:',   default= 4,                           help='Specify the number of years: 1 - [2020], 2 - [2020,2030], 3 - [2020,2030,2040], 4 - [2020,2030,2040,2050]')
 @click.option('--run_both',                   prompt='Run both parts:',    default= True,                        help='Define investment setting, True = [considering both investment cost and operation cost], False = [considering investment cost only]')
 
-def run_all(input_dir, output_dir, ods_file_name, xlsx_file_name, country, test_case, peak_hour, no_year,run_all):
+def run_all(input_dir, output_dir, ods_file_name, xlsx_file_name, country, test_case, peak_hour, no_year,run_both):
     print(" --------- Running all models --------- ")
     
     print(" --------- Running the screening model --------- ")
