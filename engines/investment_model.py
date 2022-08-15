@@ -262,7 +262,7 @@ def run_main_investment(input_dir, output_dir, ods_file_name, xlsx_file_name, co
     S_ci, ci_cost = read_screenModel_output(output_dir,country, mpc,test_case, ci_catalogue,intv_cost)
     
     # if not specified, assume flex data to be
-    CPflex = 15  # flex: 50 £/MWh  £/MW
+    CPflex = 50  # flex: 50 £/MWh  £/MW
     CQflex = 0
     
     # Define gen and line status, Default to False

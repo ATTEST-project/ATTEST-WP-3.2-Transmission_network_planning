@@ -407,8 +407,9 @@ def prepare_invest_model(mpc, NoPath, prob,NoYear, NoSce,NoSea, NoDay,DF,CRF,SF,
             if gen_status == True and mpc["gen"]["GEN"][xg] == 0 :
                 return m.Qgen[xg, xy,xsc, xse, xd, xt] == 0 
             else:
-                gen_bus = m.para["Gen"+str(xg)+"_GEN_BUS"] -1
-                return m.Qgen[xg, xy,xsc, xse, xd, xt] <=  m.para["Gen"+str(xg)+"_QMAX"] * multiplier[xy][xsc][gen_bus] 
+                gen_bus = m.para["Gen"+str(xg)+"_GEN_BUS"] 
+                bus_number = [i for i,x in enumerate(mpc["bus"]["BUS_I"]) if x==gen_bus]
+                return m.Qgen[xg, xy,xsc, xse, xd, xt] <=  m.para["Gen"+str(xg)+"_QMAX"] * multiplier[xy][xsc][bus_number[0]]
             
         
         def genQMin_rule(m, xg, xy,xsc, xse, xd, xt):
