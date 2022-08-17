@@ -941,9 +941,14 @@ def run_main_screening(input_dir, output_dir,ods_file_name, xlsx_file_name, coun
              
                     interv_dict[xbr][xi] = min([i for i in ci_catalogue[0] if i >= interv_dict[xbr][xi]])
                 else: # transformer
+                    # add invested capacity to existing tranformer capacity to get the new value 
+                    interv_dict[xbr][xi] += mpc["branch"]["RATE_A"][xbr]
+                   
                     interv_dict[xbr][xi] = min([i for i in ci_catalogue[1] if i >= interv_dict[xbr][xi]])
-                    
+            
+
             interv_dict[xbr] = list(set(interv_dict[xbr]))
+
             interv_dict[xbr].sort()  
         else:
             interv_dict[xbr] = []

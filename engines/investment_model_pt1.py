@@ -413,16 +413,19 @@ def InvPt1_function(input_dir,OPF_option,test_case,ods_file_name,model,mpc, NoYe
             print ('solver termination condition: ', results.solver.termination_condition)
             # model.ci.pprint()
     
-            # Remove node balance rule
-            model.del_component(model.nodeBalance)
-            model.del_component(model.nodeBalanceQ)
-            model.del_component(model.DCPF)
+            
            
             # print('min obj cost:',Val(model.obj))
             print("Branch investment cost:",Val( sum( model.ciCost[xy,xsc] for xy,xsc in model.Set["YSce"] ) ))
             print("Flex investment cost:",Val( sum( model.CflexP[xb,xy,xsc,0,0,0]+model.CflexQ[xb,xy,xsc,0,0,0] for xb in model.Set["Bus"] for xy,xsc in model.Set["YSce"] ) ))
-   
-         
+            
+            
+            
+            # Remove node balance rule
+            model.del_component(model.nodeBalance)
+            # model.del_component(model.nodeBalanceQ)
+            model.del_component(model.DCPF)
+
         else:                                           # iterations
             # cos_pf  = 0.95
             # Add dual rules delta branch power

@@ -91,13 +91,14 @@ def read_input_data(input_dir, ods_file_name, xlsx_file_name,country, test_case 
         con_bra = []
         
         for xc in range(NoCon):
-            
+           
             fbus = cont_ods["From"][xc]
             tbus = cont_ods["To"][xc]
             
             # find all branch fron the bus
             con_bra_fbus = [index for (index, item) in enumerate(mpc["branch"]["F_BUS"]) if item == fbus]
             con_bra_tbus = [index for (index, item) in enumerate(mpc["branch"]["T_BUS"]) if item == tbus]
+
             con_bra.append( list(set(con_bra_fbus).intersection(set(con_bra_tbus)))[0] )
         
         
@@ -131,6 +132,14 @@ def read_input_data(input_dir, ods_file_name, xlsx_file_name,country, test_case 
     
     
     ''' Load intervention infor''' 
+    # set default line investment data, linear cost of 20£/MVA
+    default_line_list = [30,50,70,90,110,130,150,210,250,300]
+    default_line_cost = [20 * i for i in default_line_list]
+    
+    # set default transformer investment data, linear cost of 30£/MVA
+    default_trans_list = [500,600,800,1000]
+    default_trans_cost = [30 * i for i in default_trans_list]
+    
     intv_file = "intervention.json.ods"
     ods_file_path = os.path.join(input_dir, 'tests', 'json',intv_file)
     if os.path.exists(ods_file_path):
@@ -152,29 +161,28 @@ def read_input_data(input_dir, ods_file_name, xlsx_file_name,country, test_case 
         if len(ci_catalogue[0]) != len(ci_cost[0]):
             print("Sizes of input line investment data don't match, default values are used")
             
-            ci_catalogue[0] = [10,50,100,200,500,800]
-            ci_cost[0] = [20 * i for i in ci_catalogue[0]]
+            ci_catalogue[0] = default_line_list
+            ci_cost[0] = default_line_cost
         
         if len(ci_catalogue[1]) != len(ci_cost[1]):
             print("Sizes of input transformer investment data don't match, default values are used")
             
-            ci_catalogue[1] = [560,880,1200,2400,5600]
-            ci_cost[1] = [20 * i for i in ci_catalogue[1]]
+            ci_catalogue[1] = default_trans_list
+            ci_cost[1] = default_trans_cost
         
         
     else:
         print(" * Intervention data in .json file not found, using default data")
 
-        # ci_catalogue = [10,50,100,200,500,800,1000,2000,5000]
-        # ci_cost = [5 * i for i in ci_catalogue]
+
         ci_catalogue = []
         ci_cost = []
         # lines
-        ci_catalogue.append([10,50,100,200,500,800])
-        ci_cost.append( [20 * i for i in ci_catalogue[0]])
+        ci_catalogue.append(default_line_list)
+        ci_cost.append( default_line_cost )
         # transformers
-        ci_catalogue.append([560,880,1200,2400,5600])
-        ci_cost.append( [20 * i for i in ci_catalogue[1]])
+        ci_catalogue.append(default_trans_list)
+        ci_cost.append( default_trans_cost)
         
         
 
@@ -365,6 +373,8 @@ def get_time_series_data(mpc,  base_time_series_data, peak_hour = 19):
     # prepare base and peak data for optimisation
     default_flex = 10
     
+    peak_hour -= 1 
+    
     if base_time_series_data != []:
 
         load_bus = base_time_series_data["Load P (MW)"]["Bus \ Hour"].values.tolist()
@@ -382,7 +392,7 @@ def get_time_series_data(mpc,  base_time_series_data, peak_hour = 19):
             all_Pflex_dn = base_time_series_data["Downward flexibility"].values.tolist()
             
         except KeyError:
-            print(" * flexibiltiy data not found in the input file, using default data: 10MW flexibility upwarad and 10MW donwward to each load bus")
+            print(" * flexibiltiy data not found in the input file, using default data: 100MW flexibility upwarad and 10MW donwward to each load bus")
             
             all_Pflex_up = []
             all_Pflex_dn = []
@@ -506,6 +516,8 @@ def get_time_series_data(mpc,  base_time_series_data, peak_hour = 19):
 
 # peak load P for screening model
 def get_peak_data(mpc,  base_time_series_data, peak_hour = 19):
+    
+    peak_hour -=1 # peak hour range in python = [0, 23], hour range in xlsx = [1-24]
     
     if base_time_series_data != []:
        

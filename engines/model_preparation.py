@@ -392,6 +392,7 @@ def prepare_invest_model(mpc, NoPath, prob,NoYear, NoSce,NoSea, NoDay,DF,CRF,SF,
             else:
                 gen_bus = m.para["Gen"+str(xg)+"_GEN_BUS"]
                 bus_number = [i for i,x in enumerate(mpc["bus"]["BUS_I"]) if x==gen_bus]
+                
                 return m.Pgen[xg, xy,xsc, xse, xd, xt] <= m.para["Gen"+str(xg)+"_PMAX"] * multiplier[xy][xsc][bus_number[0]] 
        
             
@@ -466,7 +467,7 @@ def prepare_invest_model(mpc, NoPath, prob,NoYear, NoSce,NoSea, NoDay,DF,CRF,SF,
         # Branch constraint
         def braSCap_rule(m, xbr, xy,xsc, xse, xd, xt):
             if line_status == True and mpc["branch"]["BR_STATUS"][xbr] == 0:
-                return Constraint.Skip
+                return m.Sbra[xbr, xy,xsc, xse, xd, xt] == 0 #Constraint.Skip
             else:
                 if m.para["Branch"+str(xbr)+"_RATE_A"] != 0:
                     # return m.Sbra[xbr,xy,xsc, xse,  xd, xt] <= \
@@ -500,7 +501,7 @@ def prepare_invest_model(mpc, NoPath, prob,NoYear, NoSce,NoSea, NoDay,DF,CRF,SF,
         # both flow directions
         def braSCapN_rule(m,xbr,xy,xsc, xse, xd, xt):
             if line_status == True and mpc["branch"]["BR_STATUS"][xbr] == 0:
-                return Constraint.Skip
+                return - m.Sbra[xbr,xy,xsc, xse, xd,  xt]  == 0 #Constraint.Skip
             else:
                 if m.para["Branch"+str(xbr)+"_RATE_A"] != 0:
                     # return - m.Sbra[xbr, xy,xsc, xse,  xd, xt] <= \
@@ -528,7 +529,7 @@ def prepare_invest_model(mpc, NoPath, prob,NoYear, NoSce,NoSea, NoDay,DF,CRF,SF,
         # TODO: Check cos_pf [xy][xsc][xbr] setting orders with OPF results
         def braP_rule(m, xbr,xy,xsc, xse,  xd, xt):
             if line_status == True and mpc["branch"]["BR_STATUS"][xbr] == 0:
-                return Constraint.Skip
+                return m.Pbra[xbr, xy,xsc, xse, xd, xt] == 0 #Constraint.Skip
             else:
                 if m.Pbra[xbr,xy,xsc, xse,  xd, xt].value >= 0:
                     return  m.Sbra[xbr, xy,xsc, xse, xd, xt] == m.Pbra[xbr, xy,xsc, xse, xd, xt] / cos_pf[xy][xsc][xbr] 
@@ -537,7 +538,7 @@ def prepare_invest_model(mpc, NoPath, prob,NoYear, NoSce,NoSea, NoDay,DF,CRF,SF,
             
         def braQ_rule(m, xbr,xy,xsc, xse,  xd, xt):
             if line_status == True and mpc["branch"]["BR_STATUS"][xbr] == 0:
-                return Constraint.Skip
+                return m.Qbra[xbr, xy,xsc, xse, xd, xt] == 0 #Constraint.Skip
             else:
                 if m.Qbra[xbr,xy,xsc, xse,  xd, xt].value >= 0:
                     return  m.Sbra[xbr, xy,xsc, xse, xd, xt] == m.Qbra[xbr, xy,xsc, xse, xd, xt] / sin_pf[xy][xsc][xbr]  
@@ -597,20 +598,20 @@ def prepare_invest_model(mpc, NoPath, prob,NoYear, NoSce,NoSea, NoDay,DF,CRF,SF,
         # Either using nodal balance or scdcopf
         # Nodal power balance
         def nodeBalance_rule(m, xb,xy,xsc, xse, xd, xt):
-            # TODO: upadte PD to inclue xy,xsc, xse, xd        
+
             return sum( m.Pgen[genCbus[xb][i],xy,xsc, xse, xd, xt]  for i in range(len(genCbus[xb])) ) + m.Pflex[xb,xy,xsc, xse, xd,xt]   \
                     + sum( m.Pbra[braTbus[xb][i]- noDiff,xy,xsc, xse, xd,xt]  for i in range(len(braTbus[xb])) )  \
                     == sum( m.Pbra[braFbus[xb][i]- noDiff,xy,xsc, xse, xd,xt]  for i in range(len(braFbus[xb])) ) \
-                      + Pd[xb]* multiplier[xy][xsc][xb] - m.Plc[xb,xy,xsc, xse, xd,xt]
+                      + Pd[xb]* multiplier[xy][xsc][xb] - m.Plc[xb,xy,xsc, xse, xd,xt] - m.Plc[xb,xy,xsc, xse, xd,xt]
     
     
         # Nodal power balance Q
         def nodeBalanceQ_rule(m, xb,xy,xsc, xse, xd, xt):
-                   
+                
             return sum( m.Qgen[genCbus[xb][i],xy,xsc, xse, xd,xt]  for i in range(len(genCbus[xb])) ) + m.Qflex[xb,xy,xsc, xse, xd,xt]   \
                     + sum( m.Qbra[braTbus[xb][i]-noDiff,xy,xsc, xse, xd,xt]  for i in range(len(braTbus[xb])) )  \
                     == sum( m.Qbra[braFbus[xb][i]-noDiff,xy,xsc, xse, xd,xt]  for i in range(len(braFbus[xb])) ) \
-                      + Qd[xb]* multiplier[xy][xsc][xb] - m.Qlc[xb,xy,xsc, xse, xd,xt]
+                        + Qd[xb]* multiplier[xy][xsc][xb] - m.Qlc[xb,xy,xsc, xse, xd,xt]
                       
         def DCPF_rule(m, xbr,xy,xsc, xse, xd,xt):
             
@@ -672,7 +673,7 @@ def prepare_invest_model(mpc, NoPath, prob,NoYear, NoSce,NoSea, NoDay,DF,CRF,SF,
         
         # Add nodal balance constraint rules
         m.nodeBalance = Constraint( m.Set['Bus'],m.Set['YSce'] ,m.Set['Sea'], m.Set['Day'], m.Set['Tim'], rule=rules.nodeBalance_rule )  
-        m.nodeBalanceQ = Constraint( m.Set['Bus'],m.Set['YSce'] ,m.Set['Sea'], m.Set['Day'], m.Set['Tim'], rule=rules.nodeBalanceQ_rule ) 
+        # m.nodeBalanceQ = Constraint( m.Set['Bus'],m.Set['YSce'] ,m.Set['Sea'], m.Set['Day'], m.Set['Tim'], rule=rules.nodeBalanceQ_rule ) 
         
         # Add branch flow DC OPF
         m.DCPF = Constraint( m.Set['Bra'],m.Set['YSce'] ,m.Set['Sea'], m.Set['Day'],  m.Set['Tim'], rule=rules.DCPF_rule ) 
