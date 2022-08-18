@@ -71,7 +71,10 @@ def read_input_data(input_dir, ods_file_name, xlsx_file_name,country, test_case 
     xlsx_file_path = os.path.join(input_dir, 'tests', 'excel',xlsx_file)
     
     if os.path.exists(xlsx_file_path):
+        # Read .ods file
         # base_time_series_data = get_data("Transmission_Network_PT_2020_24hGenerationLoadData.ods")
+        
+        # read xlsx file
         base_time_series_data  = pd.read_excel(xlsx_file_path, sheet_name=None)
         print('load xlsx file')
     else:
@@ -119,14 +122,9 @@ def read_input_data(input_dir, ods_file_name, xlsx_file_name,country, test_case 
         # generate N-1 contingencies
         
         cont_list = [[1]*mpc["NoBranch"]] 
-
         temp_list = (cont_list[0]-np.diag(cont_list[0]) ).tolist()
         
-        # # reduce the size of contingency list
-        # temp_list = temp_list[:len(temp_list)//29]
-
         cont_list.extend(temp_list)
-        
         NoCon =  len(cont_list)
     
     
@@ -134,11 +132,11 @@ def read_input_data(input_dir, ods_file_name, xlsx_file_name,country, test_case 
     ''' Load intervention infor''' 
     # set default line investment data, linear cost of 20£/MVA
     default_line_list = [30,50,70,90,110,130,150,210,250,300]
-    default_line_cost = [20 * i for i in default_line_list]
-    
+    default_line_cost = [1000 * i for i in default_line_list]
+
     # set default transformer investment data, linear cost of 30£/MVA
-    default_trans_list = [500,600,800,1000]
-    default_trans_cost = [30 * i for i in default_trans_list]
+    default_trans_list = [140, 280, 450, 800]
+    default_trans_cost = [5850 * i for i in default_trans_list] 
     
     intv_file = "intervention.json.ods"
     ods_file_path = os.path.join(input_dir, 'tests', 'json',intv_file)
@@ -191,7 +189,8 @@ def read_input_data(input_dir, ods_file_name, xlsx_file_name,country, test_case 
 
 
 
-def read_screenModel_output(output_dir,country, mpc,test_case, ci_catalogue,intv_cost):
+def read_screenModel_output(output_dir,country, mpc,test_case, ci_catalogue,intv_cost,cost_base):
+    
     # reading outputs from the screening model of the reduced intervention list
     screen_file_name = "screen_result_" + country + "_" + test_case + ".json"
     
@@ -221,23 +220,28 @@ def read_screenModel_output(output_dir,country, mpc,test_case, ci_catalogue,intv
 
     # if not specified, using a linear cost
     ci_cost = {k: [] for k in range(mpc["NoBranch"])}
+    
+    if mpc["branch"]["length(km)"] != []:
+        line_len = mpc["branch"]["length(km)"].copy()
+    else:
+        # if no branch length data, igore length impacts on investment costs
+        line_len = [1]*mpc["NoBranch"]
+          
     for xbr in range(mpc["NoBranch"]):
+        
         if S_ci[str(xbr)] != []:
-            # ci_cost[xbr] = [5*i for i in S_ci[str(xbr)]]  # £/MW
-            
-            # ci_cost[xbr] = [intv_cost[i]  for i in S_ci[str(xbr)]]
+
             for xci in range(len(S_ci[str(xbr)])):
                 
                 if mpc["branch"]["TAP"][xbr] == 0:  # line
                     temp = [i for i,x in enumerate(ci_catalogue[0]) if x==S_ci[str(xbr)][xci]]
-                
-                    ci_cost[xbr].append(intv_cost[0][temp[0]])
+                    ci_cost[xbr].append( intv_cost[0][temp[0]] * line_len[xbr]/cost_base ) # record intervention cost over base cost value
+
                     
                 else: # transformer
                     temp = [i for i,x in enumerate(ci_catalogue[1]) if x==S_ci[str(xbr)][xci]]
-                
-                    ci_cost[xbr].append(intv_cost[1][temp[0]])
-                    
+                    ci_cost[xbr].append( intv_cost[1][temp[0]] /cost_base)
+
 
 
     return S_ci, ci_cost
@@ -258,17 +262,17 @@ def output_data2Json(output_dir, NoPath, NoYear, path_sce, sum_CO, yearly_CO, ci
         if outputAll == True:      
             for xp in range(NoPath):
                 sce_data = {}
-                sce_data["Total investment cost (EUR)"] = sum_ciCost +  sum(Cflex[xy][path_sce[xp][xy]] for xy in range(NoYear) )
-                sce_data["Branch investment cost (EUR)"] = sum_ciCost
-                sce_data["Flexibility investment cost (EUR)"] =  sum(Cflex[xy][path_sce[xp][xy]] for xy in range(NoYear) )
-                sce_data["Total Operation Cost (EUR)"] =  0
+                sce_data["Total investment cost (EUR-million)"] = sum_ciCost +  sum(Cflex[xy][path_sce[xp][xy]] for xy in range(NoYear) )
+                sce_data["Branch investment cost (EUR-million)"] = sum_ciCost
+                sce_data["Flexibility investment cost (EUR-million)"] =  sum(Cflex[xy][path_sce[xp][xy]] for xy in range(NoYear) )
+                sce_data["Total Operation Cost (EUR-million)"] =  0
                 
                 for xy in range(NoYear):
                     
                     Pflex[xy][path_sce[xp][xy]] =  [0 if abs(x)<=1e-4 else x for x in Pflex[xy][path_sce[xp][xy]]]
                     
                     sce_data[str(year_num[xy])] = {
-                                            "Operation cost (EUR/year)": 0, 
+                                            "Operation cost (EUR-million/year)": 0, 
                                             "Branch investment (MVA)":  ci[xy][path_sce[xp][xy]], 
                                             "Flexibility investment (MW)": Pflex[xy][path_sce[xp][xy]], 
                                          }
@@ -282,17 +286,17 @@ def output_data2Json(output_dir, NoPath, NoYear, path_sce, sum_CO, yearly_CO, ci
                 
                 temp_xp += 1
                 sce_data = {}
-                sce_data["Total investment cost (EUR)"] = sum_ciCost +  sum(Cflex[xy][path_sce[xp][xy]] for xy in range(NoYear) )
-                sce_data["Branch investment cost (EUR)"] = sum_ciCost
-                sce_data["Flexibility investment cost (EUR)"] =  sum(Cflex[xy][path_sce[xp][xy]] for xy in range(NoYear) )
-                sce_data["Net Present Operation Cost (EUR)"] =  0
+                sce_data["Total investment cost (EUR-million)"] = sum_ciCost +  sum(Cflex[xy][path_sce[xp][xy]] for xy in range(NoYear) )
+                sce_data["Branch investment cost (EUR-million)"] = sum_ciCost
+                sce_data["Flexibility investment cost (EUR-million)"] =  sum(Cflex[xy][path_sce[xp][xy]] for xy in range(NoYear) )
+                sce_data["Net Present Operation Cost (EUR-million)"] =  0
                 
                 for xy in range(NoYear):
                     
                     Pflex[xy][path_sce[xp][xy]] =  [0 if abs(x)<=1e-4 else x for x in Pflex[xy][path_sce[xp][xy]]]
                         
                     sce_data[str(year_num[xy])] = {
-                                            "Operation cost (EUR/year)": 0, 
+                                            "Operation cost (EUR-million/year)": 0, 
                                             "Branch investment (MVA)":  ci[xy][path_sce[xp][xy]], 
                                             "Flexibility investment (MW)": Pflex[xy][path_sce[xp][xy]], 
                                          }
@@ -309,17 +313,17 @@ def output_data2Json(output_dir, NoPath, NoYear, path_sce, sum_CO, yearly_CO, ci
         if outputAll == True:      
             for xp in range(NoPath):
                 sce_data = {}
-                sce_data["Total investment cost (EUR)"] = sum_ciCost +  sum(Cflex[xy][path_sce[xp][xy]] for xy in range(NoYear) )
-                sce_data["Branch investment cost (EUR)"] = sum_ciCost
-                sce_data["Flexibility investment cost (EUR)"] =  sum(Cflex[xy][path_sce[xp][xy]] for xy in range(NoYear) )
-                sce_data["Total Operation Cost (EUR)"] =  sum_CO
+                sce_data["Total investment cost (EUR-million)"] = sum_ciCost +  sum(Cflex[xy][path_sce[xp][xy]] for xy in range(NoYear) )
+                sce_data["Branch investment cost (EUR-million)"] = sum_ciCost
+                sce_data["Flexibility investment cost (EUR-million)"] =  sum(Cflex[xy][path_sce[xp][xy]] for xy in range(NoYear) )
+                sce_data["Total Operation Cost (EUR-million)"] =  sum_CO
                 
                 for xy in range(NoYear):
                     
                     Pflex[xy][path_sce[xp][xy]] =  [0 if abs(x)<=1e-4 else x for x in Pflex[xy][path_sce[xp][xy]]]
                     
                     sce_data[str(year_num[xy])] = {
-                                            "Operation cost (EUR/year)": yearly_CO[xy][path_sce[xp][xy]], 
+                                            "Operation cost (EUR-million/year)": yearly_CO[xy][path_sce[xp][xy]], 
                                             "Branch investment (MVA)":  ci[xy][path_sce[xp][xy]], 
                                             "Flexibility investment (MW)": Pflex[xy][path_sce[xp][xy]], 
                                          }
@@ -333,17 +337,17 @@ def output_data2Json(output_dir, NoPath, NoYear, path_sce, sum_CO, yearly_CO, ci
                 
                 temp_xp += 1
                 sce_data = {}
-                sce_data["Total investment cost (EUR)"] = sum_ciCost +  sum(Cflex[xy][path_sce[xp][xy]] for xy in range(NoYear) )
-                sce_data["Branch investment cost (EUR)"] = sum_ciCost
-                sce_data["Flexibility investment cost (EUR)"] =  sum(Cflex[xy][path_sce[xp][xy]] for xy in range(NoYear) )
-                sce_data["Net Present Operation Cost (EUR)"] =  sum_CO
+                sce_data["Total investment cost (EUR-million)"] = sum_ciCost +  sum(Cflex[xy][path_sce[xp][xy]] for xy in range(NoYear) )
+                sce_data["Branch investment cost (EUR-million)"] = sum_ciCost
+                sce_data["Flexibility investment cost (EUR-million)"] =  sum(Cflex[xy][path_sce[xp][xy]] for xy in range(NoYear) )
+                sce_data["Net Present Operation Cost (EUR-million)"] =  sum_CO
                 
                 for xy in range(NoYear):
                     
                     Pflex[xy][path_sce[xp][xy]] =  [0 if abs(x)<=1e-4 else x for x in Pflex[xy][path_sce[xp][xy]]]
                      
                     sce_data[str(year_num[xy])] = {
-                                            "Operation cost (EUR/year)": yearly_CO[xy][path_sce[xp][xy]], 
+                                            "Operation cost (EUR-million/year)": yearly_CO[xy][path_sce[xp][xy]], 
                                             "Branch investment (MVA)":  ci[xy][path_sce[xp][xy]], 
                                             "Flexibility investment (MW)": Pflex[xy][path_sce[xp][xy]], 
                                          }
@@ -366,7 +370,7 @@ def output_data2Json(output_dir, NoPath, NoYear, path_sce, sum_CO, yearly_CO, ci
 
 
 
-# mpc, base_time_series_data,  multiplier = read_input_data("case5")
+
 
 
 def get_time_series_data(mpc,  base_time_series_data, peak_hour = 19):

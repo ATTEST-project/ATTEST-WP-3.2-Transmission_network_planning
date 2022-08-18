@@ -378,23 +378,6 @@ def model_screening(mpc,cont_list , prev_invest, peak_Pd, mult,cicost, penalty_c
             return m.Ang[slc_bus,xk, xt] == 0
         
     
-        # # Branch capacity 
-        # # TODO: check line status relation with investment
-        # def braCapacity_rule(m,xbr,xk,xt):
-        #     if m.para["Branch"+str(xbr)+"_RATE_A"] != 0:
-        #         return m.Pbra[xbr, xk, xt] <=  cont_list[xk][xbr] * \
-        #                                         ( (m.ICbra[xbr, xt] + prev_invest[xbr] + m.para["Branch"+str(xbr)+"_RATE_A"] )  ) 
-        #     else:
-        #         return  m.Pbra[xbr, xk, xt]  <= cont_list[xk][xbr] * float('inf') #* mpc["branch"]["BR_STATUS"][xbr]
-       
-        
-        # # both flow directions       
-        # def braCapacityN_rule(m,xbr,xk, xt):
-        #     if m.para["Branch"+str(xbr)+"_RATE_A"] != 0:
-        #         return  - m.Pbra[xbr,xk,  xt] <= cont_list[xk][xbr] *\
-        #                                         ( (m.ICbra[xbr, xt] + prev_invest[xbr] + m.para["Branch"+str(xbr)+"_RATE_A"] )  )
-        #     else:
-        #         return  - m.Pbra[xbr,xk,  xt]  <= cont_list[xk][xbr] * float('inf') #* mpc["branch"]["BR_STATUS"][xbr]
         
         
         # Branch capacity 
@@ -680,8 +663,6 @@ def model_screening(mpc,cont_list , prev_invest, peak_Pd, mult,cicost, penalty_c
     ''' Print results '''
     
     print('min obj cost:',Val(model.obj))
-    # #print (Val(sum(model.Cgen[i,0] for i in range(5))))
-    # # print (Val(sum(model.Pgen[i,0] for i in range(5))))
     # print("Total investment cost: ", Val(sum(model.ICbra[xbr,xt]*cicost for xbr in model.Set['Bra'] for xt in model.Set['Tim'] )))
     print("Load curtailment: ", Val(sum( model.Plc[xb,xk,xt]  for xb in model.Set['Bus'] for xk in model.Set['Cont'] for xt in model.Set['Tim'])))
     
@@ -779,7 +760,7 @@ def main_screening(mpc,multiplier,cicost, penalty_cost, peak_Pd, cont_list,NoYea
 # profiler.enable()
 
 
-
+'''function without cli'''
 
 # ####  inputs
 
@@ -858,6 +839,8 @@ def main_screening(mpc,multiplier,cicost, penalty_cost, peak_Pd, cont_list,NoYea
          
 #                 interv_dict[xbr][xi] = min([i for i in ci_catalogue[0] if i >= interv_dict[xbr][xi]])
 #             else: # transformer
+                    # # add invested capacity to existing tranformer capacity to get the new value 
+                    # interv_dict[xbr][xi] += mpc["branch"]["RATE_A"][xbr]
 #                 interv_dict[xbr][xi] = min([i for i in ci_catalogue[1] if i >= interv_dict[xbr][xi]])
                 
 #         interv_dict[xbr] = list(set(interv_dict[xbr]))
@@ -882,6 +865,9 @@ def main_screening(mpc,multiplier,cicost, penalty_cost, peak_Pd, cont_list,NoYea
 # stats.print_stats(1)
 
 # print("Screening model finishes, results output to the folder as '"+file_name+".json'.")
+
+
+'''function with cli'''
 
 def run_main_screening(input_dir, output_dir,ods_file_name, xlsx_file_name, country, test_case, peak_hour, NoYear):
     

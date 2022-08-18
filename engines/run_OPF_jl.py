@@ -6,7 +6,7 @@
 Run SCACOPF in .jl
 """
 
-# import julia
+
 import os
 import sys
 import json
@@ -14,12 +14,13 @@ import json
 # julia.install()
 from julia import Julia
 from julia import Main
-
 from engines.arrange_line_order_function import find_paraline, shift_line_position,  recover_line_position
-
 import os.path
 import cProfile
 import pstats
+
+
+
 
 
 
@@ -98,7 +99,7 @@ def get_branch_pf_cont(mpc, cont_list, OPF_results, sbase ):
     return OPF_Pbra_con, OPF_Qbra_con
 
 
-def get_branch_dual_normal(mpc, OPF_results, time_point):
+def get_branch_dual_normal(mpc, OPF_results, time_point ):
 # get line duals for normal state
     dual_bra = [0]*mpc["NoBranch"]
     
@@ -116,7 +117,7 @@ def get_branch_dual_normal(mpc, OPF_results, time_point):
             # dual_bra[xbr] = OPF_results["OPF_thermal_limit_max_dual_normal"][temp_key] * (-1)
             # dual_bra[xbr] = (OPF_results["OPF_thermal_limit_max_dual_normal"][temp_key] * (-1))**0.5
             
-            dual_bra[xbr] = (temp_dual_bra*(-1)) **0.5
+            dual_bra[xbr] = (temp_dual_bra*(-1)) **0.5  
     
     else:
         
@@ -133,18 +134,20 @@ def get_branch_dual_normal(mpc, OPF_results, time_point):
                 
                 # dual_bra[xbr] += OPF_results["OPF_thermal_limit_max_dual_normal"][temp_key] * (-1)
  
-                dual_bra[xbr] += (OPF_results["OPF_thermal_limit_max_dual_normal"][temp_key] * (-1))**0.5
+                # dual_bra[xbr] += (OPF_results["OPF_thermal_limit_max_dual_normal"][temp_key] * (-1))**0.5
                 
-                dual_bra[xbr] += (temp_dual_bra*(-1)) **0.5
+                dual_bra[xbr] += (temp_dual_bra*(-1)) **0.5  
         
     # dual_bra = remove_minimal_values(dual_bra)
+    
+
 
     return dual_bra
 
 
 
 
-def get_branch_dual_cont(mpc,cont_list, penalty_cost, OPF_results, OPF_Pbra_con, OPF_Qbra_con):
+def get_branch_dual_cont(mpc,cont_list, penalty_cost, OPF_results, OPF_Pbra_con, OPF_Qbra_con ):
     # get line duals for normal state
     NoCon = len( cont_list) -1
     
@@ -184,8 +187,8 @@ def get_branch_dual_cont(mpc,cont_list, penalty_cost, OPF_results, OPF_Pbra_con,
         
         sin_pf_con = [(1-a**2)**0.5  for a in cos_pf_con]
         
-        temp_dual_Pbra_con = [a*b for a,b in zip(dual_bra_con[xc], cos_pf_con)]
-        temp_dual_Qbra_con = [a*b for a,b in zip(dual_bra_con[xc], sin_pf_con)]
+        temp_dual_Pbra_con = [a*b  for a,b in zip(dual_bra_con[xc], cos_pf_con)]
+        temp_dual_Qbra_con = [a*b  for a,b in zip(dual_bra_con[xc], sin_pf_con)]
         
         
         # dual_Pbra_con.append(remove_minimal_values(temp_dual_Pbra_con))
@@ -198,7 +201,7 @@ def get_branch_dual_cont(mpc,cont_list, penalty_cost, OPF_results, OPF_Pbra_con,
 
 
 
-def get_bus_dual_normal(mpc, OPF_results):
+def get_bus_dual_normal(mpc, OPF_results ):
     # get bus dual values for normal state
     
     dual_Pbus = [0]*mpc["NoBus"]
@@ -207,8 +210,8 @@ def get_bus_dual_normal(mpc, OPF_results):
     for xb in range(mpc["NoBus"]):
         temp_key = str( (xb+1, ) )
         
-        dual_Pbus[xb] = OPF_results["active_power_balance_normal_dual"][temp_key] 
-        dual_Qbus[xb] = OPF_results["reactive_power_balance_normal_dual"][temp_key] 
+        dual_Pbus[xb] = OPF_results["active_power_balance_normal_dual"][temp_key]  
+        dual_Qbus[xb] = OPF_results["reactive_power_balance_normal_dual"][temp_key]  
     
     dual_Pbus = remove_minimal_values(dual_Pbus)
     dual_Qbus = remove_minimal_values(dual_Qbus)
@@ -216,7 +219,7 @@ def get_bus_dual_normal(mpc, OPF_results):
     return dual_Pbus, dual_Qbus
 
 
-def get_bus_dual_cont(mpc, OPF_results):
+def get_bus_dual_cont(mpc, OPF_results ):
     # get bus dual values for normal state
     NoCon = len( OPF_results['cont_list'] )
     
@@ -232,8 +235,8 @@ def get_bus_dual_cont(mpc, OPF_results):
         for xb in range(mpc["NoBus"]):
             temp_key = str( (xc+1, xb+1) )
             
-            dual_Pbus_con[xc][xb] = OPF_results["active_power_balance_contin_dual"][temp_key] 
-            dual_Qbus_con[xc][xb] = OPF_results["reactive_power_balance_contin_dual"][temp_key] 
+            dual_Pbus_con[xc][xb] = OPF_results["active_power_balance_contin_dual"][temp_key]  
+            dual_Qbus_con[xc][xb] = OPF_results["reactive_power_balance_contin_dual"][temp_key]  
 
         
         dual_Pbus_con[xc] = remove_minimal_values(dual_Pbus_con[xc])
@@ -249,7 +252,7 @@ def run_jl(folder):
     
     
 
-def process_result_normal(mpc, OPF_results,sbase,penalty_cost):
+def process_result_normal(mpc, OPF_results,sbase,penalty_cost ):
     
     # load curtailment
     plc_result = [sbase * i for i in OPF_results["plc_result"][0][0]]
@@ -278,13 +281,13 @@ def process_result_normal(mpc, OPF_results,sbase,penalty_cost):
     # dual variables for bus
     # dual_Pbus = [ i for i in OPF_results["OPF_Pbal"]] 
     # dual_Qbus = [ i for i in OPF_results["OPF_Qbal"]] 
-    dual_Pbus, dual_Qbus = get_bus_dual_normal(mpc, OPF_results)
+    dual_Pbus, dual_Qbus = get_bus_dual_normal(mpc, OPF_results )
     
     
     
     # dual variables for branch
     # dual_bra = [-1 * i for i in OPF_results["dual_bra"]] 
-    dual_bra = get_branch_dual_normal(mpc, OPF_results, 1)
+    dual_bra = get_branch_dual_normal(mpc, OPF_results, 1 )
     
     
     
@@ -302,16 +305,16 @@ def process_result_normal(mpc, OPF_results,sbase,penalty_cost):
 
 
 
-def process_result_con(mpc, cont_list, OPF_results, sbase,penalty_cost):
+def process_result_con(mpc, cont_list, OPF_results, sbase,penalty_cost ):
     # OPF power flow results
     OPF_Pbra_con, OPF_Qbra_con = get_branch_pf_cont(mpc,cont_list, OPF_results, sbase )
     
     
     # dual variables for branch
-    dual_Pbra_con, dual_Qbra_con = get_branch_dual_cont(mpc, cont_list, penalty_cost, OPF_results,OPF_Pbra_con, OPF_Qbra_con)
+    dual_Pbra_con, dual_Qbra_con = get_branch_dual_cont(mpc, cont_list, penalty_cost, OPF_results,OPF_Pbra_con, OPF_Qbra_con )
     
     # dual variables for bus
-    dual_Pbus_con, dual_Qbus_con = get_bus_dual_cont(mpc, OPF_results)
+    dual_Pbus_con, dual_Qbus_con = get_bus_dual_cont(mpc, OPF_results )
     
 
     plc_result_con = []      
@@ -410,7 +413,7 @@ def process_result_con(mpc, cont_list, OPF_results, sbase,penalty_cost):
     return (  OPF_Pbra_con, OPF_Qbra_con,dual_Pbra_con, dual_Qbra_con,
             dual_Pbus_con,dual_Qbus_con,plc_result_con,qlc_result_con, Pflex_con, Qflex_con)
 
-def run_SCACOPF_jl(input_dir,mpc, cont_list, penalty_cost, sbase = 100):
+def run_SCACOPF_jl(input_dir,mpc, cont_list, penalty_cost , sbase = 100):
     
     # profiler = cProfile.Profile()
     # profiler.enable()
@@ -439,17 +442,17 @@ def run_SCACOPF_jl(input_dir,mpc, cont_list, penalty_cost, sbase = 100):
     
     # Translate PU data to python
     # OPF_results["OPF_cost"] =[cost_gen, cost_fl, cost_fl_c, cost_pen_lsh, cost_pen_lsh_c, cost_pen_ws, cost_pen_ws_c ]   
-    CO =  sum(OPF_results["OPF_cost"])
+    CO =  sum(OPF_results["OPF_cost"]) 
     
     ''' normal state '''        
     OPF_Pbra, OPF_Qbra, plc_result, qlc_result,cos_pf,sin_pf,Pflex,Qflex,\
-        dual_Pbus, dual_Qbus,dual_Pbra,dual_Qbra = process_result_normal(mpc, OPF_results,sbase,penalty_cost)
+        dual_Pbus, dual_Qbus,dual_Pbra,dual_Qbra = process_result_normal(mpc, OPF_results,sbase,penalty_cost )
 
-
+    print(dual_Pbra)
     ''' contingency'''
     
     OPF_Pbra_con, OPF_Qbra_con,dual_Pbra_con, dual_Qbra_con,dual_Pbus_con,dual_Qbus_con,\
-        plc_result_con,qlc_result_con, Pflex_con, Qflex_con = process_result_con(mpc,cont_list, OPF_results, sbase,penalty_cost)
+        plc_result_con,qlc_result_con, Pflex_con, Qflex_con = process_result_con(mpc,cont_list, OPF_results, sbase,penalty_cost )
 
     
     # os.chdir("C:/Users/p96677wk/Dropbox (The University of Manchester)/My PC (E-10LPC1N2L4S)/Desktop/ATTEST/pyATTEST/pyene/engines")
@@ -477,7 +480,7 @@ def run_SCACOPF_jl(input_dir,mpc, cont_list, penalty_cost, sbase = 100):
             dual_Qbra, 
             dual_Pbus, dual_Pbus_con, dual_Qbus,dual_Qbus_con)
 
-def run_ACOPF_jl(input_dir,mpc, penalty_cost, sbase = 100):
+def run_ACOPF_jl(input_dir,mpc, penalty_cost , sbase = 100):
     
  
     folder = input_dir + "\\SCOPF_R5\\"
@@ -498,10 +501,10 @@ def run_ACOPF_jl(input_dir,mpc, penalty_cost, sbase = 100):
     
     # Translate PU data to python
     # OPF_results["OPF_cost"] =[cost_gen, cost_fl, cost_fl_c, cost_pen_lsh, cost_pen_lsh_c, cost_pen_ws, cost_pen_ws_c ]   
-    CO =  sum(OPF_results["OPF_cost"])
+    CO =  sum(OPF_results["OPF_cost"]) 
     
 
-    dual_bra = get_branch_dual_normal(mpc, OPF_results, 24)
+    dual_bra = get_branch_dual_normal(mpc, OPF_results, 24 )
     
     
     # os.chdir("C:/Users/p96677wk/Dropbox (The University of Manchester)/My PC (E-10LPC1N2L4S)/Desktop/ATTEST/pyATTEST/pyene/engines")

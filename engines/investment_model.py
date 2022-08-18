@@ -238,7 +238,7 @@ def run_main_investment(input_dir, output_dir, ods_file_name, xlsx_file_name, co
     # each next year has two possible scenarios, using this to generate a scenario tree
     NoSce = 2
     # Total number of pathways and nodes based on inputs
-    NoNode = 2**NoYear-1
+    # NoNode = 2**NoYear-1
     NoPath = 2**(NoYear-1) 
     
     # Probabiity of each pathway, assumed equal
@@ -249,20 +249,25 @@ def run_main_investment(input_dir, output_dir, ods_file_name, xlsx_file_name, co
     d = 0.035 # discount rate <= 30 years: 3.5%
     DF, CRF = get_factors(d, NoYear)
     
+    # make all cost into the scale of million
+    cost_base = 1e6
+    
     # scaling factor to translate representative days costs into yearly cost
     SF  =  24 * 365* 0.7
+    
+   
     
         
     ''' costs and interventions'''
     # define budget cost for each year
-    Budget_cost = [1e20]*NoYear
-    penalty_cost = 1e3
+    Budget_cost = [0]*NoYear # if set to 0, no constraint on budget cost
+    penalty_cost = 1e3/cost_base
     
     # read screening model output, if not found, full intervention list is used
-    S_ci, ci_cost = read_screenModel_output(output_dir,country, mpc,test_case, ci_catalogue,intv_cost)
-    
+    S_ci, ci_cost = read_screenModel_output(output_dir,country, mpc,test_case, ci_catalogue,intv_cost,cost_base)
+
     # if not specified, assume flex data to be
-    CPflex = 50  # flex: 50 £/MWh  £/MW
+    CPflex = 107.24/cost_base  # flex: 107.24 euro/MWh  
     CQflex = 0
     
     # Define gen and line status, Default to False
@@ -294,7 +299,7 @@ def run_main_investment(input_dir, output_dir, ods_file_name, xlsx_file_name, co
     # remove gen cost in mpc
     mpc = replaceGenCost(mpc, gen_cost, 0)
     # SCACOPF for 1 peak hour  (years*scenarios*typical days*1h)
-    model, obj_pt1, ci_pt1, sum_ciCost_pt1, Cflex_pt1 , Pflex_pt1, Qflex_pt1 = InvPt1_function(input_dir,OPF_option,test_case,ods_file_name,model,mpc, NoYear, NoSea, NoDay, penalty_cost, NoCon, NoSce,path_sce,cont_list, S_ci,bra_cap,CPflex, CQflex, noDiff, genCbus,braFbus,braTbus,Pd, Qd,multiplier_bus)
+    model, obj_pt1, ci_pt1, sum_ciCost_pt1, Cflex_pt1 , Pflex_pt1, Qflex_pt1 = InvPt1_function(input_dir,OPF_option,test_case,ods_file_name,model,mpc, NoYear, NoSea, NoDay, penalty_cost, NoCon, NoSce,path_sce,cont_list, S_ci,bra_cap,CPflex, CQflex, noDiff, genCbus,braFbus,braTbus,Pd, Qd,multiplier_bus,cost_base)
     
     # output results for part1, operation cost are zero
     output_data2Json(output_dir,NoPath, NoYear, path_sce, 0, 0, ci_pt1, sum_ciCost_pt1, Cflex_pt1,Pflex_pt1,outputAll, country , test_case, "_pt1" )
@@ -308,7 +313,7 @@ def run_main_investment(input_dir, output_dir, ods_file_name, xlsx_file_name, co
         mpc = replaceGenCost(mpc, gen_cost, 1)
         
         # run part 2 of the investment model
-        model,obj_pt2, sum_CO, yearly_CO, ci_pt2, sum_ciCost_pt2, yearly_ciCost, Cflex_pt2,Pflex_pt2 = InvPt2_function(input_dir,OPF_option,test_case,model,mpc,ods_file_name, penalty_cost, NoCon, prob,DF, CRF, SF, NoSce,path_sce, S_ci,Cflex_pt1,Pflex_pt1,Qflex_pt1, ci_pt1,obj_pt1,multiplier_bus,)
+        model,obj_pt2, sum_CO, yearly_CO, ci_pt2, sum_ciCost_pt2, yearly_ciCost, Cflex_pt2,Pflex_pt2 = InvPt2_function(input_dir,OPF_option,test_case,model,mpc,ods_file_name, penalty_cost, NoCon, prob,DF, CRF, SF, NoSce,path_sce, S_ci,Cflex_pt1,Pflex_pt1,Qflex_pt1, ci_pt1,obj_pt1,multiplier_bus,cost_base)
         
         # output results for part2
         output_data2Json(output_dir,NoPath, NoYear, path_sce, sum_CO, yearly_CO, ci_pt2, sum_ciCost_pt2, Cflex_pt2,Pflex_pt2,outputAll, country , test_case,"_pt2" )
