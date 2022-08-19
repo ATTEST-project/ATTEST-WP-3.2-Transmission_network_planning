@@ -351,7 +351,7 @@ def InvPt1_function(input_dir,OPF_option,test_case,ods_file_name,model,mpc, NoYe
             
             # Remove node balance rule
             model.del_component(model.nodeBalance)
-            # model.del_component(model.nodeBalanceQ)
+            model.del_component(model.nodeBalanceQ)
             model.del_component(model.DCPF)
 
         else:                                           # iterations

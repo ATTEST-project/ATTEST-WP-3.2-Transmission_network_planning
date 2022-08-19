@@ -88,10 +88,14 @@ def run_all(input_dir, output_dir, ods_file_name, xlsx_file_name, country, test_
 @click.option('--xlsx_file_name',            prompt='time-series data:',  default='',                           help='Specify the xlsx_file_name without ".xlsx". ')
 @click.option('--ods_file_name',             prompt='contingency data:',  default='case5_bus_python_test',      help='Specify the ods_file_name without ".ods". ')
 @click.option('--peak_hour',                 prompt='peak_hour:',         default= 19,                          help='Specify the number between 1 and 24, i.e., 19 for 7 p.m. ')
-@click.option('--no_year',                   prompt='Number of years:',   default= 1,                           help='Specify the number of years: 1 - [2020], 2 - [2020,2030], 3 - [2020,2030,2040], 4 - [2020,2030,2040,2050]')
+@click.option('--no_year',                   prompt='Number of years:',   default= 4,                           help='Specify the number of years: 1 - [2020], 2 - [2020,2030], 3 - [2020,2030,2040], 4 - [2020,2030,2040,2050]')
 @click.option('--run_both',                   prompt='Run both parts:',    default= True,                        help='Define investment setting, True = [considering both investment cost and operation cost], False = [considering investment cost only]')
 
 def run_test(input_dir, output_dir, ods_file_name, xlsx_file_name, country, test_case, peak_hour, no_year,run_both):
+    
+    print(" --------- Running the screening model --------- ")
+    run_main_screening(input_dir, output_dir, ods_file_name, xlsx_file_name, country, test_case, peak_hour, no_year)
+    
     print(" --------- Running the investment model --------- ")
     
     run_main_investment(input_dir, output_dir, ods_file_name, xlsx_file_name, country, test_case, peak_hour, no_year,run_all) 
