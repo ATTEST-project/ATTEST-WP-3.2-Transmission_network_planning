@@ -64,7 +64,7 @@ def InvPt2_function(input_dir,OPF_option,test_case,model,mpc,ods_file_name, pena
            
                         
                         # CO change
-                        sum( DF[xy] * SF *
+                        sum( DF[xy] * SF[0] *
                                  (daily_CO[xy][xsc]  -
                                   
                                       sum( (daily_dual_Sbra[xy][xsc][xbr]/ penalty_cost )  *
@@ -131,7 +131,7 @@ def InvPt2_function(input_dir,OPF_option,test_case,model,mpc,ods_file_name, pena
                 
                 daily_CO[xy][xsc] = CO/ cost_base
                 daily_dual_Sbra[xy][xsc] = [i/cost_base  for i in dual_Sbra] 
-                yearly_CO[xy][xsc] = SF * CO/ cost_base
+                yearly_CO[xy][xsc] = SF[0] * CO/ cost_base
                 
         return (daily_CO, yearly_CO, daily_dual_Sbra)
     
@@ -153,13 +153,14 @@ def InvPt2_function(input_dir,OPF_option,test_case,model,mpc,ods_file_name, pena
     print(daily_CO, yearly_CO, daily_dual_Sbra)
      
       
-    CO_pt2 = sum( DF[xy] * SF * daily_CO[xy][xsc] for xy, xsc in model.Set["YSce"])
+    CO_pt2 = sum( DF[xy] * SF[0] * daily_CO[xy][xsc] for xy, xsc in model.Set["YSce"])
     
     # update obj cost with operation cost
     obj_pt1 += CO_pt2
     print("Total operation and investment cost using Part 1 results: ", obj_pt1)
     
-    ciCost_pt2 = Val( sum( model.ciCost[xy,xsc] for xy,xsc in model.Set["YSce"] ) )  
+    # ciCost_pt2 = Val( sum( model.ciCost[xy,xsc] for xy,xsc in model.Set["YSce"] ) )  
+    ciCost_pt2 = record_investCost_from_pyo_result(model,mpc,NoSce, model.ciCost) 
 
     print("ciCost_pt2: ", ciCost_pt2)     
     
@@ -203,13 +204,14 @@ def InvPt2_function(input_dir,OPF_option,test_case,model,mpc,ods_file_name, pena
         daily_CO_update, yearly_CO_update, daily_dual_Sbra_update= runACOPF(mpc, ci_pt2_update,Pflex_pt1,Qflex_pt1,multiplier_bus,penalty_cost,SF)
         
         # get operation cost
-        CO_pt2_update = sum( DF[xy] * SF * daily_CO_update[xy][xsc] for xy, xsc in model.Set["YSce"])
+        CO_pt2_update = sum( DF[xy] * SF[0] * daily_CO_update[xy][xsc] for xy, xsc in model.Set["YSce"])
         
         obj_pt2 += CO_pt2_update
         
         print('Total operation and investment cost of Part 2:',obj_pt2)
         
-        ciCost_pt2_update = Val( sum( model.ciCost[xy,xsc] for xy,xsc in model.Set["YSce"] ) )  
+        # ciCost_pt2_update = Val( sum( model.ciCost[xy,xsc] for xy,xsc in model.Set["YSce"] ) )  
+        ciCost_pt2_update = record_investCost_from_pyo_result(model,mpc,NoSce, model.ciCost) 
         yearly_ciCost_update = record_investCost_from_pyo_result(model,mpc,NoSce, model.ciCost)
      
         # find the min obj cost

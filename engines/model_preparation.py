@@ -343,7 +343,7 @@ def prepare_invest_model(mpc, NoPath, prob,NoYear, NoSce,NoSea, NoDay,DF,CRF,SF,
         # Branch
         m.Pbra = Var(m.Set['Bra'],m.Set['YSce'] ,m.Set['Sea'], m.Set['Day'],m.Set['Tim'], domain=Reals, initialize=0)
         m.Qbra = Var(m.Set['Bra'],m.Set['YSce'] ,m.Set['Sea'], m.Set['Day'],m.Set['Tim'], domain=Reals, initialize=0)
-        m.Sbra = Var(m.Set['Bra'],m.Set['YSce'] ,m.Set['Sea'], m.Set['Day'],m.Set['Tim'], domain=Reals, initialize=0)
+        m.Sbra = Var(m.Set['Bra'],m.Set['YSce'] ,m.Set['Sea'], m.Set['Day'],m.Set['Tim'], domain=NonNegativeReals, initialize=0)
        
         # Investment decisions
         m.ci = Var(m.Set["braIntev"],m.Set['YSce'] , initialize=0, domain=Binary, bounds=(0,1))
@@ -478,33 +478,6 @@ def prepare_invest_model(mpc, NoPath, prob,NoYear, NoSce,NoSea, NoDay,DF,CRF,SF,
             #     return m.Sbra[xbr, xy,xsc, xse, xd, xt]  <= float('inf') * mpc["branch"]["BR_STATUS"][xbr]
              
    
-   
-        # both flow directions
-        def braSCapN_rule(m,xbr,xy,xsc, xse, xd, xt):
-            if line_status == True and mpc["branch"]["BR_STATUS"][xbr] == 0:
-                return Constraint.Skip
-            else:
-                if m.para["Branch"+str(xbr)+"_RATE_A"] != 0:
-                    # return - m.Sbra[xbr, xy,xsc, xse,  xd, xt] <= \
-                    #    m.para["Branch"+str(xbr)+"_RATE_A"] + sum(S_ci[i]* m.ci[i,xbr,xy,xsc] for i in m.Set["Intv"])  
-                    return - m.Sbra[xbr, xy,xsc, xse,  xd, xt] <= \
-                       m.para["Branch"+str(xbr)+"_RATE_A"] + sum(S_ci[str(xbr)][i]* m.ci[xbr,i, xy,xsc] for i in m.Set["Intev"][xbr])
-               
-                else:
-                    return  - m.Sbra[xbr,xy,xsc, xse, xd,  xt]  <= float('inf')
-             
-              # Scap_rate = []
-              # if xse == 1  and  m.para["Branch"+str(xbr)+"_RATE_B"] !=0 :
-              #     Scap_rate  = m.para["Branch"+str(xbr)+"_RATE_B"]
-              # elif xse == 2  and m.para["Branch"+str(xbr)+"_RATE_C"] != 0:
-              #     Scap_rate  = m.para["Branch"+str(xbr)+"_RATE_C"]
-              # else:
-              #     Scap_rate = m.para["Branch"+str(xbr)+"_RATE_A"]
-             
-              # if Scap_rate != 0:
-              #     return  - m.Sbra[xbr,xy,xsc, xse,  xd, xt] <= Scap_rate * mpc["branch"]["BR_STATUS"][xbr]  + sum(S_ci[i]* m.ci[i,xbr, xy,xsc] for i in m.Set["Intv"])
-              # else:
-              #     return  - m.Sbra[xbr, xy,xsc, xse, xd, xt]  <= float('inf')* mpc["branch"]["BR_STATUS"][xbr]
              
              
         # TODO: Check cos_pf [xy][xsc][xbr] setting orders with OPF results
@@ -512,19 +485,27 @@ def prepare_invest_model(mpc, NoPath, prob,NoYear, NoSce,NoSea, NoDay,DF,CRF,SF,
             if line_status == True and mpc["branch"]["BR_STATUS"][xbr] == 0:
                 return Constraint.Skip
             else:
-                if m.Pbra[xbr,xy,xsc, xse,  xd, xt].value >= 0:
-                    return  m.Sbra[xbr, xy,xsc, xse, xd, xt] == m.Pbra[xbr, xy,xsc, xse, xd, xt] / cos_pf[xy][xsc][xbr]
-                else:
-                    return  m.Sbra[xbr,xy,xsc, xse,  xd, xt] == - m.Pbra[xbr,xy,xsc, xse, xd,  xt] / cos_pf[xy][xsc][xbr]  
+                return  m.Sbra[xbr, xy,xsc, xse, xd, xt] >= m.Pbra[xbr, xy,xsc, xse, xd, xt] / cos_pf[xy][xsc][xbr]
+                
+        
+        def braPN_rule(m, xbr,xy,xsc, xse,  xd, xt):
+            if line_status == True and mpc["branch"]["BR_STATUS"][xbr] == 0:
+                return Constraint.Skip
+            else:
+                return  - m.Sbra[xbr,xy,xsc, xse,  xd, xt] <= m.Pbra[xbr,xy,xsc, xse, xd,  xt] / cos_pf[xy][xsc][xbr]  
            
         def braQ_rule(m, xbr,xy,xsc, xse,  xd, xt):
             if line_status == True and mpc["branch"]["BR_STATUS"][xbr] == 0:
                 return Constraint.Skip
             else:
-                if m.Qbra[xbr,xy,xsc, xse,  xd, xt].value >= 0:
-                    return  m.Sbra[xbr, xy,xsc, xse, xd, xt] == m.Qbra[xbr, xy,xsc, xse, xd, xt] / sin_pf[xy][xsc][xbr]  
-                else:
-                    return  m.Sbra[xbr, xy,xsc, xse, xd, xt] == -m.Qbra[xbr, xy,xsc, xse, xd, xt] / sin_pf[xy][xsc][xbr]
+                return  m.Sbra[xbr, xy,xsc, xse, xd, xt] >= m.Qbra[xbr, xy,xsc, xse, xd, xt] / sin_pf[xy][xsc][xbr]  
+        
+        def braQN_rule(m, xbr,xy,xsc, xse,  xd, xt):
+            if line_status == True and mpc["branch"]["BR_STATUS"][xbr] == 0:
+                return Constraint.Skip
+            else:
+                return  - m.Sbra[xbr, xy,xsc, xse, xd, xt] <= m.Qbra[xbr, xy,xsc, xse, xd, xt] / sin_pf[xy][xsc][xbr]  
+
    
        
         def interv_rule(m,xbr,xy,xsc):
@@ -538,7 +519,23 @@ def prepare_invest_model(mpc, NoPath, prob,NoYear, NoSce,NoSea, NoDay,DF,CRF,SF,
                     return sum(m.ci[xbr,xintv,xy,xsc]  for xintv in m.Set["Intev"][xbr]) <= 1
                
 
-                   
+        def interv2_rule(m,xbr):
+            if line_status == True and mpc["branch"]["BR_STATUS"][xbr] == 0:
+                return Constraint.Skip
+            else:
+                if m.Set["Intev"][xbr] == range(0, 0):
+                    return Constraint.Skip
+                else:    
+                    # only one option from the list of intervesion can be adopted
+                    return sum( 
+                                sum(    
+                                    S_ci[str(xbr)][xintv]* m.ci[xbr,xintv,xy,xsc] 
+                                    for xintv in m.Set["Intev"][xbr] 
+                                    )
+                                for xy,xsc in m.Set["YSce"] ) >= S_ci[str(xbr)][0]
+                
+            
+            
            
            
        
@@ -558,11 +555,11 @@ def prepare_invest_model(mpc, NoPath, prob,NoYear, NoSce,NoSea, NoDay,DF,CRF,SF,
             #             path7 [ y0_sce, y1_sce, y2_sce, y3_sce ]
          
             return m.Cpath[xp] == \
-                sum( m.ciCost[xy,path_sce[xp][xy]] for xy in m.Set['Year']) \
-                    +  sum( DF[xy] * SF* sum( m.CflexP[xb,xy,path_sce[xp][xy],xse,xd,xt] \
+                sum( DF[xy] * m.ciCost[xy,path_sce[xp][xy]] for xy in m.Set['Year']) \
+                    +  sum( DF[xy] * SF[1]* sum( m.CflexP[xb,xy,path_sce[xp][xy],xse,xd,xt] \
                             for xb in m.Set['Bus'] for xsc in path_sce[xp] for xse in m.Set['Sea'] for xd in m.Set['Day'] \
                                 for xt in m.Set['Tim'] ) for xy in m.Set['Year'] ) \
-                        +  sum( DF[xy] * SF*  sum( m.CflexQ[xb,xy,path_sce[xp][xy],xse,xd,xt] \
+                        +  sum( DF[xy] * SF[1]*  sum( m.CflexQ[xb,xy,path_sce[xp][xy],xse,xd,xt] \
                             for xb in m.Set['Bus'] for xsc in path_sce[xp] for xse in m.Set['Sea'] for xd in m.Set['Day'] \
                                 for xt in m.Set['Tim'])  for xy in m.Set['Year'] )
             
@@ -671,12 +668,15 @@ def prepare_invest_model(mpc, NoPath, prob,NoYear, NoSce,NoSea, NoDay,DF,CRF,SF,
        
         # Add branch capacity constraints
         m.braSCap = Constraint( m.Set['Bra'],m.Set['YSce'] ,m.Set['Sea'], m.Set['Day'], m.Set['Tim'], rule=rules.braSCap_rule )
-        m.braSCapN = Constraint( m.Set['Bra'], m.Set['YSce'] ,m.Set['Sea'], m.Set['Day'], m.Set['Tim'], rule=rules.braSCapN_rule )
         m.braP = Constraint( m.Set['Bra'],m.Set['YSce'] ,m.Set['Sea'], m.Set['Day'], m.Set['Tim'], rule=rules.braP_rule )
+        m.braPN = Constraint( m.Set['Bra'],m.Set['YSce'] ,m.Set['Sea'], m.Set['Day'], m.Set['Tim'], rule=rules.braPN_rule )
         m.braQ = Constraint( m.Set['Bra'],m.Set['YSce'] ,m.Set['Sea'], m.Set['Day'], m.Set['Tim'], rule=rules.braQ_rule )
+        m.braQN = Constraint( m.Set['Bra'],m.Set['YSce'] ,m.Set['Sea'], m.Set['Day'], m.Set['Tim'], rule=rules.braQN_rule )
        
         # intervension rule
         m.interv = Constraint( m.Set['Bra'], m.Set['YSce'] , rule=rules.interv_rule )
+        m.interv2 = Constraint(  m.Set['Bra'], rule=rules.interv2_rule )
+        
         # investment Cost rule
         m.investCost = Constraint(  m.Set['YSce'],  rule=rules.investCost_rule )
    
@@ -917,12 +917,12 @@ def prepare_invest_model(mpc, NoPath, prob,NoYear, NoSce,NoSea, NoDay,DF,CRF,SF,
    
         return (      
                         # load curtailment cost
-                        sum( DF[xy] * SF * 
+                        sum( DF[xy] * SF[0] * 
                                 sum( m.Plc[xb, xy,xsc, xse, xd,xt]*penalty_cost 
                                       for xb in m.Set['Bus'] for xse in m.Set['Sea'] for xd in m.Set['Day'] for xt in m.Set['Tim'] )
                             for xy,xsc in m.Set['YSce'] ) +
                        
-                        sum( DF[xy] * SF * 
+                        sum( DF[xy] * SF[0] * 
                                 sum( m.Qlc[xb, xy,xsc, xse, xd,xt]*penalty_cost 
                                       for xb in m.Set['Bus'] for xse in m.Set['Sea'] for xd in m.Set['Day'] for xt in m.Set['Tim'] )
                             for xy,xsc in m.Set['YSce'] ) +

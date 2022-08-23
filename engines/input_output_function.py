@@ -131,12 +131,12 @@ def read_input_data(input_dir, ods_file_name, xlsx_file_name,country, test_case 
     
     ''' Load intervention infor''' 
     # set default line investment data, linear cost of 20£/MVA
-    default_line_list = [30,50,70,90,110,130,150,210,250,300]
+    default_line_list = [50,100,150,200,250,300,500]
     default_line_cost = [1000 * i for i in default_line_list]
 
     # set default transformer investment data, linear cost of 30£/MVA
     default_trans_list = [140, 280, 450, 800]
-    default_trans_cost = [5850 * i for i in default_trans_list] 
+    default_trans_cost = [9903 * i for i in default_trans_list] 
     
     intv_file = "intervention.json.ods"
     ods_file_path = os.path.join(input_dir, 'tests', 'json',intv_file)
@@ -248,8 +248,8 @@ def read_screenModel_output(output_dir,country, mpc,test_case, ci_catalogue,intv
 
 
                      
-def output_data2Json(output_dir, NoPath, NoYear, path_sce, sum_CO, yearly_CO, ci, sum_ciCost, Cflex, Pflex, outputAll=False,country = "HR", test_case = "HR_2020_Location_1" , pt = "_pt1"):
-
+def output_data2Json(output_dir, NoPath, NoYear, path_sce, sum_CO, yearly_CO, ci, ciCost, Cflex, Pflex, outputAll=False,country = "HR", test_case = "HR_2020_Location_1" , pt = "_pt1"):
+    
     output_data = {}
     # sce_data = {}
     year_num = [2020, 2030, 2040, 2050]
@@ -262,8 +262,8 @@ def output_data2Json(output_dir, NoPath, NoYear, path_sce, sum_CO, yearly_CO, ci
         if outputAll == True:      
             for xp in range(NoPath):
                 sce_data = {}
-                sce_data["Total investment cost (EUR-million)"] = sum_ciCost +  sum(Cflex[xy][path_sce[xp][xy]] for xy in range(NoYear) )
-                sce_data["Branch investment cost (EUR-million)"] = sum_ciCost
+                sce_data["Total investment cost (EUR-million)"] = sum(ciCost[xy][path_sce[xp][xy]] + Cflex[xy][path_sce[xp][xy]] for xy in range(NoYear) )
+                sce_data["Branch investment cost (EUR-million)"] = sum(ciCost[xy][path_sce[xp][xy]]  for xy in range(NoYear) )
                 sce_data["Flexibility investment cost (EUR-million)"] =  sum(Cflex[xy][path_sce[xp][xy]] for xy in range(NoYear) )
                 sce_data["Total Operation Cost (EUR-million)"] =  0
                 
@@ -286,8 +286,8 @@ def output_data2Json(output_dir, NoPath, NoYear, path_sce, sum_CO, yearly_CO, ci
                 
                 temp_xp += 1
                 sce_data = {}
-                sce_data["Total investment cost (EUR-million)"] = sum_ciCost +  sum(Cflex[xy][path_sce[xp][xy]] for xy in range(NoYear) )
-                sce_data["Branch investment cost (EUR-million)"] = sum_ciCost
+                sce_data["Total investment cost (EUR-million)"] = sum(ciCost[xy][path_sce[xp][xy]] + Cflex[xy][path_sce[xp][xy]] for xy in range(NoYear) )
+                sce_data["Branch investment cost (EUR-million)"] = sum(ciCost[xy][path_sce[xp][xy]]  for xy in range(NoYear) )
                 sce_data["Flexibility investment cost (EUR-million)"] =  sum(Cflex[xy][path_sce[xp][xy]] for xy in range(NoYear) )
                 sce_data["Net Present Operation Cost (EUR-million)"] =  0
                 
@@ -313,8 +313,8 @@ def output_data2Json(output_dir, NoPath, NoYear, path_sce, sum_CO, yearly_CO, ci
         if outputAll == True:      
             for xp in range(NoPath):
                 sce_data = {}
-                sce_data["Total investment cost (EUR-million)"] = sum_ciCost +  sum(Cflex[xy][path_sce[xp][xy]] for xy in range(NoYear) )
-                sce_data["Branch investment cost (EUR-million)"] = sum_ciCost
+                sce_data["Total investment cost (EUR-million)"] = sum(ciCost[xy][path_sce[xp][xy]] + Cflex[xy][path_sce[xp][xy]] for xy in range(NoYear) )
+                sce_data["Branch investment cost (EUR-million)"] = sum(ciCost[xy][path_sce[xp][xy]]  for xy in range(NoYear) )
                 sce_data["Flexibility investment cost (EUR-million)"] =  sum(Cflex[xy][path_sce[xp][xy]] for xy in range(NoYear) )
                 sce_data["Total Operation Cost (EUR-million)"] =  sum_CO
                 
@@ -337,8 +337,8 @@ def output_data2Json(output_dir, NoPath, NoYear, path_sce, sum_CO, yearly_CO, ci
                 
                 temp_xp += 1
                 sce_data = {}
-                sce_data["Total investment cost (EUR-million)"] = sum_ciCost +  sum(Cflex[xy][path_sce[xp][xy]] for xy in range(NoYear) )
-                sce_data["Branch investment cost (EUR-million)"] = sum_ciCost
+                sce_data["Total investment cost (EUR-million)"] = sum(ciCost[xy][path_sce[xp][xy]] + Cflex[xy][path_sce[xp][xy]] for xy in range(NoYear) )
+                sce_data["Branch investment cost (EUR-million)"] = sum(ciCost[xy][path_sce[xp][xy]]  for xy in range(NoYear) )
                 sce_data["Flexibility investment cost (EUR-million)"] =  sum(Cflex[xy][path_sce[xp][xy]] for xy in range(NoYear) )
                 sce_data["Net Present Operation Cost (EUR-million)"] =  sum_CO
                 
@@ -375,7 +375,7 @@ def output_data2Json(output_dir, NoPath, NoYear, path_sce, sum_CO, yearly_CO, ci
 
 def get_time_series_data(mpc,  base_time_series_data, peak_hour = 19):
     # prepare base and peak data for optimisation
-    default_flex = 10
+    # default_flex = 50
     
     peak_hour -= 1 
     
@@ -396,7 +396,7 @@ def get_time_series_data(mpc,  base_time_series_data, peak_hour = 19):
             all_Pflex_dn = base_time_series_data["Downward flexibility"].values.tolist()
             
         except KeyError:
-            print(" * flexibiltiy data not found in the input file, using default data: 100MW flexibility upwarad and 10MW donwward to each load bus")
+            print(" * flexibiltiy data not found in the input file, using default data: 10% of peak load as flexibility upwarad and 10% of peak load as donwward to each load bus")
             
             all_Pflex_up = []
             all_Pflex_dn = []
@@ -430,6 +430,8 @@ def get_time_series_data(mpc,  base_time_series_data, peak_hour = 19):
                 # Peak load P and Q
                 peak_Pd.append(base_Pd[ib][peak_hour])
                 peak_Qd.append(base_Pd[ib][peak_hour])
+                
+                default_flex = peak_Pd[ib] * 0.1
                 
                 # flex has the same connection of load
                 # PFlex up and down ward
@@ -485,7 +487,7 @@ def get_time_series_data(mpc,  base_time_series_data, peak_hour = 19):
         peak_Qflex_up = None
         peak_Qflex_dn = None
         
-        print(" * flexibiltiy data not found in the input file, using default data: 10MW flexibility upwarad and 10MW donwward to each load bus")
+        print(" * flexibiltiy data not found in the input file, using default data: 10% of peak load as flexibility upwarad and 10% of peak load as donwward to each load bus")
         
         for ib in range(mpc["NoBus"]):
             
@@ -496,6 +498,8 @@ def get_time_series_data(mpc,  base_time_series_data, peak_hour = 19):
                 # Peak load P and Q
                 peak_Pd.append(mpc["bus"]["PD"][ib])
                 peak_Qd.append(mpc["bus"]["QD"][ib])
+                
+                default_flex = peak_Pd[ib] * 0.1
                                    
                 peak_Pflex_up.append(default_flex)
                 peak_Pflex_dn.append(default_flex)

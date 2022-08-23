@@ -873,8 +873,8 @@ def run_main_screening(input_dir, output_dir,ods_file_name, xlsx_file_name, coun
     
    
     
-    profiler = cProfile.Profile()
-    profiler.enable()
+    # profiler = cProfile.Profile()
+    # profiler.enable()
     
          
     # Define gen and line status, Default to False
@@ -951,9 +951,9 @@ def run_main_screening(input_dir, output_dir,ods_file_name, xlsx_file_name, coun
     
     
     
-    profiler.disable()
-    # sort output with total time
-    stats = pstats.Stats(profiler).sort_stats('tottime')
-    stats.print_stats(1)
+    # profiler.disable()
+    # # sort output with total time
+    # stats = pstats.Stats(profiler).sort_stats('tottime')
+    # stats.print_stats(1)
     
     print("Screening model finishes, results output to the folder as '"+file_name)

@@ -213,7 +213,9 @@ import pstats
 
 
 def run_main_investment(input_dir, output_dir, ods_file_name, xlsx_file_name, country, test_case, peak_hour, NoYear,run_all):
-        
+    profiler = cProfile.Profile()
+    profiler.enable()    
+    
     #### inputs for the investment model
     print("Gather inputs for the investment model")  
     
@@ -253,7 +255,12 @@ def run_main_investment(input_dir, output_dir, ods_file_name, xlsx_file_name, co
     cost_base = 1e6
     
     # scaling factor to translate representative days costs into yearly cost
-    SF  =  24 * 365* 0.7
+    SF_lc = 24 * 365* 0.7
+    SF_flex = 1* 365
+    SF=[] 
+    SF.append( SF_lc )      # SF[0]: scaling factor for load curtailment and operation
+    SF.append( SF_flex )    # SF[1]: scaling factor for flexibility
+    
     
    
     
@@ -299,10 +306,10 @@ def run_main_investment(input_dir, output_dir, ods_file_name, xlsx_file_name, co
     # remove gen cost in mpc
     mpc = replaceGenCost(mpc, gen_cost, 0)
     # SCACOPF for 1 peak hour  (years*scenarios*typical days*1h)
-    model, obj_pt1, ci_pt1, sum_ciCost_pt1, Cflex_pt1 , Pflex_pt1, Qflex_pt1 = InvPt1_function(input_dir,OPF_option,test_case,ods_file_name,model,mpc, NoYear, NoSea, NoDay, penalty_cost, NoCon, NoSce,path_sce,cont_list, S_ci,bra_cap,CPflex, CQflex, noDiff, genCbus,braFbus,braTbus,Pd, Qd,multiplier_bus,cost_base)
+    model, obj_pt1, ci_pt1, ciCost_pt1, Cflex_pt1 , Pflex_pt1, Qflex_pt1 = InvPt1_function(input_dir,OPF_option,test_case,ods_file_name,model,mpc, NoYear, NoSea, NoDay, penalty_cost, NoCon, NoSce,path_sce,cont_list, S_ci,bra_cap,CPflex, CQflex, noDiff, genCbus,braFbus,braTbus,Pd, Qd,multiplier_bus,cost_base)
     
     # output results for part1, operation cost are zero
-    output_data2Json(output_dir,NoPath, NoYear, path_sce, 0, 0, ci_pt1, sum_ciCost_pt1, Cflex_pt1,Pflex_pt1,outputAll, country , test_case, "_pt1" )
+    output_data2Json(output_dir,NoPath, NoYear, path_sce, 0, 0, ci_pt1, ciCost_pt1, Cflex_pt1,Pflex_pt1,outputAll, country , test_case, "_pt1" )
     
     
         
@@ -313,16 +320,29 @@ def run_main_investment(input_dir, output_dir, ods_file_name, xlsx_file_name, co
         mpc = replaceGenCost(mpc, gen_cost, 1)
         
         # run part 2 of the investment model
-        model,obj_pt2, sum_CO, yearly_CO, ci_pt2, sum_ciCost_pt2, yearly_ciCost, Cflex_pt2,Pflex_pt2 = InvPt2_function(input_dir,OPF_option,test_case,model,mpc,ods_file_name, penalty_cost, NoCon, prob,DF, CRF, SF, NoSce,path_sce, S_ci,Cflex_pt1,Pflex_pt1,Qflex_pt1, ci_pt1,obj_pt1,multiplier_bus,cost_base)
+        model,obj_pt2, sum_CO, yearly_CO, ci_pt2, ciCost_pt2, yearly_ciCost, Cflex_pt2,Pflex_pt2 = InvPt2_function(input_dir,OPF_option,test_case,model,mpc,ods_file_name, penalty_cost, NoCon, prob,DF, CRF, SF, NoSce,path_sce, S_ci,Cflex_pt1,Pflex_pt1,Qflex_pt1, ci_pt1,obj_pt1,multiplier_bus,cost_base)
         
         # output results for part2
-        output_data2Json(output_dir,NoPath, NoYear, path_sce, sum_CO, yearly_CO, ci_pt2, sum_ciCost_pt2, Cflex_pt2,Pflex_pt2,outputAll, country , test_case,"_pt2" )
+        output_data2Json(output_dir,NoPath, NoYear, path_sce, sum_CO, yearly_CO, ci_pt2, ciCost_pt2, Cflex_pt2,Pflex_pt2,outputAll, country , test_case,"_pt2" )
         
 
     
     
     print("\n -------------------------")        
     print("Investment model finishes, results output to the folder as 'investment_result.json'.")
+    
+    # write cProfile results in .txt file
+    from io import StringIO
+    profiler.disable()
+    # sort output with total time
+
+    result = StringIO()
+    stats = pstats.Stats(profiler, stream = result).sort_stats('tottime')
+    stats.print_stats()
+
+    file_name = "cProfileExport_investModel_" + country + "_" + test_case
+    with open(file_name +'.txt', 'w+') as f:
+        f.write(result.getvalue())
     
     
     

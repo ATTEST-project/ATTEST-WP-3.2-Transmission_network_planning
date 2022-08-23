@@ -18,7 +18,7 @@ import numpy as np
 import copy
 from engines.scenarios_multipliers import get_mult
 from engines.run_OPF_jl import run_SCACOPF_jl, output2json, process_flex_result
-from engines.process_data import record_bra_from_pyo_result, record_bus_from_pyo_result, record_invest_from_pyo_result
+from engines.process_data import record_bra_from_pyo_result, record_bus_from_pyo_result, record_invest_from_pyo_result,record_investCost_from_pyo_result
 from engines.invest_check import overInvstment_check
 from engines.run_OPF_pp import get_duals
 import cProfile
@@ -254,7 +254,7 @@ def InvPt1_function(input_dir,OPF_option,test_case,ods_file_name,model,mpc, NoYe
         # dual_bra_all = [bus][branch]
         # dual_bus_all = [bus]
      
-        if sum( (dual_Pbra_all[xy][xsc][xb][xbr] / penalty_cost/ cost_base) for xbr in model.Set['Bra']  ) > 0 or  dual_Pbus_all[xy][xsc][xb] > 0 :
+        if sum( (dual_Pbra_all[xy][xsc][xb][xbr] ) for xbr in model.Set['Bra']  ) > 0 or  dual_Pbus_all[xy][xsc][xb] > 0 :
             
             if Pbra_result[xy][xsc][xbr]>= 0:
                 print(plc_result[xy][xsc][xb], "<=", sum( (dual_Pbra_all[xy][xsc][xb][xbr] / penalty_cost/ cost_base) * (model.Pbra[xbr,xy,xsc, xse, xd,xt] - Pbra_result[xy][xsc][xbr]) for xbr in model.Set['Bra']  ),
@@ -283,7 +283,7 @@ def InvPt1_function(input_dir,OPF_option,test_case,ods_file_name,model,mpc, NoYe
         # dual_bra_all = [bus][branch]
         # dual_bus_all = [bus]
      
-        if sum( (dual_Qbra_all[xy][xsc][xb][xbr] / penalty_cost) for xbr in model.Set['Bra']  ) > 0 or  dual_Qbus_all[xy][xsc][xb] > 0 :
+        if sum( (dual_Qbra_all[xy][xsc][xb][xbr] ) for xbr in model.Set['Bra']  ) > 0 or  dual_Qbus_all[xy][xsc][xb] > 0 :
             if Qbra_result[xy][xsc][xbr]>= 0:
                 # print(qlc_result[xy][xsc][xb], "<=", sum( (dual_Qbra_all[xy][xsc][xb][xbr] / penalty_cost) * (model.Qbra[xbr,xy,xsc, xse, xd,xt] - Qbra_result[xy][xsc][xbr]) for xbr in model.Set['Bra']  ),
                 #       "+", (dual_Qbus_all[xy][xsc][xb] / (penalty_cost + CQflex)) * (model.Qflex[xb,xy,xsc, xse, xd,xt] - Qflex_result[xy][xsc][xb]))
@@ -302,6 +302,10 @@ def InvPt1_function(input_dir,OPF_option,test_case,ods_file_name,model,mpc, NoYe
                 
         else:
             return Constraint.Skip # model.Qlc[xb,xy,xsc, xse, xd,xt] == 0    
+        
+    def braS_DCOPF_rule(model,xbr, xy,xsc, xse, xd, xt):
+
+        return model.Sbra[xbr, xy,xsc, xse, xd, xt] >= Sbra_result[xy][xsc][xbr]
     
  
     
@@ -355,7 +359,13 @@ def InvPt1_function(input_dir,OPF_option,test_case,ods_file_name,model,mpc, NoYe
             model.del_component(model.DCPF)
 
         else:                                           # iterations
-            # cos_pf  = 0.95
+            
+            if ite_z == 1:
+                # add power flow constraints from initial DCOPF to reduce iterations
+                model.add_component("braS_DCOPF", Constraint(model.Set['Bra'],model.Set['YSce'] ,model.Set['Sea'], model.Set['Day'],model.Set['Tim'],rule=braS_DCOPF_rule ))
+                
+                
+            
             # Add dual rules delta branch power
             print("add duLine_ite", ite_z)
             # model.add_component("duLine_ite"+str(ite_z), Constraint(model.Set['Bus'],model.Set['YSce'] ,model.Set['Sea'], model.Set['Day'], model.Set['Tim'],rule=duLine_rule ))
@@ -408,13 +418,16 @@ def InvPt1_function(input_dir,OPF_option,test_case,ods_file_name,model,mpc, NoYe
         # branch power flow result = [year],[scenario], [branch]  
         Pbra_result = record_bra_from_pyo_result(model,mpc,NoSce, model.Pbra,True)
         Qbra_result = record_bra_from_pyo_result(model,mpc,NoSce, model.Qbra,True)
+        Sbra_result = record_bra_from_pyo_result(model,mpc,NoSce, model.Sbra,True)
         
         ci = record_invest_from_pyo_result(model,mpc,NoSce, model.ci,S_ci)
         # record flex investment for each year each scenario, flex value is yearly peak, so seanson, day and time data are not required (set to 0)
         Pflex_result = record_bus_from_pyo_result(model,mpc,NoSce, model.Pflex,True)
         Qflex_result = record_bus_from_pyo_result(model,mpc,NoSce, model.Qflex,True)
-  
         
+        
+  
+      
     
 
         year_name = [2020, 2030, 2040, 2050]
@@ -621,17 +634,20 @@ def InvPt1_function(input_dir,OPF_option,test_case,ods_file_name,model,mpc, NoYe
     Cflex_pt1 , Pflex_pt1, Qflex_pt1 =  getFlexFromPT1(model)
     # branch investment in part 1
   
-    ci_pt1 = overInvstment_check(NoYear, NoSce,S_ci, mpc,model, OPF_Pbra, bra_cap)
-    # ci_pt1 = record_invest_from_pyo_result(model, mpc,NoSce, model.ci, S_ci)   
+    # ci_pt1 = overInvstment_check(NoYear, NoSce,S_ci, mpc,model, OPF_Pbra, bra_cap)
+    ci_pt1 = record_invest_from_pyo_result(model, mpc,NoSce, model.ci, S_ci)   
     
     # total investment cost
     obj_pt1 =  Val(model.obj)
     
-    ciCost_pt1 = Val( sum( model.ciCost[xy,xsc] for xy,xsc in model.Set["YSce"] ) ) 
+   
+    # ciCost_pt1 = Val( sum( model.ciCost[xy,xsc] for xy,xsc in model.Set["YSce"] ) ) 
+    ciCost_pt1 = record_investCost_from_pyo_result(model,mpc,NoSce, model.ciCost) 
 
     
     print("Part 1 finished")
     print(ci_pt1)
+    
     print("obj_pt1: ",obj_pt1, "ciCost_pt1: ",ciCost_pt1)
     
     

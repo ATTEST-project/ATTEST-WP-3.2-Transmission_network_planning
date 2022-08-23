@@ -447,8 +447,8 @@ def run_SCACOPF_jl(input_dir,mpc, cont_list, penalty_cost , sbase = 100):
     ''' normal state '''        
     OPF_Pbra, OPF_Qbra, plc_result, qlc_result,cos_pf,sin_pf,Pflex,Qflex,\
         dual_Pbus, dual_Qbus,dual_Pbra,dual_Qbra = process_result_normal(mpc, OPF_results,sbase,penalty_cost )
-
-    print(dual_Pbra)
+    
+  
     ''' contingency'''
     
     OPF_Pbra_con, OPF_Qbra_con,dual_Pbra_con, dual_Qbra_con,dual_Pbus_con,dual_Qbus_con,\
