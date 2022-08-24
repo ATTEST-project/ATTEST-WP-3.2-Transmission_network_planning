@@ -120,8 +120,9 @@ def InvPt2_function(input_dir,OPF_option,test_case,model,mpc,ods_file_name, pena
               
                     
                 if OPF_option == "pp":
-                    # run pandapower model
-                    CO, dual_Sbra = ACOPF_function(test_case,mpc, ci[xy][xsc],Pflex_up , Pflex_dn, mult,penalty_cost)
+                    print("pandapower is not used tool, please use jl")
+                    # # run pandapower model
+                    # CO, dual_Sbra = ACOPF_function(test_case,mpc, ci[xy][xsc],Pflex_up , Pflex_dn, mult,penalty_cost)
                     
 
                 

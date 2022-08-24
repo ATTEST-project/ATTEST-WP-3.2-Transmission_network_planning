@@ -1,8 +1,11 @@
-# This is a preliminary version of the CLI for ATTEST transmission planning tools
 
 import click
 import json
 import os
+
+# This can be removed if a setup file is created
+import julia
+julia.install()
 
 
 from engines.screening_model import run_main_screening 
@@ -19,7 +22,7 @@ inputDir = os.path.join(cli_file_path, 'engines')
 outputDir = os.path.join(cli_file_path, 'engines', 'results')
 
 
-# TODO: Add default files names
+
 @click.command(help='Run the screening model') 
 @click.option('--input_dir',                 prompt='input directory:',   default=inputDir,                     help='Specify the directory for input data')
 @click.option('--output_dir',                prompt='output directory:',   default=outputDir,                    help='Specify the directory for output data')
@@ -144,11 +147,13 @@ def run_old_hr3(input_dir, output_dir, ods_file_name, xlsx_file_name, country, t
     run_main_investment(input_dir, output_dir, ods_file_name, xlsx_file_name, country, test_case, peak_hour, no_year,run_all) 
 
 
-# # .... just the investment model...
+
 
 cli.add_command(run_all)
 cli.add_command(run_screening)
 cli.add_command(run_investment)
+
+# Functions for different test cases, these can be removed for final submission
 cli.add_command(run_test)
 cli.add_command(run_pt2020)
 cli.add_command(run_old_hr3)

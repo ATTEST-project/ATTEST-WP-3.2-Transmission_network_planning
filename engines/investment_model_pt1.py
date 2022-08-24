@@ -514,9 +514,9 @@ def InvPt1_function(input_dir,OPF_option,test_case,ods_file_name,model,mpc, NoYe
                 if OPF_option == "pp":
                     
                    
-
-                    # run pandapower model
-                    SCACOPF_result = get_duals(test_case,mpc, cont_list,ci[xy][xsc],Pflex_up , Pflex_dn,penalty_cost,mult, NoTime)
+                    print("pandapower is not used tool, please use jl")
+                    # # run pandapower model
+                    # SCACOPF_result = get_duals(test_case,mpc, cont_list,ci[xy][xsc],Pflex_up , Pflex_dn,penalty_cost,mult, NoTime)
                     
                     
 
