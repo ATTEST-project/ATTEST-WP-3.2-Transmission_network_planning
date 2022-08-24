@@ -1,8 +1,7 @@
 {
     "metadata": {
         "title": "HR_Location3",
-        "description": "power system of HR_Location3",
-        "minimum_version": "0.4"
+        "description": "power system of HR_Location3"
     },
     "version": 2,
     "baseMVA": 100.0,
@@ -37,7 +36,7 @@
         ],
         "PD": [
             0.0,
-            -140.1,
+            140.1,
             -3.2,
             53.9,
             116.4,
@@ -428,7 +427,8 @@
             360.0,
             360.0,
             360.0
-        ]
+        ],
+        "length(km)": []
     },
     "gen": {
         "GEN_BUS": [
@@ -585,19 +585,19 @@
         ],
         "COST": [
             [
-                31.0,
+                30.0,
                 0
             ],
             [
-                52.0,
+                15.0,
                 0
             ],
             [
-                23.0,
+                20.0,
                 0
             ],
             [
-                44.0,
+                10.0,
                 0
             ]
         ]

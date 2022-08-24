@@ -100,23 +100,3 @@ def recover_line_position(new_bra_no, ci_shifted):
     
 
                 
-
-# new_bra_no = find_paraline(mpc)  
-# ci_shifted = shift_line_position(new_bra_no, ci)    
-# ci_recover = recover_line_position(new_bra_no, ci_shifted)
-                           
-            
-            
-            
-            
-            
-        
-
-            
-       
-        
-    
-    
-    
-    
-    # return 

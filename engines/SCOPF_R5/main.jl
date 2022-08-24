@@ -21,6 +21,7 @@ show(pwd());
 # filename = "input_data/case5_bus_new.ods"
 # filename = "input_data/case5_bus_python_test.ods"
 # filename = "input_data/case_template_CR_L3.ods"
+# filename = "input_data/HR_L3_new.ods"
 
 ## read ods file name from json
 
@@ -62,6 +63,15 @@ include("functions/network_topology_functions.jl")
 include("functions/AC_SCOPF_functions.jl")
 include("data_preparation/contin_scen_arrays.jl")
 include("data_preparation/node_data_func.jl")
+
+
+#---------------- re-include load/gen multipliers
+prof_ploads=load_multiplier*prof_ploads
+prof_qloads=load_multiplier*prof_qloads
+
+
+pg_max=gen_multiplier*pg_max
+qg_max=gen_multiplier*qg_max
 
 #------------
 show("Initial functions are compiled. ")

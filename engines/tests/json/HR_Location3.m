@@ -1,4 +1,4 @@
-function mpc = Location3
+function mpc = HR_Location3
 %LOCATION3
 %   PSS(R)E 33 RAW created by rawd33  FRI, MAR 26 2021   8:39
 %   CREATED BY NETVISION RAW CONVERTER FROM FILES: NDC_2020-09-2
@@ -24,7 +24,7 @@ mpc.baseMVA = 100;
 %	bus_i	type	Pd	Qd	Gs	Bs	area	Vm	Va	baseKV	zone	Vmax	Vmin
 mpc.bus = [
 	1	3	0	0	0	0	8	1.05185	0	400	1	1.1	0.9;
-	2	1	-140.1	52.3	0	0	8	1.08856	0.4333	220	1	1.1	0.9;
+	2	1	140.1	52.3	0	0	8	1.08856	0.4333	220	1	1.1	0.9;
 	3	1	-3.2	18.7	0	0	8	1.09418	0.0635	220	1	1.1	0.9;
 	4	1	53.9	9.7	0	0	8	1.06347	-1.7595	110	1	1.1	0.9;
 	5	1	116.4	-14.8	0	0	8	1.06483	-1.7576	110	1	1.1	0.9;
@@ -84,8 +84,14 @@ mpc.bus_name = {
 %	1	startup	shutdown	n	x1	y1	...	xn	yn
 %	2	startup	shutdown	n	c(n-1)	...	c0
 mpc.gencost = [
-	2	0	0	2	31	0;
-	2	0	0	2	52	0;
-	2	0	0	2	23		0;
-	2	0	0	2	44		0;
+	2	0	0	2	30	0;
+	2	0	0	2	15	0;
+	2	0	0	2	20		0;
+	2	0	0	2	10		0;
 ];
+% mpc.gencost = [
+% 	2	0	0	2	0.1	0;
+% 	2	0	0	2	0.1	0;
+% 	2	0	0	2	0.1		0;
+% 	2	0	0	2	0.1		0;
+% ];
