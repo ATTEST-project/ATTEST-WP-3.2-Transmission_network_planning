@@ -20,7 +20,7 @@ from engines.scenarios_multipliers import get_mult
 from engines.run_OPF_jl import run_SCACOPF_jl, output2json, process_flex_result
 from engines.process_data import record_bra_from_pyo_result, record_bus_from_pyo_result, record_invest_from_pyo_result,record_investCost_from_pyo_result
 from engines.invest_check import overInvstment_check
-from engines.run_OPF_pp import get_duals
+# from engines.run_OPF_pp import get_duals
 import cProfile
 import pstats
 
