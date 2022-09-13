@@ -45,8 +45,8 @@ def InvPt2_function(input_dir,OPF_option,test_case,model,mpc,ods_file_name, pena
     # New Objective function 
     def OFrule2(m):
         
-        print(daily_CO)
-        print(daily_dual_Sbra)
+        # print(daily_CO)
+        # print(daily_dual_Sbra)
 
         return (        # load curtailment cost is ignored as lc is set to == 0
                         # sum( DF[xy] * SF * 
@@ -151,7 +151,7 @@ def InvPt2_function(input_dir,OPF_option,test_case,model,mpc,ods_file_name, pena
             
     daily_CO, yearly_CO, daily_dual_Sbra = runACOPF(mpc, ci_pt1,Pflex_pt1,Qflex_pt1, multiplier_bus, penalty_cost,SF)
     
-    print(daily_CO, yearly_CO, daily_dual_Sbra)
+    # print(daily_CO, yearly_CO, daily_dual_Sbra)
      
       
     CO_pt2 = sum( DF[xy] * SF[0] * daily_CO[xy][xsc] for xy, xsc in model.Set["YSce"])

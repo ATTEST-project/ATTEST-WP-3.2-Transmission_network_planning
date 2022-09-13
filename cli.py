@@ -4,8 +4,8 @@ import json
 import os
 
 # This can be removed if a setup file is created
-import julia
-julia.install()
+# import julia
+# julia.install()
 
 
 from engines.screening_model import run_main_screening 
@@ -130,14 +130,14 @@ def run_pt2020(input_dir, output_dir, ods_file_name, xlsx_file_name, country, te
 @click.option('--input_dir',                 prompt='input directory:',   default=inputDir,                     help='Specify the directory for input data')
 @click.option('--output_dir',                prompt='output directory:',   default=outputDir,                    help='Specify the directory for output data')
 @click.option('--country',                   prompt='country name:',      default='HR',                         help='Specify the country:"PT", "HR", or "UK"')
-@click.option('--test_case',                 prompt='test case name:',    default='Location_3_ods',                      help='Specify the test_case without ".m". ')
+@click.option('--test_case',                 prompt='test case name:',    default='HR_Location_3',                      help='Specify the test_case without ".m". ')
 @click.option('--xlsx_file_name',            prompt='time-series data:',  default='',                           help='Specify the xlsx_file_name without ".xlsx". ')
-@click.option('--ods_file_name',             prompt='contingency data:',  default='case_template_CR_L3',      help='Specify the ods_file_name without ".ods". ')
+@click.option('--ods_file_name',             prompt='contingency data:',  default='HR_Tx_03_2020_new_Zagreb_PROF_update_v2',      help='Specify the ods_file_name without ".ods". ')
 @click.option('--peak_hour',                 prompt='peak_hour:',         default= 19,                          help='Specify the number between 1 and 24, i.e., 19 for 7 p.m. ')
 @click.option('--no_year',                   prompt='Number of years:',   default= 4,                           help='Specify the number of years: 1 - [2020], 2 - [2020,2030], 3 - [2020,2030,2040], 4 - [2020,2030,2040,2050]')
 @click.option('--run_both',                   prompt='Run both parts:',    default= True,                        help='Define investment setting, True = [considering both investment cost and operation cost], False = [considering investment cost only]')
 
-def run_old_hr3(input_dir, output_dir, ods_file_name, xlsx_file_name, country, test_case, peak_hour, no_year,run_both):
+def run_hr3(input_dir, output_dir, ods_file_name, xlsx_file_name, country, test_case, peak_hour, no_year,run_both):
     
     print(" --------- Running the screening model --------- ")
     run_main_screening(input_dir, output_dir, ods_file_name, xlsx_file_name, country, test_case, peak_hour, no_year)
@@ -152,14 +152,14 @@ def run_old_hr3(input_dir, output_dir, ods_file_name, xlsx_file_name, country, t
 @click.option('--input_dir',                 prompt='input directory:',   default=inputDir,                     help='Specify the directory for input data')
 @click.option('--output_dir',                prompt='output directory:',   default=outputDir,                    help='Specify the directory for output data')
 @click.option('--country',                   prompt='country name:',      default='UK',                         help='Specify the country:"PT", "HR", or "UK"')
-@click.option('--test_case',                 prompt='test case name:',    default='Transmission_Network_UK_v2',                      help='Specify the test_case without ".m". ')
+@click.option('--test_case',                 prompt='test case name:',    default='Transmission_Network_UK_v3',                      help='Specify the test_case without ".m". ')
 @click.option('--xlsx_file_name',            prompt='time-series data:',  default='',                           help='Specify the xlsx_file_name without ".xlsx". ')
-@click.option('--ods_file_name',             prompt='contingency data:',  default='Transmission_Network_UK_v2_PROF_update',      help='Specify the ods_file_name without ".ods". ')
+@click.option('--ods_file_name',             prompt='contingency data:',  default='Transmission_Network_UK_v3_PROF_update',      help='Specify the ods_file_name without ".ods". ')
 @click.option('--peak_hour',                 prompt='peak_hour:',         default= 19,                          help='Specify the number between 1 and 24, i.e., 19 for 7 p.m. ')
 @click.option('--no_year',                   prompt='Number of years:',   default= 4,                           help='Specify the number of years: 1 - [2020], 2 - [2020,2030], 3 - [2020,2030,2040], 4 - [2020,2030,2040,2050]')
 @click.option('--run_both',                   prompt='Run both parts:',    default= True,                        help='Define investment setting, True = [considering both investment cost and operation cost], False = [considering investment cost only]')
 
-def run_uk_v2(input_dir, output_dir, ods_file_name, xlsx_file_name, country, test_case, peak_hour, no_year,run_both):
+def run_uk_v3(input_dir, output_dir, ods_file_name, xlsx_file_name, country, test_case, peak_hour, no_year,run_both):
     # uk_2020 is with dummy generators
     # uk_v2 is without dummy generators
     # print(" --------- Running the screening model --------- ")
@@ -176,8 +176,8 @@ cli.add_command(run_investment)
 # Functions for different test cases, these can be removed for final submission
 cli.add_command(run_test)
 cli.add_command(run_pt2020)
-cli.add_command(run_old_hr3)
-cli.add_command(run_uk_v2)
+cli.add_command(run_hr3)
+cli.add_command(run_uk_v3)
 
 if __name__ == '__main__':
     cli()

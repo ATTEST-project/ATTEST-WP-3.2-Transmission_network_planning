@@ -256,7 +256,7 @@ def run_main_investment(input_dir, output_dir, ods_file_name, xlsx_file_name, co
     
     # scaling factor to translate representative days costs into yearly cost
     SF_lc = 24 * 365* 0.7
-    SF_flex = 1* 365
+    SF_flex = 1* 365 
     SF=[] 
     SF.append( SF_lc )      # SF[0]: scaling factor for load curtailment and operation
     SF.append( SF_flex )    # SF[1]: scaling factor for flexibility

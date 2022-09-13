@@ -391,7 +391,7 @@ def prepare_invest_model(mpc, NoPath, prob,NoYear, NoSce,NoSea, NoDay,DF,CRF,SF,
             else:
                 gen_bus = m.para["Gen"+str(xg)+"_GEN_BUS"]
                 bus_number = [i for i,x in enumerate(mpc["bus"]["BUS_I"]) if x==gen_bus]
-                return m.Qgen[xg, xy,xsc, xse, xd, xt] <=  m.para["Gen"+str(xg)+"_QMAX"] * multiplier[xy][xsc][bus_number[0]]
+                return m.Qgen[xg, xy,xsc, xse, xd, xt] <=  abs(m.para["Gen"+str(xg)+"_QMAX"]) * multiplier[xy][xsc][bus_number[0]]
            
        
         def genQMin_rule(m, xg, xy,xsc, xse, xd, xt):
@@ -519,20 +519,24 @@ def prepare_invest_model(mpc, NoPath, prob,NoYear, NoSce,NoSea, NoDay,DF,CRF,SF,
                     return sum(m.ci[xbr,xintv,xy,xsc]  for xintv in m.Set["Intev"][xbr]) <= 1
                
 
-        def interv2_rule(m,xbr):
-            if line_status == True and mpc["branch"]["BR_STATUS"][xbr] == 0:
-                return Constraint.Skip
-            else:
-                if m.Set["Intev"][xbr] == range(0, 0):
-                    return Constraint.Skip
-                else:    
-                    # only one option from the list of intervesion can be adopted
-                    return sum( 
-                                sum(    
-                                    S_ci[str(xbr)][xintv]* m.ci[xbr,xintv,xy,xsc] 
-                                    for xintv in m.Set["Intev"][xbr] 
-                                    )
-                                for xy,xsc in m.Set["YSce"] ) >= S_ci[str(xbr)][0]
+        # def interv2_rule(m):
+        #     # if line_status == True and mpc["branch"]["BR_STATUS"][xbr] == 0:
+        #     #     return Constraint.Skip
+        #     # else:
+        #     #     if m.Set["Intev"][xbr] == range(0, 0):
+        #     #         return Constraint.Skip
+        #     #     else:    
+        #     #         # only one option from the list of intervesion can be adopted
+        #     #         return sum( 
+        #     #                     sum(    
+        #     #                         S_ci[str(xbr)][xintv]* m.ci[xbr,xintv,xy,xsc] 
+        #     #                         for xintv in m.Set["Intev"][xbr] 
+        #     #                         )
+        #     #                     for xy,xsc in m.Set["YSce"] ) >= S_ci[str(xbr)][0]
+            
+       
+            
+        #     return m.ci[37,0,3,6]   == 1
                 
             
             
@@ -676,7 +680,7 @@ def prepare_invest_model(mpc, NoPath, prob,NoYear, NoSce,NoSea, NoDay,DF,CRF,SF,
         # intervension rule
         m.interv = Constraint( m.Set['Bra'], m.Set['YSce'] , rule=rules.interv_rule )
         # Testing constraint: at least 1 investment made
-        # m.interv2 = Constraint(  m.Set['Bra'], rule=rules.interv2_rule )
+        # m.interv2 = Constraint(   rule=rules.interv2_rule )
         
         # investment Cost rule
         m.investCost = Constraint(  m.Set['YSce'],  rule=rules.investCost_rule )
@@ -692,7 +696,7 @@ def prepare_invest_model(mpc, NoPath, prob,NoYear, NoSce,NoSea, NoDay,DF,CRF,SF,
         # Add Gen constraint rules
         m.genMax = Constraint( m.Set['Gen'],m.Set['YSce'] ,m.Set['Sea'], m.Set['Day'],  m.Set['Tim'], rule=rules.genMax_rule )
         m.genMin = Constraint( m.Set['Gen'],m.Set['YSce'] ,m.Set['Sea'], m.Set['Day'], m.Set['Tim'], rule=rules.genMin_rule )
-        # m.genQMax = Constraint( m.Set['Gen'],m.Set['YSce'] ,m.Set['Sea'], m.Set['Day'],  m.Set['Tim'], rule=rules.genQMax_rule )
+        m.genQMax = Constraint( m.Set['Gen'],m.Set['YSce'] ,m.Set['Sea'], m.Set['Day'],  m.Set['Tim'], rule=rules.genQMax_rule )
         # m.genQMin = Constraint( m.Set['Gen'],m.Set['YSce'] ,m.Set['Sea'], m.Set['Day'], m.Set['Tim'],  rule=rules.genQMin_rule )
        
         # piecve wise gen cost
