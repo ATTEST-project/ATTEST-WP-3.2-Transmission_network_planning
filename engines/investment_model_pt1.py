@@ -280,7 +280,7 @@ def InvPt1_function(input_dir,OPF_option,test_case,ods_file_name,model,mpc, NoYe
                 print(plc_result[xy][xsc][xb], "<=", sum( (dual_Pbra_all[xy][xsc][xb][xbr] / penalty_cost/ cost_base) *100* (model.Pbra[xbr,xy,xsc, xse, xd,xt] - Pbra_result[xy][xsc][xbr]) for xbr in model.Set['Bra']  ),
                       "+", (dual_Pbus_all[xy][xsc][xb] / (penalty_cost + CPflex))/ cost_base * (model.Pflex[xb,xy,xsc, xse, xd,xt] ))
                 
-                return plc_result[xy][xsc][xb] <= \
+                return plc_result[xy][xsc][xb] - model.Plc[xb,xy,xsc, xse, xd,xt]  <= \
                     sum( (dual_Pbra_all[xy][xsc][xb][xbr] / penalty_cost/ cost_base) *100* (model.Pbra[xbr,xy,xsc, xse, xd,xt] - Pbra_result[xy][xsc][xbr]) 
                           for xbr in model.Set['Bra']  ) +\
                     (dual_Pbus_all[xy][xsc][xb] / (penalty_cost + CPflex))/ cost_base * (model.Pflex[xb,xy,xsc, xse, xd,xt] )    # assume one flex for each bus
@@ -289,7 +289,7 @@ def InvPt1_function(input_dir,OPF_option,test_case,ods_file_name,model,mpc, NoYe
                 print(plc_result[xy][xsc][xb], "<= - (", sum( (dual_Pbra_all[xy][xsc][xb][xbr] / penalty_cost/ cost_base)*100 * (model.Pbra[xbr,xy,xsc, xse, xd,xt] - Pbra_result[xy][xsc][xbr]) for xbr in model.Set['Bra']  ),
                       ") +", (dual_Pbus_all[xy][xsc][xb] / (penalty_cost + CPflex)/ cost_base) * (model.Pflex[xb,xy,xsc, xse, xd,xt] ))
                 
-                return plc_result[xy][xsc][xb] <= -1*\
+                return plc_result[xy][xsc][xb]  - model.Plc[xb,xy,xsc, xse, xd,xt]  <= -1*\
                     sum( (dual_Pbra_all[xy][xsc][xb][xbr] / penalty_cost/ cost_base)*100 * (model.Pbra[xbr,xy,xsc, xse, xd,xt] - Pbra_result[xy][xsc][xbr]) 
                           for xbr in model.Set['Bra']  ) +\
                     (dual_Pbus_all[xy][xsc][xb] / (penalty_cost + CPflex)/ cost_base) * (model.Pflex[xb,xy,xsc, xse, xd,xt] )    # assume one flex for each bus
