@@ -38,7 +38,7 @@ def find_paraline(mpc):
                 for xi in range(len(para_line[item]) ):
                     new_bra_no[para_line[item][xi]] = para_line[item][0]
             
-            
+           
             
     # print("new_bra_no" ,new_bra_no)    
     
@@ -100,23 +100,3 @@ def recover_line_position(new_bra_no, ci_shifted):
     
 
                 
-
-# new_bra_no = find_paraline(mpc)  
-# ci_shifted = shift_line_position(new_bra_no, ci)    
-# ci_recover = recover_line_position(new_bra_no, ci_shifted)
-                           
-            
-            
-            
-            
-            
-        
-
-            
-       
-        
-    
-    
-    
-    
-    # return 

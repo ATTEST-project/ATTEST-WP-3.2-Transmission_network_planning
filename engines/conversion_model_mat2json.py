@@ -35,7 +35,7 @@ class any2json:
             "metadata": {
                 "title": name_json,
                 "description": 'power system of '+name_json,
-                "minimum_version": "0.4"
+                #"minimum_version": "0.4"
             },
             "version": 2,
             "baseMVA": None,
@@ -71,7 +71,8 @@ class any2json:
                 "SHIFT": [],
                 "BR_STATUS": [],
                 "ANGMIN": [],
-                "ANGMAX": []
+                "ANGMAX": [],
+                "length(km)":[]
             },
             "gen": {
                 "GEN_BUS": [],
@@ -195,10 +196,9 @@ class any2json:
                             jsonformat['gen'][pos].append(int(val))
                 elif flags_gen and line.split() != [] and line.split()[0] == '];':
                     flags_gen = False
-
                 
                 if flags_branch and line.split() != [] and line.split()[0] != '];':
-                    aux1 = line.split()
+                    aux1 = line.split()                    
                     for val, pos in zip(aux1, jsonformat['branch'].keys()):
                         if pos == 'ANGMAX':
                             aux2 = ""
@@ -206,11 +206,19 @@ class any2json:
                                 if x != ";":
                                     aux2 = aux2 + x
                             jsonformat['branch']['ANGMAX'].append(float(aux2))
+                            
+                        elif pos == "length(km)" and len(aux1) >= 19 :
+                            # if input data has branch length, record value, if not return as empty []
+                            jsonformat['branch']["length(km)"].append(float(aux1[18]))
+                                
                         elif pos != 'F_BUS' and pos != 'T_BUS' and \
                             pos != 'BR_STATUS':
                             jsonformat['branch'][pos].append(float(val))
+                        
                         else:
                             jsonformat['branch'][pos].append(int(val))
+                                                 
+                        
                 elif flags_branch and line.split() != [] and line.split()[0] == '];':
                     flags_branch = False
                 
@@ -311,7 +319,7 @@ def json_directory():
 # NoTime = 1
 # converter = any2json()
 
-# country = "HR_Location1" #'Transmission_Network_UK2' #"Transmission_Network_PT_2030_Active_Economy" #'case5'#'Transmission_Network_UK2'
+# country = "HR_Location3" #"Transmission_Network_PT_2020_new" #'Transmission_Network_UK3' #'case5'#'Transmission_Network_UK2'
 # #country = 'case5t'
 
 # converter.matpower2json(folder_path=json_directory(), \
