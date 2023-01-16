@@ -38,7 +38,7 @@ def find_paraline(mpc):
                 for xi in range(len(para_line[item]) ):
                     new_bra_no[para_line[item][xi]] = para_line[item][0]
             
-            
+           
             
     # print("new_bra_no" ,new_bra_no)    
     
