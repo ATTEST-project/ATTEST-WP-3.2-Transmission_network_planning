@@ -757,57 +757,14 @@ def main_screening(mpc,multiplier,cicost, penalty_cost, peak_Pd, cont_list,NoYea
    
     return interv_dict
 
-<<<<<<< HEAD
-# TODO: for distribution T3.1, output results for combinations of each node
-
-profiler = cProfile.Profile()
-profiler.enable()
-
-####  inputs
-
-''' contingency info '''
-# initial contingency list, if no input, generate N-1 contingencies later
-# cont_list = [1]*NumerBranches....
-ods_file_name = "case_template_port_modified_R1"
-#"case_template_CR_L3"
-
-# input xlsx file for time-serires data
-xlsx_file_name = "Transmission_Network_PT_2020_24hGenerationLoadData"
-
-# Define gen and line status, Default to False
-# if True, consider status from .m file; 
-# if False, all gen and lines are on
-gen_status = False 
-line_status = False  
-
-''' Test case '''
-country = "PT"  # Select country for case study: "PT", "UK" or "HR"
-test_case= 'Transmission_Network_PT_2020_ods' # name of the .m file
-#'case5' #'Transmission_Network_PT_2020_ods'  #'Transmission_Network_UK3' #  "HR_Location1" #"HR_2020_Location_1"#"Location_3_ods"
-=======
->>>>>>> origin/add_new_function
 
 
 # profiler = cProfile.Profile()
 # profiler.enable()
 
-<<<<<<< HEAD
-cont_list = [[1]*mpc['NoBranch']] # --> do not consider contingencies
-
-# # load json file from file directory
-# mpc = json.load(open(os.path.join(os.path.dirname(__file__), 
-#                                   'tests', 'json', test_case+'.json')))
-=======
->>>>>>> origin/add_new_function
 
 '''function without cli'''
 
-<<<<<<< HEAD
-# required inputs of multipliers for each bus, if not specified, all buses have the same multiplier
-busMult_input = []
-# expand multiplier for each bus
-multiplier_bus = mult_for_bus(busMult_input, multiplier, mpc)
-=======
 # ####  inputs
 
 # ''' contingency info '''
@@ -847,7 +804,6 @@ multiplier_bus = mult_for_bus(busMult_input, multiplier, mpc)
 # busMult_input = []
 # # expande multiplier for each bus
 # multiplier_bus = mult_for_bus(busMult_input, multiplier, mpc)
->>>>>>> origin/add_new_function
 
 
 
