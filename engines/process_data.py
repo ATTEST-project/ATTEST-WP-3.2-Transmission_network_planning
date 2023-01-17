@@ -147,6 +147,9 @@ def replaceGenCost(mpc, gen_cost, action):
 
 
 def mult_for_bus(busMult_input, multiplier, mpc):
+
+    # print('multiplier:')
+    # print(multiplier)
     
     if busMult_input == []: 
         mult_bus = []

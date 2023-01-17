@@ -46,6 +46,8 @@ from engines.process_data import mult_for_bus
 import cProfile
 import pstats
 
+import pandas as pd # to read new EV load data
+
 
 @dataclass
 class network_parameter:
@@ -75,7 +77,7 @@ class nodes_info_network:
 
 # ####################################################################
 # ####################################################################
-def model_screening(mpc,cont_list , prev_invest, peak_Pd, mult,cicost, penalty_cost,gen_status, line_status,NoTime = 1):
+def model_screening(mpc,cont_list , prev_invest, peak_Pd, mult,cicost, penalty_cost,gen_status, line_status, Pd_additions, NoTime = 1):
 
     ''''read paras and vars from jason file'''
     def readVarPara():
@@ -428,11 +430,13 @@ def model_screening(mpc,cont_list , prev_invest, peak_Pd, mult,cicost, penalty_c
         # Nodal power balance
         def nodeBalance_rule(m, xb,xk,xt):
             
+            # print('nodeBalance_rule Pd:')
+            # print(Pd)
     
             return sum( m.Pgen[genCbus[xb][i],xk,xt]  for i in range(len(genCbus[xb])) )  \
                     + sum( m.Pbra[braTbus[xb][i]-noDiff,xk,xt]  for i in range(len(braTbus[xb])) )  \
                     == sum( m.Pbra[braFbus[xb][i]-noDiff,xk,xt]  for i in range(len(braFbus[xb])) ) \
-                      + mult[xb] *Pd[xb] - m.Plc[xb,xk,xt]
+                      + mult[xb] *Pd[xb] - m.Plc[xb,xk,xt] + Pd_additions[xb]
     
         def loadcurtail_rule(m, xb,xk,xt):
             
@@ -588,7 +592,8 @@ def model_screening(mpc,cont_list , prev_invest, peak_Pd, mult,cicost, penalty_c
         if peak_Pd !=[] :
             Pd = peak_Pd
             
-    
+        # print('Pd:')
+        # print(Pd)
        
         return (noDiff, genCbus, braFbus, braTbus, Pd)
     
@@ -674,6 +679,9 @@ def model_screening(mpc,cont_list , prev_invest, peak_Pd, mult,cicost, penalty_c
     # print("PMAX: ", mult *sum( mpc["gen"]["PMAX"]))
     # print("Pgen: ", Val(sum(model.Pgen[xg,0,0] for xg in range(mpc["NoGen"]))))
     # print("Pd: ", mult *sum(Pd))
+
+    # print('model_screening mult:')
+    # print(mult)
     
     for xk in model.Set['Cont']:
         # print(xk, "_Load curtailment: ", Val(sum( model.Plc[xb,xk,xt]  for xb in model.Set['Bus'] for xt in model.Set['Tim'])))
@@ -715,7 +723,7 @@ def model_screening(mpc,cont_list , prev_invest, peak_Pd, mult,cicost, penalty_c
     return interv, maxICbra
 
 
-def main_screening(mpc,multiplier,cicost, penalty_cost, peak_Pd, cont_list,NoYear,gen_status, line_status):
+def main_screening(input_dir,mpc,multiplier,cicost, penalty_cost, peak_Pd, cont_list,NoYear,gen_status, line_status):
     ''' Time point '''
     # Number of time points
     NoTime = 1
@@ -732,9 +740,48 @@ def main_screening(mpc,multiplier,cicost, penalty_cost, peak_Pd, cont_list,NoYea
         for xsc in range(len(multiplier[xy])):
             print('--> Scenario ', xsc)
             mult = multiplier[xy][xsc]
+
+            # print("mpc[NoBus]:")
+            # print(mpc['NoBus'])
+
+            use_data_update = True # activate to use new loads from "EV-PV-Storage_Data_for_Simulations.xlsx"
+            # use_data_update = False # use initial load data (do not include additional EV-PV loads)
+
+            if use_data_update == True:
+                if year_name[xy] != 2020:
+                    EV_data_file_name = 'EV-PV-Storage_Data_for_Simulations.xlsx' # !we need to add this to CLI!
+                    EV_data_file_path = os.path.join(input_dir, EV_data_file_name)
+                    # EV_data_sheet_names = 'UK_Tx_' # !we need to add this to CLI!
+                    # EV_data_sheet_names = 'HR_Tx_01_'
+                    EV_data_sheet_names = 'PT_Tx_'
+
+                    EV_load_data = pd.read_excel(EV_data_file_path, sheet_name = EV_data_sheet_names + str(year_name[xy]), skiprows = 1)
+                    EV_load_data_MW_profile = EV_load_data["EV load (MW)"]
+                    EV_load_data_MW_max = np.max(EV_load_data_MW_profile[0:24])
+                    Pd_additions = EV_load_data["Node Ratio"]*EV_load_data_MW_max # how much new load per node
+                else:
+                    Pd_additions = [0] * mpc['NoBus'] # zero additional EV load
+            else:
+                Pd_additions = [0] * mpc['NoBus'] # zero additional EV load
+
+
+            # print('EV_load_data')
+            # print(EV_load_data)
+
+            # print('EV_load_data_MW_profile:')
+            # print(EV_load_data_MW_profile)
+
+            # print('EV_load_data_MW_max:')
+            # print(EV_load_data_MW_max)
+
+            # print('Pd_additions:')
+            # print(Pd_additions)
             
+            # print('main_screening peak_Pd:')
+            # print(peak_Pd)
+
             # each run will take preveious years last scenraio investment as the previous investment
-            temp_interv_list, temp_prev_invest = model_screening(mpc,  cont_list , prev_invest, peak_Pd, mult, cicost,penalty_cost,gen_status, line_status,NoTime)
+            temp_interv_list, temp_prev_invest = model_screening(mpc,  cont_list , prev_invest, peak_Pd, mult, cicost,penalty_cost,gen_status, line_status, Pd_additions, NoTime)
             # interv_list.append(temp_interv_list)
             interv_list.extend(temp_interv_list)
                         
@@ -915,7 +962,7 @@ def run_main_screening(input_dir, output_dir,ods_file_name, xlsx_file_name, coun
     
     
     ''' Outputs '''
-    interv_dict = main_screening(mpc, multiplier_bus ,cicost, penalty_cost ,peak_Pd, cont_list,NoYear,gen_status, line_status)
+    interv_dict = main_screening(input_dir, mpc, multiplier_bus ,cicost, penalty_cost ,peak_Pd, cont_list,NoYear,gen_status, line_status)
     
     
     

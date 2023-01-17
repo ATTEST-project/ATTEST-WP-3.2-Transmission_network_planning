@@ -566,6 +566,9 @@ def get_peak_data(mpc,  base_time_series_data, peak_hour = 19):
     else:
         
         peak_Pd = []
+
+    # print('peak_Pd:')
+    # print(peak_Pd)
         
     return peak_Pd
 
