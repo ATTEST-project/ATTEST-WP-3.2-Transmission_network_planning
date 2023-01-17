@@ -131,11 +131,11 @@ def read_input_data(input_dir, ods_file_name, xlsx_file_name,country, test_case 
     
     ''' Load intervention infor''' 
     # set default line investment data, linear cost of 20£/MVA
-    default_line_list = [50,100,150,200,250,300,500]
-    default_line_cost = [1000 * i for i in default_line_list]
+    default_line_list = [50,100,150,200,250,300,500,1000,1500,2000,3000,5000,100000, 150000,500000]
+    default_line_cost = [1000*10 * i for i in default_line_list]
 
     # set default transformer investment data, linear cost of 30£/MVA
-    default_trans_list = [140, 280, 450, 800]
+    default_trans_list = [140, 280, 450, 800,2000,5000,100000]
     default_trans_cost = [9903 * i for i in default_trans_list] 
     
     intv_file = "intervention.json.ods"
@@ -377,6 +377,9 @@ def get_time_series_data(mpc,  base_time_series_data, peak_hour = 19):
     # prepare base and peak data for optimisation
     # default_flex = 50
     
+    # Define default flex percentage
+    default_flex_percent = 0.1
+    
     peak_hour -= 1 
     
     if base_time_series_data != []:
@@ -431,7 +434,8 @@ def get_time_series_data(mpc,  base_time_series_data, peak_hour = 19):
                 peak_Pd.append(base_Pd[ib][peak_hour])
                 peak_Qd.append(base_Pd[ib][peak_hour])
                 
-                default_flex = peak_Pd[ib] * 0.1
+                
+                default_flex = peak_Pd[ib] * default_flex_percent
                 
                 # flex has the same connection of load
                 # PFlex up and down ward

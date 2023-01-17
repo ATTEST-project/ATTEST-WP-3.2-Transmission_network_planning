@@ -11,8 +11,7 @@ Screening model consider different years and scenarios with contingency
         Required inputs: 
             Test case: country name, case name, .m file related to the case name
             Load info: multipliers for different year/ scenarios, yearly peak load
-            Cost: branch investment cost (default to 100 $/MW), load curtailment penalty (default to 1e4 $/MW)
-            Contingency: contingency status (True/False), contingency lists
+            Contingency: contingency lists
             Investment catalogue
         
             
@@ -397,7 +396,7 @@ def model_screening(mpc,cont_list , prev_invest, peak_Pd, mult,cicost, penalty_c
             
             else:             
                 if m.para["Branch"+str(xbr)+"_RATE_A"] != 0:                  
-                    return m.Pbra[xbr, xk, xt] <=   m.ICbra[xbr, xt] + prev_invest[xbr] + m.para["Branch"+str(xbr)+"_RATE_A"] 
+                    return m.Pbra[xbr, xk, xt]/0.98 <=   m.ICbra[xbr, xt] + prev_invest[xbr] + m.para["Branch"+str(xbr)+"_RATE_A"] 
                     
                 else:   
                     return  m.Pbra[xbr, xk, xt]  <=  float('inf')
@@ -416,7 +415,7 @@ def model_screening(mpc,cont_list , prev_invest, peak_Pd, mult,cicost, penalty_c
                 return  m.Pbra[xbr, xk, xt]  == 0 #Constraint.Skip #
             else:             
                 if m.para["Branch"+str(xbr)+"_RATE_A"] != 0:
-                    return  - m.Pbra[xbr,xk,  xt] <=  m.ICbra[xbr, xt] + prev_invest[xbr] + m.para["Branch"+str(xbr)+"_RATE_A"] 
+                    return  - m.Pbra[xbr,xk,  xt]/0.98 <=  m.ICbra[xbr, xt] + prev_invest[xbr] + m.para["Branch"+str(xbr)+"_RATE_A"] 
                 
                 else:
                     return  - m.Pbra[xbr,xk,  xt]  <=  float('inf') 
@@ -965,17 +964,19 @@ def run_main_screening(input_dir, output_dir,ods_file_name, xlsx_file_name, coun
     interv_dict = main_screening(input_dir, mpc, multiplier_bus ,cicost, penalty_cost ,peak_Pd, cont_list,NoYear,gen_status, line_status)
     
     
-    
+
     
     
     # reduce catalogue in the interv dictionary
     for xbr in range(mpc["NoBranch"]):
         if sum(interv_dict[xbr]) > 0 :
+ 
             for xi in range(len(interv_dict[xbr])):
                 
                 if mpc["branch"]["TAP"][xbr] == 0:  # line
-             
+                    
                     interv_dict[xbr][xi] = min([i for i in ci_catalogue[0] if i >= interv_dict[xbr][xi]])
+                    
                 else: # transformer
                     # add invested capacity to existing tranformer capacity to get the new value 
                     interv_dict[xbr][xi] += mpc["branch"]["RATE_A"][xbr]

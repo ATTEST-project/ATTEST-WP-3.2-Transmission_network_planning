@@ -27,10 +27,10 @@ import pstats
 def remove_minimal_values(data):
     try:
         for i in range(len(data)):
-            if abs(data[i]) <= 1e-3:
+            if abs(data[i]) <= 1e-5:
                 data[i] = 0
     except TypeError:
-        if abs(data) <= 1e-3:
+        if abs(data) <= 1e-5:
             data = 0
     return data
 
@@ -49,23 +49,51 @@ def remove_minimal_values(data):
 
 
 def get_branch_pf(mpc, OPF_results, sbase ):
+    
+    # check parallel lines and get new branch numbers
+    new_bra_no = find_paraline(mpc)
+    
+    divide_by_value = []
+    for xbr in range(mpc["NoBranch"]):
+        # get total number of parallel lines
+        no_para_line = new_bra_no.count(new_bra_no[xbr])
+        
+        # average values for parallel lines
+        divide_by_value.append(no_para_line)
+    
+    
+    
     # get branch power flow with directions for normal state
     
     OPF_Pbra = [0]*mpc["NoBranch"]
     OPF_Qbra = [0]*mpc["NoBranch"]
     
     for xbr in range(mpc["NoBranch"]):
+        
         fbus = mpc["branch"]["F_BUS"][xbr]
         tbus = mpc["branch"]["T_BUS"][xbr]
         
         temp_key = str( (fbus, tbus) )
         
-        OPF_Pbra[xbr] = OPF_results["OPF_bra_active_normal"][temp_key] * sbase 
-        OPF_Qbra[xbr] = OPF_results["OPF_bra_reactive_normal"][temp_key] * sbase 
+        # average values for parallel lines
+        OPF_Pbra[xbr] = OPF_results["OPF_bra_active_normal"][temp_key] * sbase /divide_by_value[xbr]
+        OPF_Qbra[xbr] = OPF_results["OPF_bra_reactive_normal"][temp_key] * sbase /divide_by_value[xbr]
     
     return OPF_Pbra, OPF_Qbra
 
 def get_branch_pf_cont(mpc, cont_list, OPF_results, sbase ):
+    # check parallel lines and get new branch numbers
+    new_bra_no = find_paraline(mpc)
+    
+    divide_by_value = []
+    for xbr in range(mpc["NoBranch"]):
+        # get total number of parallel lines
+        no_para_line = new_bra_no.count(new_bra_no[xbr])
+        
+        # average values for parallel lines
+        divide_by_value.append(no_para_line)
+        
+    
     # get branch power flow with directions for contigency states
     NoCon = len( cont_list) -1
     
@@ -89,8 +117,8 @@ def get_branch_pf_cont(mpc, cont_list, OPF_results, sbase ):
                 
                 temp_key = str( (xc+1, fbus, tbus) )
            
-                OPF_Pbra_con[xc][xbr] = OPF_results["OPF_bra_active_contin"][temp_key] * sbase 
-                OPF_Qbra_con[xc][xbr] = OPF_results["OPF_bra_reactive_contin"][temp_key] * sbase 
+                OPF_Pbra_con[xc][xbr] = OPF_results["OPF_bra_active_contin"][temp_key] * sbase /divide_by_value[xbr]
+                OPF_Qbra_con[xc][xbr] = OPF_results["OPF_bra_reactive_contin"][temp_key] * sbase /divide_by_value[xbr]
                 
                 OPF_Pbra_con[xc][xbr] = remove_minimal_values(OPF_Pbra_con[xc][xbr])
                 OPF_Qbra_con[xc][xbr] = remove_minimal_values(OPF_Qbra_con[xc][xbr])
@@ -100,7 +128,8 @@ def get_branch_pf_cont(mpc, cont_list, OPF_results, sbase ):
 
 
 def get_branch_dual_normal(mpc, OPF_results, time_point ):
-# get line duals for normal state
+    
+    # get line duals for normal state
     dual_bra = [0]*mpc["NoBranch"]
     
     if time_point == 1:
@@ -118,6 +147,8 @@ def get_branch_dual_normal(mpc, OPF_results, time_point ):
             # dual_bra[xbr] = (OPF_results["OPF_thermal_limit_max_dual_normal"][temp_key] * (-1))**0.5
             
             dual_bra[xbr] = (temp_dual_bra*(-1)) **0.5  
+            
+            
     
     else:
         
@@ -179,6 +210,8 @@ def get_branch_dual_cont(mpc,cont_list, penalty_cost, OPF_results, OPF_Pbra_con,
                 # dual_bra_con[xc][xbr] = (OPF_results["OPF_thermal_limit_max_dual_contin"][temp_key] * (-1))**0.5
                 
                 dual_bra_con[xc][xbr] = (temp_dual_bra_con * (-1))**0.5
+                
+                
                 
                 temp_p = OPF_Pbra_con[xc][xbr]
                 temp_q = OPF_Qbra_con[xc][xbr]
@@ -438,8 +471,8 @@ def run_SCACOPF_jl(input_dir,mpc, cont_list, penalty_cost , sbase = 100):
     file = open(folder+'data_preparation\\export_WP3.json')
     OPF_results = json.load(file)
     file.close()
-    
-    
+    # file = open('SCOPF_R5\data_preparation\\export_WP3.json')
+    # 
     # Translate PU data to python
     # OPF_results["OPF_cost"] =[cost_gen, cost_fl, cost_fl_c, cost_pen_lsh, cost_pen_lsh_c, cost_pen_ws, cost_pen_ws_c ]   
     CO =  sum(OPF_results["OPF_cost"]) 

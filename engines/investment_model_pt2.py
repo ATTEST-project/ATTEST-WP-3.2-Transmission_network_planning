@@ -15,7 +15,7 @@ import math
 import numpy as np
 import copy
 from engines.run_OPF_jl import run_ACOPF_jl, output2json, process_flex_result
-from engines.run_OPF_pp import ACOPF_function
+# from engines.run_OPF_pp import ACOPF_function
 from engines.process_data import record_bra_from_pyo_result,record_bus_from_pyo_result, record_invest_from_pyo_result,record_investCost_from_pyo_result
 
 
@@ -45,8 +45,8 @@ def InvPt2_function(input_dir,OPF_option,test_case,model,mpc,ods_file_name, pena
     # New Objective function 
     def OFrule2(m):
         
-        print(daily_CO)
-        print(daily_dual_Sbra)
+        # print(daily_CO)
+        # print(daily_dual_Sbra)
 
         return (        # load curtailment cost is ignored as lc is set to == 0
                         # sum( DF[xy] * SF * 
@@ -120,8 +120,9 @@ def InvPt2_function(input_dir,OPF_option,test_case,model,mpc,ods_file_name, pena
               
                     
                 if OPF_option == "pp":
-                    # run pandapower model
-                    CO, dual_Sbra = ACOPF_function(test_case,mpc, ci[xy][xsc],Pflex_up , Pflex_dn, mult,penalty_cost)
+                    print("pandapower is not used tool, please use jl")
+                    # # run pandapower model
+                    # CO, dual_Sbra = ACOPF_function(test_case,mpc, ci[xy][xsc],Pflex_up , Pflex_dn, mult,penalty_cost)
                     
 
                 
@@ -150,7 +151,7 @@ def InvPt2_function(input_dir,OPF_option,test_case,model,mpc,ods_file_name, pena
             
     daily_CO, yearly_CO, daily_dual_Sbra = runACOPF(mpc, ci_pt1,Pflex_pt1,Qflex_pt1, multiplier_bus, penalty_cost,SF)
     
-    print(daily_CO, yearly_CO, daily_dual_Sbra)
+    # print(daily_CO, yearly_CO, daily_dual_Sbra)
      
       
     CO_pt2 = sum( DF[xy] * SF[0] * daily_CO[xy][xsc] for xy, xsc in model.Set["YSce"])
