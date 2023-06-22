@@ -68,6 +68,13 @@ def get_branch_pf(mpc, OPF_results, sbase ):
     OPF_Pbra = [0]*mpc["NoBranch"]
     OPF_Qbra = [0]*mpc["NoBranch"]
     
+
+
+    # print("\nOPF_results (export from export_WP3.json):")
+    # print(OPF_results)
+
+    # line_count = 0 # to differentiate lines and transformers?
+    # trans_count = 0 # to differentiate lines and transformers?
     for xbr in range(mpc["NoBranch"]):
         
         fbus = mpc["branch"]["F_BUS"][xbr]
@@ -453,7 +460,8 @@ def run_SCACOPF_jl(input_dir,mpc, cont_list, penalty_cost , sbase = 100):
     
     # os.chdir("WP3_SCOPF_export_to_WP3_R1_1")
     # folder = "WP3_SCOPF_export_to_WP3_R1_1\\"
-    folder = input_dir + "\\SCOPF_R5\\"
+    folder = input_dir + "\\SCOPF_R5\\" # original 2022 tool developed by Wangwei
+    # folder = input_dir + "\\SCOPF_R5_new\\" # new 2023 ACSCOPF update by WP4
 
     if os.path.exists(folder+'data_preparation\\export_WP3.json'):
         os.remove(folder+'data_preparation\\export_WP3.json')
@@ -516,7 +524,8 @@ def run_SCACOPF_jl(input_dir,mpc, cont_list, penalty_cost , sbase = 100):
 def run_ACOPF_jl(input_dir,mpc, penalty_cost , sbase = 100):
     
  
-    folder = input_dir + "\\SCOPF_R5\\"
+    folder = input_dir + "\\SCOPF_R5\\" # original 2022 tool developed by Wangwei
+    # folder = input_dir + "\\SCOPF_R5_new\\" # new 2023 ACSCOPF update by WP4
 
     if os.path.exists(folder+'data_preparation\\export_WP3.json'):
         os.remove(folder+'data_preparation\\export_WP3.json')
@@ -606,7 +615,8 @@ def output2json(input_dir,ods_file_name,mpc,ci, Pflex, Qflex, mult,OPF_opt ):
     
 
     # os.chdir("WP3_SCOPF_export_to_WP3_R1_1")
-    folder = input_dir + "\\SCOPF_R5\\"
+    folder = input_dir + "\\SCOPF_R5\\" # original 2022 tool developed by Wangwei
+    # folder = input_dir + "\\SCOPF_R5_new\\" # new 2023 ACSCOPF update by WP4
     
     
     filename = "input_data/"+ ods_file_name + ".ods"

@@ -47,6 +47,8 @@ import pstats
 
 import pandas as pd # to read new EV load data
 
+import time
+
 
 @dataclass
 class network_parameter:
@@ -722,7 +724,7 @@ def model_screening(mpc,cont_list , prev_invest, peak_Pd, mult,cicost, penalty_c
     return interv, maxICbra
 
 
-def main_screening(input_dir,mpc,multiplier,cicost, penalty_cost, peak_Pd, cont_list,NoYear,gen_status, line_status):
+def main_screening(input_dir,mpc,multiplier,cicost, penalty_cost, peak_Pd, cont_list,NoYear,gen_status, line_status, add_load_data, add_load_data_case_name):
     ''' Time point '''
     # Number of time points
     NoTime = 1
@@ -743,24 +745,25 @@ def main_screening(input_dir,mpc,multiplier,cicost, penalty_cost, peak_Pd, cont_
             # print("mpc[NoBus]:")
             # print(mpc['NoBus'])
 
-            use_data_update = True # activate to use new loads from "EV-PV-Storage_Data_for_Simulations.xlsx"
-            # use_data_update = False # use initial load data (do not include additional EV-PV loads)
 
-            if use_data_update == True:
+            if add_load_data == 1:
+                # print()
+                # print('---- using updated loads from EV-PV-Storage_Data_for_Simulations.xlsx ----')
+                # print()
                 if year_name[xy] != 2020:
                     EV_data_file_name = 'EV-PV-Storage_Data_for_Simulations.xlsx' # !we need to add this to CLI!
                     EV_data_file_path = os.path.join(input_dir, EV_data_file_name)
-                    # EV_data_sheet_names = 'UK_Tx_' # !we need to add this to CLI!
-                    # EV_data_sheet_names = 'HR_Tx_01_'
-                    EV_data_sheet_names = 'PT_Tx_'
 
-                    EV_load_data = pd.read_excel(EV_data_file_path, sheet_name = EV_data_sheet_names + str(year_name[xy]), skiprows = 1)
+                    EV_load_data = pd.read_excel(EV_data_file_path, sheet_name = add_load_data_case_name + str(year_name[xy]), skiprows = 1)
                     EV_load_data_MW_profile = EV_load_data["EV load (MW)"]
                     EV_load_data_MW_max = np.max(EV_load_data_MW_profile[0:24])
                     Pd_additions = EV_load_data["Node Ratio"]*EV_load_data_MW_max # how much new load per node
                 else:
                     Pd_additions = [0] * mpc['NoBus'] # zero additional EV load
             else:
+                # print()
+                # print('---- using original loads for ATTEST case studies ----')
+                # print()
                 Pd_additions = [0] * mpc['NoBus'] # zero additional EV load
 
 
@@ -918,9 +921,14 @@ def main_screening(input_dir,mpc,multiplier,cicost, penalty_cost, peak_Pd, cont_
 
 '''function with cli'''
 
-def run_main_screening(input_dir, output_dir,ods_file_name, xlsx_file_name, country, test_case, peak_hour, NoYear):
+def run_main_screening(input_dir, output_dir,ods_file_name, xlsx_file_name, country, test_case, peak_hour, NoYear, add_load_data, add_load_data_case_name):
     
-   
+    start = time.time()
+
+    if add_load_data == 1:
+        print('\nNote: additional ATTEST EV-PV-Storage data included in the simulations!')
+        print('Data sheets: ',add_load_data_case_name)
+        print()
     
     # profiler = cProfile.Profile()
     # profiler.enable()
@@ -961,7 +969,7 @@ def run_main_screening(input_dir, output_dir,ods_file_name, xlsx_file_name, coun
     
     
     ''' Outputs '''
-    interv_dict = main_screening(input_dir, mpc, multiplier_bus ,cicost, penalty_cost ,peak_Pd, cont_list,NoYear,gen_status, line_status)
+    interv_dict = main_screening(input_dir, mpc, multiplier_bus ,cicost, penalty_cost ,peak_Pd, cont_list,NoYear,gen_status, line_status, add_load_data, add_load_data_case_name)
     
     
 
@@ -1008,3 +1016,6 @@ def run_main_screening(input_dir, output_dir,ods_file_name, xlsx_file_name, coun
     # stats.print_stats(1)
     
     print("Screening model finishes, results output to the folder as '"+file_name)
+
+    end = time.time()
+    print('Screening model execution time: ',end - start)

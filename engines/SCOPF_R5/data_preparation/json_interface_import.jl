@@ -7,6 +7,8 @@ open("data_preparation\\import_WP3.json", "r") do g
 end
 
 #--------------upgrade the Smax of the lines as an output of EX plan----------
+# println("\rnLines = ",nLines)
+
 for l in 1:nLines
     if new_data["ci"][l]!=0
         array_lines[l].line_Smax_A=array_lines[l].line_Smax_A+new_data["ci"][l]/sbase

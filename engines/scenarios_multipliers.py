@@ -143,7 +143,7 @@ def get_mult(country_selected= "HR"):
         plt.scatter(["2040"]*2, mult["2040"][1:3], color = "grey")
         plt.scatter(["2050"]*6, mult["2050"][1:7], color = "grey")
 
-        plt.title("Scenarios and multipliers for the "+country_selected+" case")
+        plt.title("Scenarios and multipliers for the "+country_selected+" cases")
         # plt.axis('square')
 
 
@@ -164,5 +164,6 @@ def get_mult(country_selected= "HR"):
     return multiplier
 
 
+# get_mult()
 
 

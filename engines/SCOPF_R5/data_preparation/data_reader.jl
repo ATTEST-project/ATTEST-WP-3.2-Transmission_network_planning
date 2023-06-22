@@ -6,6 +6,7 @@
 function data_reader(array_data,nEntr,fields,header,data,data_cont,type_cont) # type_cont = Type Container
 
     for j in 1:nEntr
+        # println("\r... reading data ... header = ",header)
         for  i in 1:size(fields,1)
             idx = findall(x->x==fields[i],header)
             data_cont[i] = data[j,idx[1,1]]

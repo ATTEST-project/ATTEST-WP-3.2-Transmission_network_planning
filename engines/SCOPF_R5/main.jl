@@ -6,6 +6,15 @@ using Ipopt, JSON
 # using AmplNLWriter
 # using CbcP
 
+println()
+println("Julia active environment (project):")
+println(Base.active_project())
+println()
+# using Pkg
+# println("Status of Julia packages:")
+# Pkg.status()
+
+
 #-------------------Accessing current folder directory--------------------------
 show(pwd());
 cd(dirname(@__FILE__))

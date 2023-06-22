@@ -24,6 +24,7 @@ from engines.invest_check import overInvstment_check
 import cProfile
 import pstats
 
+import sys
 
 
 
@@ -336,6 +337,23 @@ def InvPt1_function(input_dir,OPF_option,test_case,ods_file_name,model,mpc, NoYe
     # SCACOPF for the peak hour (years*scenarios*typical days*contingency*1h)
     # only run for the peak time 
     # NoTime = 1 # Number of time points
+
+    # print("\nmodel:")
+    # print(model.pprint()) # - prints too much
+
+    ## Print a summary of the model
+    # print("Variables:")
+    # for var in model.component_data_objects(Var):
+    #     print(var)
+    # print()
+
+    # print("Objective:")
+    # print(model.obj)
+    # print()
+
+    # print("Constraints:")
+    # for constraint in model.component_data_objects(Constraint):
+    #     print(constraint)
     
     
     sum_plc_result = 0
@@ -364,9 +382,21 @@ def InvPt1_function(input_dir,OPF_option,test_case,ods_file_name,model,mpc, NoYe
         if ite_z == 0:                                  # initial run
             # solve pyomo model
             solver = SolverFactory('glpk')
+
+            # print('\nmodel (1):')
+            # print(model.pprint())
+
             results = solver.solve(model)
+
             print ('solver termination condition: ', results.solver.termination_condition)
-            # model.ci.pprint()
+
+            # print('\nmodel (2):')
+            # print(model.pprint())
+            
+            print('\nresults:')
+            print(results)
+
+            # sys.exit()
     
             
            
@@ -535,6 +565,15 @@ def InvPt1_function(input_dir,OPF_option,test_case,ods_file_name,model,mpc, NoYe
                
                 if OPF_option == "jl":
                     
+                    print("\n-------------- Case data in Python: --------------")
+                    # print("mpc: ",mpc)
+                    print("Number of buses: ",mpc['NoBus'])
+                    print("Total number of branches: ",mpc['NoBranch'])
+                    print("Total P demand: ",sum(mpc['bus']['PD']))
+                    print("Total Q demand: ",sum(mpc['bus']['QD']))
+                    print("Number of contingencies: ",len(cont_list))
+                    print("-------------------------------------------------")
+                    print("")
                     
                     # run julia model
                     sbase = 100

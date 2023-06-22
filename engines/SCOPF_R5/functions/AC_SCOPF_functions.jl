@@ -1391,7 +1391,8 @@ function SP_SCOPF_or_MP_OPF(model_indicator)
 
     # nTP=1
 
-    AC_SCOPF = Model(Ipopt.Optimizer, add_bridges=false)
+    AC_SCOPF = Model(Ipopt.Optimizer, add_bridges=false) # "add_bridges" causes problems when called from the ATTEST Tool 3.2
+    # AC_SCOPF = Model(Ipopt.Optimizer) # but, without bridges some expressions will cause errors
 
     model_name=AC_SCOPF
     # set_optimizer_attributes(model_name,"mu_strategy"=>"adaptive")
@@ -1401,6 +1402,11 @@ function SP_SCOPF_or_MP_OPF(model_indicator)
     show(now() )
     println("")
     show("Model starts now")
+
+    
+    
+
+
     (e, f, Pg, Qg, pen_ws, pen_lsh, p_fl_inc, p_fl_dec,q_fl_inc,q_fl_dec, p_ch, p_dis, soc,Pg_neg,Qg_neg)                      =variables_n(model_name)
     (e_c, f_c, Pg_c, Qg_c, pen_ws_c, pen_lsh_c, p_fl_inc_c ,p_fl_dec_c, q_fl_inc_c ,q_fl_dec_c,p_ch_c, p_dis_c, soc_c,Pg_neg_c,Qg_neg_c)=variables_c(model_name)
 
@@ -1419,6 +1425,28 @@ function SP_SCOPF_or_MP_OPF(model_indicator)
    global soc=soc
    global Pg_neg=Pg_neg
    global Qg_neg=Qg_neg
+
+   println("")
+    println("-------------- Case data in Julia: --------------")
+    println("Number of buses: ",size(e)[2])
+    println("Number of lines: ",nLines)
+    println("Number of transformers: ",nTrans)
+    println("Total number of branches: ",nLines+nTrans)
+    println("size(prof_ploads): ",size(prof_ploads))
+    println("nTP: ",nTP)
+    totalP_check = 0
+    totalQ_check = 0
+    for t in 1:nTP
+        for b in 1:nBus
+            totalP_check += reduce(+, (prof_ploads[i,t]  for i in findall(x->x==b,bus_data_lsheet) if ~isempty(findall(x->x==b,bus_data_lsheet))); init=0)
+            totalQ_check += reduce(+, (prof_qloads[i,t]  for i in findall(x->x==b,bus_data_lsheet) if ~isempty(findall(x->x==b,bus_data_lsheet))); init=0)
+        end
+    end
+    println("Total P demand: ",totalP_check)
+    println("Total Q demand: ",totalQ_check)
+    println("-------------------------------------------------")
+    println("")
+
 
 
    global  e_c=e_c
@@ -1534,7 +1562,8 @@ elseif  model_indicator==1
 
         # nTP=1
 
-        AC_OPF = Model(Ipopt.Optimizer, add_bridges=false)
+        AC_OPF = Model(Ipopt.Optimizer, add_bridges=false) # "add_bridges" causes problems when called from the ATTEST Tool 3.2
+        # AC_OPF = Model(Ipopt.Optimizer) # but, without bridges some expressions will cause errors
 
         model_name=AC_OPF
         # set_optimizer_attributes(model_name,"mu_strategy"=>"adaptive")

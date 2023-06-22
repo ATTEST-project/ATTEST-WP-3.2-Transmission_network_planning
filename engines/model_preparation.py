@@ -20,6 +20,9 @@ import math
 import numpy as np
 from engines.process_data import initial_value
 
+import pandas as pd # to read new EV load data
+
+
 
 
 @dataclass
@@ -50,7 +53,7 @@ class nodes_info_network:
 
 # ####################################################################
 # ####################################################################
-def prepare_invest_model(mpc, NoPath, prob,NoYear, NoSce,NoSea, NoDay,DF,CRF,SF,S_ci,ci_cost,Budget_cost,penalty_cost, peak_Pd,peak_Qd, multiplier,CPflex,CQflex,Pflex_up, Pflex_dn,Qflex_up, Qflex_dn,gen_status,line_status):
+def prepare_invest_model(mpc, NoPath, prob,NoYear, NoSce,NoSea, NoDay,DF,CRF,SF,S_ci,ci_cost,Budget_cost,penalty_cost, peak_Pd,peak_Qd, multiplier,CPflex,CQflex,Pflex_up, Pflex_dn,Qflex_up, Qflex_dn,gen_status, line_status, add_load_data, add_load_data_case_name, input_dir):
     NoTime = 1
    
     # Assume a power factor for initial run, values are updated based on OPF results
@@ -582,11 +585,30 @@ def prepare_invest_model(mpc, NoPath, prob,NoYear, NoSce,NoSea, NoDay,DF,CRF,SF,
         # Either using nodal balance or scdcopf
         # Nodal power balance
         def nodeBalance_rule(m, xb,xy,xsc, xse, xd, xt):
+            year_name = [2020, 2030, 2040, 2050]
+
+            if add_load_data == 1:
+
+                if year_name[xy] != 2020:
+                    EV_data_file_name = 'EV-PV-Storage_Data_for_Simulations.xlsx' # !we need to add this to CLI!
+                    EV_data_file_path = os.path.join(input_dir, EV_data_file_name)
+
+                    EV_load_data = pd.read_excel(EV_data_file_path, sheet_name = add_load_data_case_name + str(year_name[xy]), skiprows = 1)
+                    EV_load_data_MW_profile = EV_load_data["EV load (MW)"]
+                    EV_load_data_MW_max = np.max(EV_load_data_MW_profile[0:24])
+                    Pd_additions = EV_load_data["Node Ratio"]*EV_load_data_MW_max # how much new load per node
+                else:
+                    Pd_additions = [0] * mpc['NoBus'] # zero additional EV load
+            else:
+
+                Pd_additions = [0] * mpc['NoBus'] # zero additional EV load
+        
             # TODO: upadte PD to inclue xy,xsc, xse, xd        
             return sum( m.Pgen[genCbus[xb][i],xy,xsc, xse, xd, xt]  for i in range(len(genCbus[xb])) ) + m.Pflex[xb,xy,xsc, xse, xd,xt]   \
                     + sum( m.Pbra[braTbus[xb][i]- noDiff,xy,xsc, xse, xd,xt]  for i in range(len(braTbus[xb])) )  \
                     == sum( m.Pbra[braFbus[xb][i]- noDiff,xy,xsc, xse, xd,xt]  for i in range(len(braFbus[xb])) ) \
-                      + Pd[xb]* multiplier[xy][xsc][xb] - m.Plc[xb,xy,xsc, xse, xd,xt]
+                      + Pd[xb]* multiplier[xy][xsc][xb] - m.Plc[xb,xy,xsc, xse, xd,xt] \
+                      + Pd_additions[xb]
    
    
         # Nodal power balance Q

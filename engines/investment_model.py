@@ -28,6 +28,8 @@ from engines.model_preparation import prepare_invest_model
 import cProfile
 import pstats
 
+import time
+
 
 ''' functions without cli '''
 
@@ -212,7 +214,9 @@ import pstats
 
 
 
-def run_main_investment(input_dir, output_dir, ods_file_name, xlsx_file_name, country, test_case, peak_hour, NoYear,run_all):
+def run_main_investment(input_dir, output_dir, ods_file_name, xlsx_file_name, country, test_case, peak_hour, NoYear, run_all, add_load_data,add_load_data_case_name):
+    start = time.time()
+
     profiler = cProfile.Profile()
     profiler.enable()    
     
@@ -301,7 +305,7 @@ def run_main_investment(input_dir, output_dir, ods_file_name, xlsx_file_name, co
     '''Main '''
     print("Form optimisation model")
     # prepare the optimisation model with input data
-    mpc,model, no_ysce, tree_ysce,path_sce,noDiff, genCbus,braFbus,braTbus,Pd, Qd = prepare_invest_model(mpc, NoPath,prob, NoYear, NoSce,NoSea, NoDay,DF,CRF,SF,S_ci,ci_cost,Budget_cost,penalty_cost, peak_Pd,peak_Qd,multiplier_bus, CPflex,CQflex,Pflex_up, Pflex_dn,Qflex_up, Qflex_dn,gen_status,line_status)
+    mpc,model, no_ysce, tree_ysce,path_sce,noDiff, genCbus,braFbus,braTbus,Pd, Qd = prepare_invest_model(mpc, NoPath,prob, NoYear, NoSce,NoSea, NoDay,DF,CRF,SF,S_ci,ci_cost,Budget_cost,penalty_cost, peak_Pd,peak_Qd,multiplier_bus, CPflex,CQflex,Pflex_up, Pflex_dn,Qflex_up, Qflex_dn,gen_status,line_status, add_load_data, add_load_data_case_name, input_dir)
     
     # record branch capacity and gen cost
     bra_cap, gen_cost = recordValues(mpc)
@@ -310,8 +314,13 @@ def run_main_investment(input_dir, output_dir, ods_file_name, xlsx_file_name, co
     # remove gen cost in mpc
     mpc = replaceGenCost(mpc, gen_cost, 0)
     # SCACOPF for 1 peak hour  (years*scenarios*typical days*1h)
+
+    # print('Testing InvPt1 model 1 ....')
+
     model, obj_pt1, ci_pt1, ciCost_pt1, Cflex_pt1 , Pflex_pt1, Qflex_pt1 = InvPt1_function(input_dir,OPF_option,test_case,ods_file_name,model,mpc, NoYear, NoSea, NoDay, penalty_cost, NoCon, NoSce,path_sce,cont_list, S_ci,bra_cap,CPflex, CQflex, noDiff, genCbus,braFbus,braTbus,Pd, Qd,multiplier_bus,cost_base)
     
+    # print('Testing InvPt1 model 2 ....')
+
     # output results for part1, operation cost are zero
     output_data2Json(output_dir,NoPath, NoYear, path_sce, 0, 0, ci_pt1, ciCost_pt1, Cflex_pt1,Pflex_pt1,outputAll, country , test_case, "_pt1" )
     
@@ -347,6 +356,9 @@ def run_main_investment(input_dir, output_dir, ods_file_name, xlsx_file_name, co
     file_name = "cProfileExport_investModel_" + country + "_" + test_case
     with open(file_name +'.txt', 'w+') as f:
         f.write(result.getvalue())
+
+    end = time.time()
+    print('Investment model execution time: ',end - start)
     
     
     

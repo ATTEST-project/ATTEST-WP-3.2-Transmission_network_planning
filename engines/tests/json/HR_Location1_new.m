@@ -181,3 +181,5 @@ mpc.gencost = [
 	2	0	0	2	5	0;
 	2	0	0	2	23		0;
 ];
+
+results = runopf(mpc)
